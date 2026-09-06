@@ -2,6 +2,10 @@
     <img width="400" alt="Votus Logo" src="https://github.com/user-attachments/assets/391c325b-9cb0-4998-a657-c7f587cbefa9" />
 </p>
 
+<p align="center">
+    <em>Seu voto, sua escolha, seu futuro.</em>
+</p>
+
 <p align="center"> 
     <img loading="lazy" src="http://img.shields.io/static/v1?label=STATUS&message=EM%20DESENVOLVIMENTO&color=FFDE21&style=for-the-badge"/> 
 </p>
