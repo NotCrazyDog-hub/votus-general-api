@@ -90,6 +90,44 @@ class LowerHouseApiService
             'orgao' => $status['siglaOrgao'] ?? null,
         ];
     }
+
+    public function getTramitations(string $billId): array
+    {
+        $all = [];
+        $page = 1;
+
+        do {
+            $response = Http::withOptions(['verify' => false])
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get("{$this->baseUrl}/proposicoes/{$billId}/tramitacoes");
+
+            if ($response->failed()) {
+                throw new \RuntimeException("Failed to fetch tramitations for bill {$billId}: " . $response->status());
+            }
+
+            $data = $response->json('dados') ?? [];
+            $all = array_merge($all, $data);
+            $page++;
+        } while (count($data) === 100);
+
+        return collect($all)->map(fn ($t) => [
+            'event_date' => isset($t['dataHora']) ? substr($t['dataHora'], 0, 10) : null,
+            'sequence' => $t['sequencia'] ?? null,
+            'committee_code' => $t['siglaOrgao'] ?? null,
+            'action_description' => $t['descricaoTramitacao'] ?? null,
+            'status_description' => $t['descricaoSituacao'] ?? null,
+            'status_code' => $t['codSituacao'] ?? null,
+            'dispatch_text' => $t['despacho'] ?? null,
+        ])->all();
+    }
+
+    public function getStatusAndHistory(string $billId): array
+    {
+        return [
+            'status' => $this->getBillStatus($billId),
+            'tramitations' => $this->getTramitations($billId),
+        ];
+    }
     
     public function getProfessions(string $id): array
     {

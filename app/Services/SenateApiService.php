@@ -231,6 +231,63 @@ class SenateApiService
         ];
     }
 
+    protected function extractTramitations(array $processo): array
+    {
+        $autuacoes = $processo['autuacoes'] ?? [];
+
+        if (isset($autuacoes['numero']) || isset($autuacoes['situacoes'])) {
+            $autuacoes = [$autuacoes];
+        }
+
+        $tramitations = [];
+
+        foreach ($autuacoes as $autuacao) {
+            $situacoes = $autuacao['situacoes'] ?? [];
+
+            if (isset($situacoes['sigla'])) {
+                $situacoes = [$situacoes];
+            }
+
+            foreach ($situacoes as $situacao) {
+                $tramitations[] = [
+                    'event_date' => $situacao['inicio'] ?? null,
+                    'sequence' => null,
+                    'committee_code' => $situacao['enteAdministrativo']['sigla']
+                        ?? $situacao['colegiado']['sigla']
+                        ?? null,
+                    'action_description' => $situacao['descricao'] ?? null,
+                    'status_description' => $situacao['descricao'] ?? null,
+                    'status_code' => $situacao['sigla'] ?? null,
+                    'dispatch_text' => null,
+                ];
+            }
+        }
+
+        return $tramitations;
+    }
+
+    public function getStatusAndHistory(string $billId): array
+    {
+        $response = Http::withOptions(['verify' => false])
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get("{$this->baseUrl}/processo/{$billId}");
+
+        if ($response->failed()) {
+            throw new \RuntimeException("Failed to fetch status for bill {$billId}: " . $response->status());
+        }
+
+        $processo = $response->json('processo') ?? $response->json() ?? [];
+
+        return [
+            'status' => [
+                'situacao' => $processo['situacaoAtual'] ?? null,
+                'sigla_situacao' => $processo['siglaSituacaoAtual'] ?? null,
+                'tramitando' => isset($processo['tramitando']) ? $processo['tramitando'] === 'Sim' : null,
+            ],
+            'tramitations' => $this->extractTramitations($processo),
+        ];
+    }
+
     public function getProfessions(string $id): array
     {
         $response = Http::withOptions(['verify' => false])

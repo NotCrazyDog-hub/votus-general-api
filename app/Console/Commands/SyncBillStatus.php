@@ -23,26 +23,26 @@ class SyncBillStatus extends Command
         $chamber = $this->option('chamber');
 
         if (!$chamber || $chamber === 'lower_house') {
-            $this->sync('lower_house', fn ($externalId) => $lowerHouseApi->getBillStatus($externalId));
+            $this->sync('lower_house', fn ($externalId) => $lowerHouseApi->getStatusAndHistory($externalId));
         }
 
         if (!$chamber || $chamber === 'senate') {
-            $this->sync('senate', fn ($externalId) => $senateApi->getBillStatus($externalId));
+            $this->sync('senate', fn ($externalId) => $senateApi->getStatusAndHistory($externalId));
         }
 
         $this->info('Status sync completed.');
     }
 
-    protected function sync(string $chamber, callable $fetchStatus): void
+    protected function sync(string $chamber, callable $fetch): void
     {
         $bills = $this->pendingQuery($chamber)->get();
-        $label = $chamber === 'lower_house' ? 'Câmara' : 'Senado';
-        $this->info("{$label}: Synchronizing status of {$bills->count()} bills.");
+        $label = $chamber === 'lower_house' ? 'Lower House' : 'Senate';
+        $this->info("{$label}: syncing {$bills->count()} bills.");
         $bar = $this->output->createProgressBar($bills->count());
 
         foreach ($bills as $bill) {
             try {
-                $status = $fetchStatus($bill->external_id);
+                ['status' => $status, 'tramitations' => $tramitations] = $fetch($bill->external_id);
 
                 $bill->update([
                     'status_situacao' => $status['situacao'] ?? null,
@@ -50,8 +50,11 @@ class SyncBillStatus extends Command
                     'status_tramitando' => $status['tramitando'] ?? null,
                     'status_checked_at' => now(),
                 ]);
+
+                $bill->tramitations()->delete();
+                $bill->tramitations()->createMany($tramitations);
             } catch (\Throwable $e) {
-                $this->error("Falha ao buscar status da proposição {$bill->external_id} ({$label}): " . $e->getMessage());
+                $this->error("Failed to sync bill {$bill->external_id} ({$label}): " . $e->getMessage());
                 $bill->update(['status_checked_at' => now()]);
             }
 

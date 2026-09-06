@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bill extends Model
 {
@@ -36,5 +37,10 @@ class Bill extends Model
         return $this->belongsToMany(Topic::class, 'bill_topic')
             ->withPivot('relevance')
             ->withTimestamps();
+    }
+
+    public function tramitations(): HasMany
+    {
+        return $this->hasMany(BillTramitation::class);
     }
 }
