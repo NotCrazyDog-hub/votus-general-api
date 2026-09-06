@@ -142,6 +142,7 @@ php artisan sync:legislator-professions
 ```
 app/
   Console/Commands/
+    SyncBillStatus.php                Sincroniza situação das proposições
     SyncBillTopics.php                Sincroniza temas das proposições
     SyncLegislatorProfessions.php     Sincroniza profissões
     SyncLowerHouseBills.php           Sincroniza proposições de deputados
