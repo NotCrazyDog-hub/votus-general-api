@@ -12,7 +12,7 @@
 
 ## Sobre o projeto
 
-O **Votus** é um sistema de transparência política desenvolvido para o **Ceará Científico 2026**. Ele monitora deputados e senadores do Ceará, cruzando o discurso público deles com suas ações reais por meio de um **Índice de Confiabilidade** (percentual de coerência legislativa) e uma aba de notícias.
+O **Votus** é um sistema de transparência política desenvolvido para o **Ceará Científico 2026**. Ele monitora deputados e senadores do Ceará, cruzando o discurso público deles com suas ações reais por meio de um **Índice de Confiabilidade** (percentual de coerência legislativa) e uma aba de notícias. O sistema também conta com um agente de IA que permite ao usuário fazer perguntas diretamente sobre política, obtendo respostas contextualizadas.
 
 ## 🚀 Começando
 
