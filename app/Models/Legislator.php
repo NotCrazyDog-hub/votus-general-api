@@ -31,6 +31,9 @@ class Legislator extends Model
         'effectiveness_rate',
         'effectiveness_wilson_lower',
         'effectiveness_calculated_at',
+        'mandate_started_at', 
+        'productivity_bills_per_year', 
+        'productivity_calculated_at',
     ];
 
     protected $casts = [
