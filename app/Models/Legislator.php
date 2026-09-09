@@ -43,6 +43,10 @@ class Legislator extends Model
         'electoral_status' => ElectoralStatus::class,
     ];
 
+    protected $hidden = [
+        'raw_data',
+    ];
+
     public function committees(): BelongsToMany
     {
         return $this->belongsToMany(Committee::class, 'committee_legislator')
