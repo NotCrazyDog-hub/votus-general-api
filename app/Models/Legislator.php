@@ -26,6 +26,11 @@ class Legislator extends Model
         'official_website',
         'social_media',
         'raw_data',
+        'effectiveness_total_bills',
+        'effectiveness_advanced_bills',
+        'effectiveness_rate',
+        'effectiveness_wilson_lower',
+        'effectiveness_calculated_at',
     ];
 
     protected $casts = [

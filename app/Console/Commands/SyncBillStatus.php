@@ -12,7 +12,7 @@ class SyncBillStatus extends Command
 {
     protected $signature = 'sync:bill-status
         {--chamber= : lower_house, senate, ou vazio para ambas}
-        {--limit=500 : máximo de bills processados por câmara}
+        {--limit=0 : máximo de bills processados por câmara (0 = sem limite)}
         {--force : reprocessa mesmo quem já tem status_checked_at recente}
         {--stale-days=15 : dias para considerar um status desatualizado}';
 
@@ -68,7 +68,12 @@ class SyncBillStatus extends Command
 
     protected function pendingQuery(string $chamber)
     {
-        $query = Bill::where('chamber', $chamber)->limit((int) $this->option('limit'));
+        $query = Bill::where('chamber', $chamber);
+
+        $limit = (int) $this->option('limit');
+        if ($limit > 0) {
+            $query->limit($limit);
+        }
 
         if ($this->option('force')) {
             return $query;
@@ -78,7 +83,7 @@ class SyncBillStatus extends Command
 
         return $query->where(function ($q) use ($staleDate) {
             $q->whereNull('status_checked_at')
-              ->orWhere('status_checked_at', '<', $staleDate);
+            ->orWhere('status_checked_at', '<', $staleDate);
         });
     }
 }
