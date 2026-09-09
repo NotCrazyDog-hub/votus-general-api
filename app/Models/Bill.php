@@ -27,6 +27,10 @@ class Bill extends Model
         'presented_at' => 'date',
     ];
 
+    protected $hidden = [
+        'raw_data',
+    ];
+
     public function legislators(): BelongsToMany
     {
         return $this->belongsToMany(Legislator::class, 'bill_legislator');
