@@ -91,6 +91,30 @@ class SenateApiService
         return collect($mandatos)->sortByDesc(fn ($m) => (int) ($m['CodigoMandato'] ?? 0))->first();
     }
 
+    public function getMandateStartDate(string $id): ?string
+    {
+        $mandate = $this->getMandate($id);
+
+        if ($mandate === null) {
+            return null;
+        }
+
+        $legislaturaNumber = $this->currentLegislatureNumber($mandate);
+
+        $candidates = [
+            $mandate['PrimeiraLegislaturaDoMandato'] ?? null,
+            $mandate['SegundaLegislaturaDoMandato'] ?? null,
+        ];
+
+        foreach ($candidates as $legislatura) {
+            if ($legislatura !== null && ($legislatura['NumeroLegislatura'] ?? null) === $legislaturaNumber) {
+                return $legislatura['DataInicio'] ?? null;
+            }
+        }
+
+        return $mandate['PrimeiraLegislaturaDoMandato']['DataInicio'] ?? null;
+    }
+
     public function currentLegislatureNumber(array $mandate): ?string
     {
         $today = Carbon::today();
