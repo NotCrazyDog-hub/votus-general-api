@@ -29,6 +29,8 @@ class Bill extends Model
 
     protected $hidden = [
         'raw_data',
+        'created_at',
+        'updated_at'
     ];
 
     public function legislators(): BelongsToMany

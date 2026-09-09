@@ -45,6 +45,8 @@ class Legislator extends Model
 
     protected $hidden = [
         'raw_data',
+        'created_at',
+        'updated_at'
     ];
 
     public function committees(): BelongsToMany
