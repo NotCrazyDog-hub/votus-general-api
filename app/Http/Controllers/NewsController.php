@@ -15,6 +15,8 @@ class NewsController extends Controller
             'original_summary' => 'nullable|string',
             'ai_summary' => 'required|string',
             'url' => 'required|url',
+            'image_url' => 'nullable|url',
+            'site_logo_url' => 'nullable|url',
             'source' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'published_at' => 'required|date',

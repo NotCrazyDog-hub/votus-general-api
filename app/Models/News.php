@@ -20,6 +20,8 @@ class News extends Model
         'relevance_score',
         'keywords',
         'published',
+        'image_url',
+        'site_logo_url',
     ];
 
     protected $casts = [
