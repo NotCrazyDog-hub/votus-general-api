@@ -31,10 +31,16 @@ Route::post('/proposals', [ProposalController::class, 'store'])
 Route::post('/proposals/{id}/vote', [ProposalController::class, 'vote'])
 ->middleware('throttle:20,1')
 ->name('proposals.vote');
+Route::delete('/proposals/{id}/vote', [ProposalController::class, 'deleteVote'])
+->middleware('throttle:20,1')
+->name('proposals.vote.delete');
 
 Route::get('/proposals/{id}/comments', [ProposalCommentController::class, 'index']);
 Route::post('/proposals/{id}/comments', [ProposalCommentController::class, 'store'])
 ->middleware('throttle:15,1')
 ->name('proposals.comments.store');
+Route::delete('/proposals/{id}/comments/{commentId}', [ProposalCommentController::class, 'destroy'])
+->middleware('throttle:15,1')
+->name('proposals.comments.destroy');
 
 Route::get('/categories', [CategoryController::class, 'index']);

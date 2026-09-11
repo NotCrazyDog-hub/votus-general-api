@@ -52,6 +52,13 @@ class ProposalService
         }
     }
 
+    public function deleteVote(Proposal $proposal, string $visitorId): void
+    {
+        ProposalVote::where('proposal_id', $proposal->id)
+            ->where('visitor_id', $visitorId)
+            ->delete();
+    }
+
     public function syncCategories(Proposal $proposal, array $names): void
     {
         $categoryIds = collect($names)

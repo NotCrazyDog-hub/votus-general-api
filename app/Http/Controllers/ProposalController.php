@@ -73,6 +73,23 @@ class ProposalController extends Controller
         return new ProposalResource($this->service->find($id, $visitorId));
     }
 
+    public function deleteVote(Request $request, int $id)
+    {
+        $visitorId = $this->visitorId($request);
+
+        if (! $visitorId) {
+            return response()->json([
+                'message' => 'Identificador de visitante ausente. Envie o cabeçalho X-Visitor-Id.',
+            ], 422);
+        }
+
+        $proposal = Proposal::where('status', ProposalStatus::Published)->findOrFail($id);
+
+        $this->service->deleteVote($proposal, $visitorId);
+
+        return new ProposalResource($this->service->find($id, $visitorId));
+    }
+
     protected function visitorId(Request $request): ?string
     {
         $visitorId = $request->header('X-Visitor-Id');

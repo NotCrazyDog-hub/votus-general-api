@@ -19,6 +19,7 @@ class ProposalCommentResource extends JsonResource
             'author_name' => $this->author_name ?: 'Visitante',
             'content' => $this->content,
             'created_at' => $this->created_at,
+            'can_delete' => (bool) ($this->can_delete ?? false),
         ];
     }
 }
