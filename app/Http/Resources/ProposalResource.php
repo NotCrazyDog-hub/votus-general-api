@@ -26,6 +26,7 @@ class ProposalResource extends JsonResource
                 'not_support' => (int) $this->not_support_votes_count,
             ],
             'viewer_vote' => $this->viewer_vote,
+            'comments_count' => (int) $this->comments_count,
         ];
     }
 }

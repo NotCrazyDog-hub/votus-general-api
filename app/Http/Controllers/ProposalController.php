@@ -28,6 +28,25 @@ class ProposalController extends Controller
         return new ProposalResource($proposal);
     }
 
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'content' => ['required', 'string', 'max:5000'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'author' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $proposal = Proposal::create([
+            ...$data,
+            'status' => ProposalStatus::Published,
+        ]);
+
+        return new ProposalResource(
+            $this->service->find($proposal->id, $this->visitorId($request))
+        );
+    }
+
     public function vote(Request $request, int $id)
     {
         $visitorId = $this->visitorId($request);

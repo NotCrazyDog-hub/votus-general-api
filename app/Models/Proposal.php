@@ -24,4 +24,9 @@ class Proposal extends Model
     {
         return $this->hasMany(ProposalVote::class);
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProposalComment::class);
+    }
 }

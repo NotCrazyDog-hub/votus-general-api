@@ -57,6 +57,7 @@ class ProposalService
             ->withCount([
                 'votes as legal_votes_count' => fn ($query) => $query->where('vote_type', ProposalVoteType::Legal),
                 'votes as not_support_votes_count' => fn ($query) => $query->where('vote_type', ProposalVoteType::NotSupport),
+                'comments as comments_count',
             ]);
     }
 

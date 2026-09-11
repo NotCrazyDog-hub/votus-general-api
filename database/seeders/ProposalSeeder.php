@@ -53,10 +53,17 @@ class ProposalSeeder extends Seeder
         ];
 
         foreach ($proposals as $proposal) {
-            Proposal::firstOrCreate(
+            $created = Proposal::firstOrCreate(
                 ['title' => $proposal['title']],
                 [...$proposal, 'status' => ProposalStatus::Published]
             );
+
+            if ($created->wasRecentlyCreated) {
+                $created->comments()->create([
+                    'author_name' => 'Visitante',
+                    'content' => 'Achei essa proposta muito relevante pra nossa cidade.',
+                ]);
+            }
         }
     }
 }
