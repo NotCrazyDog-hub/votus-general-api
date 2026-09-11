@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ProposalStatus;
 use App\Enums\ProposalVoteType;
+use App\Models\Category;
 use App\Models\Proposal;
 use App\Models\ProposalVote;
 use Illuminate\Database\Eloquent\Collection;
@@ -51,9 +52,21 @@ class ProposalService
         }
     }
 
+    public function syncCategories(Proposal $proposal, array $names): void
+    {
+        $categoryIds = collect($names)
+            ->map(fn ($name) => trim($name))
+            ->filter()
+            ->unique()
+            ->map(fn ($name) => Category::firstOrCreate(['name' => $name])->id);
+
+        $proposal->categories()->sync($categoryIds);
+    }
+
     protected function baseQuery()
     {
         return Proposal::where('status', ProposalStatus::Published)
+            ->with('categories:id,name')
             ->withCount([
                 'votes as legal_votes_count' => fn ($query) => $query->where('vote_type', ProposalVoteType::Legal),
                 'votes as not_support_votes_count' => fn ($query) => $query->where('vote_type', ProposalVoteType::NotSupport),

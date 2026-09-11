@@ -7,6 +7,7 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\AgenteController;
 use App\Http\Controllers\ProposalController;
 use App\Http\Controllers\ProposalCommentController;
+use App\Http\Controllers\CategoryController;
 
 Route::get('/deputies', [LegislatorController::class, 'indexForDeputies']);
 Route::get('/deputies/{external_id}', [LegislatorController::class, 'showDeputy']);
@@ -35,3 +36,5 @@ Route::get('/proposals/{id}/comments', [ProposalCommentController::class, 'index
 Route::post('/proposals/{id}/comments', [ProposalCommentController::class, 'store'])
 ->middleware('throttle:15,1')
 ->name('proposals.comments.store');
+
+Route::get('/categories', [CategoryController::class, 'index']);

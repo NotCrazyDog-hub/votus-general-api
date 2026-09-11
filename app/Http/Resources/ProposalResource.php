@@ -18,7 +18,7 @@ class ProposalResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'content' => $this->content,
-            'category' => $this->category,
+            'categories' => $this->categories->pluck('name')->values(),
             'author' => $this->author,
             'created_at' => $this->created_at,
             'votes' => [

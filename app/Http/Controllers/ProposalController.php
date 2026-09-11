@@ -33,14 +33,19 @@ class ProposalController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string', 'max:5000'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'author' => ['nullable', 'string', 'max:255'],
+            'author' => ['required', 'string', 'max:255'],
+            'categories' => ['nullable', 'array'],
+            'categories.*' => ['string', 'max:255'],
         ]);
 
         $proposal = Proposal::create([
-            ...$data,
+            'title' => $data['title'],
+            'content' => $data['content'],
+            'author' => $data['author'],
             'status' => ProposalStatus::Published,
         ]);
+
+        $this->service->syncCategories($proposal, $data['categories'] ?? []);
 
         return new ProposalResource(
             $this->service->find($proposal->id, $this->visitorId($request))
