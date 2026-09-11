@@ -6,6 +6,10 @@ use App\Http\Controllers\SchedulerController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\AgenteController;
 use App\Http\Controllers\CommitteeTopicMatchController;
+use App\Http\Controllers\ProposalController;
+use App\Http\Controllers\ProposalCommentController;
+use App\Http\Controllers\CategoryController;
+
 
 Route::get('/deputies', [LegislatorController::class, 'indexForDeputies']);
 Route::get('/deputies/{external_id}', [LegislatorController::class, 'showDeputy']);
@@ -25,3 +29,19 @@ Route::middleware('auth:sanctum')->group(function () { // ou algum guard/token s
     Route::get('/internal/committee-topic-matches/pending', [CommitteeTopicMatchController::class, 'pending']);
     Route::post('/internal/committee-topic-matches/{committeeTopic}/review', [CommitteeTopicMatchController::class, 'review']);
 });
+
+Route::get('/proposals', [ProposalController::class, 'index']);
+Route::get('/proposals/{id}', [ProposalController::class, 'show']);
+Route::post('/proposals', [ProposalController::class, 'store'])
+->middleware('throttle:10,1')
+->name('proposals.store');
+Route::post('/proposals/{id}/vote', [ProposalController::class, 'vote'])
+->middleware('throttle:20,1')
+->name('proposals.vote');
+
+Route::get('/proposals/{id}/comments', [ProposalCommentController::class, 'index']);
+Route::post('/proposals/{id}/comments', [ProposalCommentController::class, 'store'])
+->middleware('throttle:15,1')
+->name('proposals.comments.store');
+
+Route::get('/categories', [CategoryController::class, 'index']);
