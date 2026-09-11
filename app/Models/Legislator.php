@@ -31,6 +31,9 @@ class Legislator extends Model
         'effectiveness_rate',
         'effectiveness_wilson_lower',
         'effectiveness_calculated_at',
+        'mandate_started_at', 
+        'productivity_bills_per_year', 
+        'productivity_calculated_at',
     ];
 
     protected $casts = [
@@ -38,6 +41,12 @@ class Legislator extends Model
         'raw_data' => 'array',
         'status' => LegislatorStatus::class,
         'electoral_status' => ElectoralStatus::class,
+    ];
+
+    protected $hidden = [
+        'raw_data',
+        'created_at',
+        'updated_at'
     ];
 
     public function committees(): BelongsToMany
