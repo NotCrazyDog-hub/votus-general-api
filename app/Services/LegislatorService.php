@@ -18,7 +18,7 @@ class LegislatorService
     {
         return Legislator::where('external_id', $external_id)
             ->where('chamber', $chamber)
-            ->with(['committees', 'bills', 'professions'])
+            ->with(['committees', 'bills.topics', 'professions'])
             ->firstOrFail();
     }
 }
