@@ -84,8 +84,7 @@ return [
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
-    'scheduler_token' => env('SCHEDULER_TOKEN'),
-
+    'scheduler_token' => env('SCHEDULER_TOKEN'),unidades
     /*
     |--------------------------------------------------------------------------
     | Encryption Key
