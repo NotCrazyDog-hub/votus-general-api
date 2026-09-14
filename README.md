@@ -141,7 +141,7 @@ php artisan sync:legislator-professions
 
 ## 📰 Pipeline de notícias
 
-A coleta e o resumo de notícias rodam nativamente em Laravel (Jobs + Filas), sem depender de automação externa. A primeira fonte implementada é a Agência Brasil, coletada via RSS oficial por categoria.
+A coleta e o resumo de notícias rodam nativamente em Laravel (Jobs + Filas), sem depender de automação externa. Fontes implementadas: **Agência Brasil** (RSS oficial, 9 categorias) e **Poder360** (RSS oficial). Cada fonte tem seu próprio Job de coleta isolado — uma falha numa fonte não afeta a outra.
 
 * **Fontes** ficam cadastradas na tabela `fontes` (uma fonte pode ter várias categorias/feeds em `feeds`, como a Agência Brasil).
 * **Coleta** (`fila coleta`): um Job isolado por fonte busca os feeds, normaliza os links, deduplica por `link_normalizado` e persiste a notícia original.
