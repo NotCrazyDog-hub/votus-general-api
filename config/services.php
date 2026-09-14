@@ -39,4 +39,18 @@ return [
         'webhook_url' => env('N8N_WEBHOOK_URL'),
     ],
 
+    'groq' => [
+        'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),
+        'api_keys' => [
+            env('GROQ_API_KEY_1'),
+            env('GROQ_API_KEY_2'),
+            env('GROQ_API_KEY_3'),
+        ],
+    ],
+
+    'scheduler' => [
+        'token' => env('SCHEDULER_TOKEN'),
+    ],
+
 ];

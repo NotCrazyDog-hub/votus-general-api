@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Limite conservador para não estourar o TPM (tokens por minuto) das
+        // chaves da Groq quando muitas notícias são resumidas em sequência.
+        RateLimiter::for('resumo-ia', function () {
+            return Limit::perMinute(10);
+        });
     }
 }

@@ -46,6 +46,8 @@ class NewsController extends Controller
         ], $news->wasRecentlyCreated ? 201 : 200);
     }
 
+    private const SORTABLE_COLUMNS = ['published_at', 'imported_at', 'relevance_score', 'created_at'];
+
     public function index(Request $request)
     {
         $query = News::query()->where('published', true);
@@ -59,7 +61,10 @@ class NewsController extends Controller
         }
 
         $sortBy = $request->get('sort_by', 'published_at');
-        $direction = $request->get('direction', 'desc');
+        $sortBy = in_array($sortBy, self::SORTABLE_COLUMNS, true) ? $sortBy : 'published_at';
+
+        $direction = strtolower((string) $request->get('direction', 'desc'));
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
 
         return response()->json(
             $query->orderBy($sortBy, $direction)->paginate(15)

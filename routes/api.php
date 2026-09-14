@@ -16,8 +16,12 @@ Route::get('/deputies/{external_id}', [LegislatorController::class, 'showDeputy'
 Route::get('/senators', [LegislatorController::class, 'indexForSenators']);
 Route::get('/senators/{external_id}', [LegislatorController::class, 'showSenator']);
 Route::get('/schedule/status', [SchedulerController::class, 'status']);
+Route::post('/schedule/coletar-noticias', [SchedulerController::class, 'executarPipelineNoticias'])
+    ->middleware('throttle:6,1');
+Route::post('/schedule/processar-fila-noticias', [SchedulerController::class, 'processarFilaNoticias'])
+    ->middleware('throttle:6,1');
 
-Route::post('/news', [NewsController::class, 'store']);
+Route::post('/news', [NewsController::class, 'store'])->middleware('internal.token');
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{news}', [NewsController::class, 'show']);
 
