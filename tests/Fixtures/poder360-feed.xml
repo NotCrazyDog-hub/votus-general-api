@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+    xmlns:content="http://purl.org/rss/1.0/modules/content/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+    <title>Poder360</title>
+    <link>https://www.poder360.com.br</link>
+    <description>Notícias do poder e da política.</description>
+    <language>pt-BR</language>
+    <item>
+        <title>Julgamento de caso relevante terá análise preliminar</title>
+        <link>https://www.poder360.com.br/poder-justica/julgamento-de-caso-relevante</link>
+        <pubDate>Mon, 14 Sep 2026 19:45:05 +0000</pubDate>
+        <dc:creator><![CDATA[Poder360 · Redação]]></dc:creator>
+        <category><![CDATA[Poder Justiça]]></category>
+        <category><![CDATA[STF]]></category>
+        <guid isPermaLink="false">https://admin.poder360.com.br/?p=1000001</guid>
+        <description><![CDATA[Resumo curto do caso julgado pelo STF.]]></description>
+        <content:encoded><![CDATA[<p>Conteúdo completo da notícia sobre o julgamento no STF.</p><p>Segundo parágrafo com detalhes.</p><img decoding="async" src="https://static.poder360.com.br/uploads/2026/09/exemplo.jpg" />]]></content:encoded>
+    </item>
+    <item>
+        <title>Governo anuncia nova medida econômica</title>
+        <link>https://www.poder360.com.br/economia/governo-anuncia-medida</link>
+        <pubDate>Mon, 14 Sep 2026 18:00:00 +0000</pubDate>
+        <dc:creator><![CDATA[Poder360 · Redação]]></dc:creator>
+        <category><![CDATA[Economia]]></category>
+        <guid isPermaLink="false">https://admin.poder360.com.br/?p=1000002</guid>
+        <description><![CDATA[Resumo curto da medida econômica.]]></description>
+        <content:encoded><![CDATA[<p>Conteúdo completo sobre a medida econômica anunciada pelo governo.</p>]]></content:encoded>
+    </item>
+    <item>
+        <title></title>
+        <link></link>
+        <description>Item inválido sem título nem link, deve ser ignorado.</description>
+    </item>
+</channel>
+</rss>

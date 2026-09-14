@@ -25,6 +25,20 @@ class AgenciaBrasilCollectorTest extends TestCase
         $this->assertSame('https://imagens.ebc.com.br/exemplo1.png', $itens[0]['image_url']);
         $this->assertStringContainsString('pacote econômico', $itens[0]['conteudo_original']);
         $this->assertNotNull($itens[0]['published_at']);
+
+        // original_summary deve ser o texto puro (sem as tags <p> do RSS)
+        $this->assertStringNotContainsString('<p>', $itens[0]['original_summary']);
+        $this->assertStringContainsString('pacote econômico', $itens[0]['original_summary']);
+    }
+
+    public function test_texto_limpo_removes_html_and_keeps_paragraph_breaks(): void
+    {
+        $html = '<p>Primeiro parágrafo.</p><p>Segundo parágrafo com <strong>destaque</strong>.</p>'
+            . '<img src="https://exemplo.com/pixel.gif" style="width:1px" />';
+
+        $texto = (new AgenciaBrasilCollector())->textoLimpo($html);
+
+        $this->assertSame("Primeiro parágrafo.\n\nSegundo parágrafo com destaque.", $texto);
     }
 
     public function test_it_throws_on_http_failure(): void

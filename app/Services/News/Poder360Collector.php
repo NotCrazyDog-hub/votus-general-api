@@ -6,15 +6,19 @@ use App\Services\News\Concerns\ExtraiTextoDeHtml;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
-use SimpleXMLElement;
 use Throwable;
 
-class AgenciaBrasilCollector
+class Poder360Collector
 {
     use ExtraiTextoDeHtml;
 
+    private const NAMESPACE_CONTENT = 'http://purl.org/rss/1.0/modules/content/';
+
     /**
-     * Busca e interpreta o feed RSS de uma categoria da Agência Brasil.
+     * Busca e interpreta o feed RSS do Poder360. Diferente da Agência
+     * Brasil, não há uma tag de imagem dedicada — a foto vem embutida no
+     * corpo do artigo (content:encoded), então extraímos o primeiro <img>
+     * de lá.
      *
      * @return array<int, array{title:string,url:string,conteudo_original:string,original_summary:string,published_at:?string,image_url:?string,category:?string}>
      */
@@ -50,22 +54,35 @@ class AgenciaBrasilCollector
             }
 
             $categoriaPrincipal = isset($item->category[0]) ? trim((string) $item->category[0]) : null;
-            $imagem = trim((string) ($item->{'imagem-destaque'} ?? ''));
 
-            $conteudoOriginal = trim((string) $item->description);
+            $conteudoNamespaced = $item->children(self::NAMESPACE_CONTENT);
+            $conteudoHtml = trim((string) ($conteudoNamespaced->encoded ?? ''));
+
+            if ($conteudoHtml === '') {
+                $conteudoHtml = trim((string) $item->description);
+            }
 
             $itens[] = [
                 'title' => trim((string) $item->title),
                 'url' => $link,
-                'conteudo_original' => $conteudoOriginal,
-                'original_summary' => $this->textoLimpo($conteudoOriginal),
+                'conteudo_original' => $conteudoHtml,
+                'original_summary' => $this->textoLimpo($conteudoHtml),
                 'published_at' => $this->interpretarData((string) $item->pubDate),
-                'image_url' => $imagem !== '' ? $imagem : null,
+                'image_url' => $this->extrairPrimeiraImagem($conteudoHtml),
                 'category' => $categoriaPrincipal !== '' ? $categoriaPrincipal : null,
             ];
         }
 
         return $itens;
+    }
+
+    private function extrairPrimeiraImagem(string $html): ?string
+    {
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $match)) {
+            return $match[1];
+        }
+
+        return null;
     }
 
     private function interpretarData(string $pubDate): ?string

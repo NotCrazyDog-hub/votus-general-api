@@ -4,8 +4,8 @@ namespace App\Jobs\News;
 
 use App\Models\Fonte;
 use App\Models\News;
-use App\Services\News\AgenciaBrasilCollector;
 use App\Services\News\LinkNormalizer;
+use App\Services\News\Poder360Collector;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class ColetarAgenciaBrasilNoticiasJob implements ShouldQueue
+class ColetarPoder360NoticiasJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -27,7 +27,7 @@ class ColetarAgenciaBrasilNoticiasJob implements ShouldQueue
         $this->onQueue('coleta');
     }
 
-    public function handle(AgenciaBrasilCollector $collector, LinkNormalizer $normalizer): void
+    public function handle(Poder360Collector $collector, LinkNormalizer $normalizer): void
     {
         $fonte = Fonte::find($this->fonteId);
 
@@ -41,18 +41,16 @@ class ColetarAgenciaBrasilNoticiasJob implements ShouldQueue
             return;
         }
 
-        $categoriasComErro = 0;
-
         foreach ($feeds as $categoriaSlug => $feedUrl) {
             try {
                 $itens = $collector->coletar($feedUrl);
             } catch (Throwable $e) {
-                $categoriasComErro++;
                 Log::error("[coleta] {$fonte->slug}/{$categoriaSlug} falhou: {$e->getMessage()}", [
                     'fonte_id' => $fonte->id,
                     'exception' => $e,
                 ]);
-                continue;
+                $fonte->registrarFalha($e->getMessage());
+                return;
             }
 
             foreach ($itens as $item) {
@@ -65,11 +63,6 @@ class ColetarAgenciaBrasilNoticiasJob implements ShouldQueue
                     ]);
                 }
             }
-        }
-
-        if ($categoriasComErro > 0 && $categoriasComErro >= count($feeds)) {
-            $fonte->registrarFalha("Todas as {$categoriasComErro} categorias falharam na última coleta.");
-            return;
         }
 
         $fonte->registrarSucesso();

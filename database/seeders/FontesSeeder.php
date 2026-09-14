@@ -40,5 +40,24 @@ class FontesSeeder extends Seeder
         // Reaplica a lista de feeds em fontes já existentes (ex: categorias novas
         // adicionadas depois), sem mexer no estado do circuit breaker (ativa/falhas).
         $fonte->update(['feeds' => $feeds]);
+
+        $feedsPoder360 = [
+            'geral' => 'https://www.poder360.com.br/feed/',
+        ];
+
+        $poder360 = Fonte::firstOrCreate(
+            ['slug' => 'poder360'],
+            [
+                'nome' => 'Poder360',
+                'tipo_coleta' => 'rss',
+                'url_base' => 'https://www.poder360.com.br',
+                'feeds' => $feedsPoder360,
+                'ativa' => true,
+                'offset_minutos' => 15,
+                'limite_falhas' => 5,
+            ]
+        );
+
+        $poder360->update(['feeds' => $feedsPoder360]);
     }
 }

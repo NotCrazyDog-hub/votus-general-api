@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\News\ColetarAgenciaBrasilNoticiasJob;
+use App\Jobs\News\ColetarPoder360NoticiasJob;
 use App\Models\Fonte;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -18,6 +19,7 @@ class ColetarNoticias extends Command
      */
     private const JOBS_POR_SLUG = [
         'agencia-brasil' => ColetarAgenciaBrasilNoticiasJob::class,
+        'poder360' => ColetarPoder360NoticiasJob::class,
     ];
 
     public function handle(): int
