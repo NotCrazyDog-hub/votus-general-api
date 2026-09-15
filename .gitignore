@@ -7,7 +7,6 @@
 .phpunit.result.cache
 /.codex
 /.cursor/
-/.fleetoportunidades
 /.idea
 /.nova
 /.phpunit.cache
@@ -16,7 +15,7 @@
 /auth.json
 /node_modules
 /public/build
-/public/fonts-manifest.dev.json oportunidades
+/public/fonts-manifest.dev.json
 /public/hot
 /public/storage
 /storage/*.key
