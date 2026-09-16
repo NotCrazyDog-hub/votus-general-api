@@ -70,6 +70,7 @@ class ResumirNoticiaJob implements ShouldQueue
         } catch (Throwable $e) {
             $noticia->update([
                 'status_resumo' => 'falhou',
+                'erro_resumo' => str($e->getMessage())->limit(500)->toString(),
                 'tentativas_resumo' => $noticia->tentativas_resumo + 1,
             ]);
 
@@ -79,7 +80,10 @@ class ResumirNoticiaJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        News::where('id', $this->newsId)->update(['status_resumo' => 'falhou']);
+        News::where('id', $this->newsId)->update([
+            'status_resumo' => 'falhou',
+            'erro_resumo' => str($exception->getMessage())->limit(500)->toString(),
+        ]);
 
         Log::error("[resumo] notícia #{$this->newsId} falhou definitivamente: {$exception->getMessage()}", [
             'exception' => $exception,

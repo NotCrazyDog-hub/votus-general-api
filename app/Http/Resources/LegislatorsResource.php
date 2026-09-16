@@ -33,8 +33,6 @@ class LegislatorsResource extends JsonResource
                 ],
                 'productivity' => [
                     'bills_per_year' => $this->productivity_bills_per_year !== null ? (float) $this->productivity_bills_per_year : null,
-                    'mandate_started_at' => $this->mandate_started_at,
-                    'calculated_at' => $this->productivity_calculated_at,
                 ],
             ],
         ];

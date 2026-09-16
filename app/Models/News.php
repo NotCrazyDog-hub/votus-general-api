@@ -18,6 +18,7 @@ class News extends Model
         'conteudo_original',
         'ai_summary',
         'status_resumo',
+        'erro_resumo',
         'tentativas_resumo',
         'ultima_tentativa_resumo_em',
         'url',

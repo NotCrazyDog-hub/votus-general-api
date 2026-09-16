@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PublicOpportunityImportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LegislatorController;
 use App\Http\Controllers\SchedulerController;
@@ -9,6 +10,16 @@ use App\Http\Controllers\CommitteeTopicMatchController;
 use App\Http\Controllers\ProposalController;
 use App\Http\Controllers\ProposalCommentController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SantinhoController;
+use App\Http\Controllers\SiteVisitController;
+use App\Http\Controllers\SuggestionController;
+use App\Http\Controllers\SuggestionQuestionController;
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\Admin\ProposalController as AdminProposalController;
+use App\Http\Controllers\Admin\SuggestionController as AdminSuggestionController;
+use App\Http\Controllers\Admin\SuggestionQuestionController as AdminSuggestionQuestionController;
 
 
 Route::get('/deputies', [LegislatorController::class, 'indexForDeputies']);
@@ -55,3 +66,34 @@ Route::delete('/proposals/{id}/comments/{commentId}', [ProposalCommentController
 ->name('proposals.comments.destroy');
 
 Route::get('/categories', [CategoryController::class, 'index']);
+
+
+Route::post(
+    '/public-opportunities/import',
+    [PublicOpportunityImportController::class, 'store']
+);
+
+Route::post('/santinhos', [SantinhoController::class, 'store'])->middleware('throttle:30,1');
+Route::post('/site-visits', [SiteVisitController::class, 'store'])->middleware('throttle:30,1');
+Route::post('/suggestions', [SuggestionController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/suggestion-questions', [SuggestionQuestionController::class, 'index']);
+
+Route::prefix('admin')->group(function () {
+    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:10,1');
+
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/logout', [AdminAuthController::class, 'logout']);
+        Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+        Route::get('/news', [AdminNewsController::class, 'index']);
+        Route::post('/news/collect', [AdminNewsController::class, 'collect'])->middleware('throttle:6,1');
+        Route::get('/proposals', [AdminProposalController::class, 'index']);
+        Route::delete('/proposals/{id}', [AdminProposalController::class, 'destroy']);
+        Route::get('/suggestions', [AdminSuggestionController::class, 'index']);
+        Route::post('/suggestions', [AdminSuggestionController::class, 'store'])->middleware('throttle:20,1');
+        Route::get('/suggestion-questions', [AdminSuggestionQuestionController::class, 'index']);
+        Route::post('/suggestion-questions', [AdminSuggestionQuestionController::class, 'store']);
+        Route::put('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'update']);
+        Route::delete('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'destroy']);
+    });
+});
