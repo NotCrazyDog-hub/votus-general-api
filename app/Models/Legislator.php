@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\LegislatorStatus;
 use App\Enums\ElectoralStatus;
@@ -34,6 +35,11 @@ class Legislator extends Model
         'mandate_started_at', 
         'productivity_bills_per_year', 
         'productivity_calculated_at',
+        'thematic_focus_index',
+        'thematic_focus_top_topic_id',
+        'thematic_focus_top_topic_share',
+        'thematic_focus_total_bills',
+        'thematic_focus_calculated_at',
     ];
 
     protected $casts = [
@@ -64,5 +70,9 @@ class Legislator extends Model
         return $this->belongsToMany(Profession::class)
             ->withPivot(['source', 'original_name', 'is_primary', 'registered_at'])
             ->withTimestamps();
+    }
+    public function thematicFocusTopTopic(): BelongsTo
+    {
+        return $this->belongsTo(Topic::class, 'thematic_focus_top_topic_id');
     }
 }

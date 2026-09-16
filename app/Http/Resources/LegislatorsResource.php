@@ -34,6 +34,15 @@ class LegislatorsResource extends JsonResource
                 'productivity' => [
                     'bills_per_year' => $this->productivity_bills_per_year !== null ? (float) $this->productivity_bills_per_year : null,
                 ],
+                'thematic_focus' => [
+                    'index' => $this->thematic_focus_index !== null ? (float) $this->thematic_focus_index : null,
+                    'total_bills' => $this->thematic_focus_total_bills,
+                    'top_topic' => $this->whenLoaded('thematicFocusTopTopic', fn () => [
+                        'id' => $this->thematicFocusTopTopic->id,
+                        'name' => $this->thematicFocusTopTopic->name,
+                        'share' => (float) $this->thematic_focus_top_topic_share,
+                    ]),
+                ],
             ],
         ];
     }
