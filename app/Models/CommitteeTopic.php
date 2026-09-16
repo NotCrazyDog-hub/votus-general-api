@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommitteeTopic extends Model
 {
@@ -11,10 +12,6 @@ class CommitteeTopic extends Model
     protected $fillable = [
         'committee_id',
         'topic_id',
-        'match_score',
-        'match_method',
-        'reviewed',
-        'reviewed_source',
         'ai_confidence',
         'ai_reasoning',
         'reviewed_at',
@@ -27,12 +24,12 @@ class CommitteeTopic extends Model
         'reviewed_at' => 'datetime',
     ];
 
-    public function committee()
+    public function committee(): BelongsTo
     {
         return $this->belongsTo(Committee::class);
     }
 
-    public function topic()
+    public function topic(): BelongsTo
     {
         return $this->belongsTo(Topic::class);
     }

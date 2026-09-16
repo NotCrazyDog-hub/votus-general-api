@@ -2,6 +2,7 @@
 
 namespace App\Services\Metrics;
 
+use App\Models\CommitteeTopic;
 use App\Models\Legislator;
 
 class ThematicConsistencyService
@@ -10,15 +11,19 @@ class ThematicConsistencyService
     {
         $committeeIds = $legislator->committees()->pluck('committees.id');
 
-        $relevantTopicIds = \App\Models\CommitteeTopic::whereIn('committee_id', $committeeIds)
-            ->where('reviewed', true)
+        $relevantTopicIds = CommitteeTopic::whereIn('committee_id', $committeeIds)
             ->pluck('topic_id');
 
         $bills = $legislator->bills()->with('topics')->get();
         $total = $bills->count();
 
         if ($total === 0) {
-            return ['total' => 0, 'consistent' => 0, 'rate' => null, 'wilson_lower' => null];
+            return [
+                'total' => 0,
+                'consistent' => 0,
+                'rate' => null,
+                'wilson_lower' => null,
+            ];
         }
 
         $consistent = $bills->filter(function ($bill) use ($relevantTopicIds) {

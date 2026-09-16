@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\PublicOpportunityImportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LegislatorController;
 use App\Http\Controllers\SchedulerController;
@@ -66,12 +65,6 @@ Route::delete('/proposals/{id}/comments/{commentId}', [ProposalCommentController
 ->name('proposals.comments.destroy');
 
 Route::get('/categories', [CategoryController::class, 'index']);
-
-
-Route::post(
-    '/public-opportunities/import',
-    [PublicOpportunityImportController::class, 'store']
-);
 
 Route::post('/santinhos', [SantinhoController::class, 'store'])->middleware('throttle:30,1');
 Route::post('/site-visits', [SiteVisitController::class, 'store'])->middleware('throttle:30,1');
