@@ -342,23 +342,37 @@ class SenateApiService
             ->all();
     }
 
-    public function extractTopics(array $processo): array
+    public function getTopics(string $billId): array
     {
-        $classes = $processo['classes']['classe'] ?? $processo['classes'] ?? [];
+        $response = Http::withOptions(['verify' => false])
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get("{$this->baseUrl}/processo/{$billId}");
 
-        if (isset($classes['descricao']) || isset($classes['Descricao'])) {
-            $classes = [$classes];
+        if ($response->failed()) {
+            throw new \RuntimeException("Failed to fetch topics for bill {$billId}: " . $response->status());
         }
 
-        return collect($classes)
-            ->map(fn ($c) => $c['descricao'] ?? $c['Descricao'] ?? $c['nome'] ?? null)
-            ->filter()
-            ->unique()
-            ->map(fn ($name) => [
-                'external_id' => null,
-                'name' => trim($name),
+        $processo = $response->json('processo') ?? $response->json() ?? [];
+
+        return $this->extractClassificacoes($processo);
+    }
+
+    protected function extractClassificacoes(array $processo): array
+    {
+        $classificacoes = $processo['classificacoes'] ?? [];
+
+        if (isset($classificacoes['codigo']) || isset($classificacoes['descricao'])) {
+            $classificacoes = [$classificacoes];
+        }
+
+        return collect($classificacoes)
+            ->filter(fn ($c) => !empty($c['descricao']))
+            ->map(fn ($c) => [
+                'external_id' => isset($c['codigo']) ? (string) $c['codigo'] : null,
+                'name' => trim($c['descricao']),
                 'relevance' => null,
             ])
+            ->unique('name')
             ->values()
             ->all();
     }
