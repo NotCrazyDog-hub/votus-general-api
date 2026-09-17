@@ -80,6 +80,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/news', [AdminNewsController::class, 'index']);
         Route::post('/news/collect', [AdminNewsController::class, 'collect'])->middleware('throttle:6,1');
+        Route::delete('/news/{id}', [AdminNewsController::class, 'destroy']);
         Route::get('/proposals', [AdminProposalController::class, 'index']);
         Route::delete('/proposals/{id}', [AdminProposalController::class, 'destroy']);
         Route::get('/proposals/{id}/comments', [AdminProposalController::class, 'comments']);

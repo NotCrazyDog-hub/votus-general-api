@@ -26,7 +26,7 @@ class NewsController extends Controller
                 ->when($busca !== '', fn ($query) => $query->where('title', 'like', "%{$busca}%"))
                 ->orderByDesc('imported_at')
                 ->paginate(15, [
-                    'id', 'title', 'category', 'published',
+                    'id', 'title', 'category', 'published', 'image_url',
                     'status_resumo', 'erro_resumo', 'tentativas_resumo', 'imported_at',
                 ])
         );
@@ -38,7 +38,7 @@ class NewsController extends Controller
      * qualquer momento, inclusive perto de um ciclo automático, então um
      * lote menor evita empilhar resumo pendente demais de uma vez.
      */
-    private const LIMITE_COLETA_MANUAL = 15;
+    private const LIMITE_COLETA_MANUAL = 10;
 
     /**
      * Gatilho manual do painel para o mesmo pipeline de notícias já usado
@@ -59,6 +59,11 @@ class NewsController extends Controller
      */
     public function collect(): JsonResponse
     {
+        // Limpa primeiro: se o backlog travado for só notícia velha (cron de
+        // resumo que não rodou), isso já destrava o botão nesta mesma
+        // requisição, sem esperar o próximo ciclo agendado.
+        Artisan::call('noticias:limpar-pendentes-antigas');
+
         $pendentes = News::whereIn('status_resumo', ['pendente', 'em_processamento'])->count();
 
         if ($pendentes > 0) {
@@ -80,9 +85,14 @@ class NewsController extends Controller
         }
 
         try {
+            // Sem --stop-when-empty: um job travado pelo rate limit da IA
+            // (resumo-ia) volta pra fila com disponibilidade só no futuro, o
+            // que faz --stop-when-empty enxergar "fila vazia" e encerrar
+            // cedo demais, deixando notícias paradas até o próximo clique ou
+            // o ciclo automático. O --max-time já limita a duração da
+            // requisição.
             Artisan::call('queue:work', [
                 '--queue' => 'coleta,resumo',
-                '--stop-when-empty' => true,
                 '--max-time' => 50,
             ]);
             $saidaFila = trim(Artisan::output());
@@ -99,5 +109,17 @@ class NewsController extends Controller
             'coleta' => $saidaColeta,
             'fila' => $saidaFila,
         ]);
+    }
+
+    /**
+     * Remoção manual pelo admin — ex: notícia irrelevante que passou pelo
+     * filtro, ou lixo que ficou "aguardando resumo" e não vale a pena
+     * esperar a limpeza automática de 8h.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        News::findOrFail($id)->delete();
+
+        return response()->json(['message' => 'Notícia removida.']);
     }
 }

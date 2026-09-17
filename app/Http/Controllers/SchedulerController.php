@@ -30,13 +30,21 @@ class SchedulerController extends Controller
         Artisan::call('noticias:coletar');
         $saidaColeta = Artisan::output();
 
-        // Já aproveita a mesma requisição pra começar a drenar a fila.
+        // Já aproveita a mesma requisição pra começar a drenar a fila. Sem
+        // --stop-when-empty: com o rate limit da IA (resumo-ia), um job que
+        // esbarra no limite é devolvido pra fila com um "available_at" no
+        // futuro — pra --stop-when-empty isso PARECE fila vazia (não há job
+        // disponível AGORA), então o worker encerrava na primeira notícia
+        // limitada e desperdiçava o resto da janela de 50s sem processar
+        // mais nada. Sem essa flag, o --max-time continua limitando o tempo
+        // da requisição, só que agora ele aproveita a janela inteira.
         Artisan::call('queue:work', [
             '--queue' => 'coleta,resumo',
-            '--stop-when-empty' => true,
             '--max-time' => 50,
         ]);
         $saidaFila = Artisan::output();
+
+        Artisan::call('noticias:limpar-pendentes-antigas');
 
         return response()->json([
             'status' => 'executado',
@@ -56,15 +64,21 @@ class SchedulerController extends Controller
             return response()->json(['message' => 'Token inválido.'], 401);
         }
 
+        // Sem --stop-when-empty (ver comentário em executarPipelineNoticias):
+        // esse endpoint é chamado com alta frequência exatamente pra drenar
+        // o que ficou represado pelo rate limit da IA, então encerrar cedo
+        // na primeira notícia limitada anula o propósito dele.
         Artisan::call('queue:work', [
             '--queue' => 'coleta,resumo',
-            '--stop-when-empty' => true,
             '--max-time' => 50,
         ]);
+        $saidaFila = Artisan::output();
+
+        Artisan::call('noticias:limpar-pendentes-antigas');
 
         return response()->json([
             'status' => 'executado',
-            'fila' => trim(Artisan::output()),
+            'fila' => trim($saidaFila),
         ]);
     }
 

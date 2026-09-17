@@ -57,7 +57,17 @@ class ResumirNoticiaJob implements ShouldQueue
         ]);
 
         try {
-            $resultado = $summarizer->resumir($noticia->title, $noticia->conteudo_original ?? '');
+            // Envia o texto já limpo (original_summary), não o HTML bruto de
+            // conteudo_original: mesma informação, sem tags/atributos/scripts
+            // no meio — em amostragem real isso reduz o tamanho do conteúdo
+            // enviado à Groq em ~35-40%, o que ajuda bastante a não estourar
+            // o limite de tokens por minuto (TPM) da API. conteudo_original
+            // só entra como fallback se o texto limpo nunca foi gerado.
+            $conteudo = $noticia->original_summary !== null && $noticia->original_summary !== ''
+                ? $noticia->original_summary
+                : trim(strip_tags($noticia->conteudo_original ?? ''));
+
+            $resultado = $summarizer->resumir($noticia->title, $conteudo);
 
             $noticia->update([
                 'ai_summary' => $resultado['resumo'],

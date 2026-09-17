@@ -9,6 +9,17 @@ use Throwable;
 class GroqSummarizerService
 {
     /**
+     * Teto defensivo de tamanho do conteúdo enviado à Groq, independente do
+     * chamador — protege contra artigos atipicamente longos que sozinhos
+     * poderiam consumir boa parte do limite de tokens por minuto (TPM) da
+     * API numa única chamada. ~6000 caracteres já cobre um texto jornalístico
+     * completo em português (a imensa maioria dos artigos coletados fica bem
+     * abaixo disso); o excesso é cortado sem prejudicar o resumo, já que o
+     * essencial de uma notícia está sempre nos primeiros parágrafos.
+     */
+    private const MAX_CONTEUDO_CHARS = 6000;
+
+    /**
      * Gera um resumo de IA para a notícia, alternando entre as chaves da Groq
      * configuradas para distribuir a carga e evitar que uma única chave esgote sua cota.
      *
@@ -25,6 +36,10 @@ class GroqSummarizerService
 
         if (empty($chaves)) {
             throw new RuntimeException('Nenhuma chave da Groq configurada (GROQ_API_KEY_1/2/3).');
+        }
+
+        if (mb_strlen($conteudo) > self::MAX_CONTEUDO_CHARS) {
+            $conteudo = mb_substr($conteudo, 0, self::MAX_CONTEUDO_CHARS);
         }
 
         $indiceInicial = crc32($titulo) % count($chaves);
@@ -61,6 +76,13 @@ class GroqSummarizerService
                 'model' => config('services.groq.model'),
                 'response_format' => ['type' => 'json_object'],
                 'temperature' => 0.3,
+                // Sem isso o modelo podia ignorar "até 3 parágrafos curtos" e
+                // gerar uma resposta bem mais longa que o necessário — o
+                // consumo de TPM da Groq soma tokens de entrada E de saída,
+                // então uma resposta sem teto também contribui pra estourar
+                // o limite. 700 tokens cobre com folga um resumo de até 3
+                // parágrafos curtos mais o JSON ao redor.
+                'max_tokens' => 700,
                 'messages' => [
                     [
                         'role' => 'system',
@@ -72,11 +94,17 @@ class GroqSummarizerService
                             . 'saúde, segurança pública, meio ambiente, direitos humanos e ciência/tecnologia '
                             . 'quando ligados a políticas públicas ou governo; esporte e cultura só quando '
                             . 'houver financiamento público, legislação ou gestão governamental envolvida). '
-                            . 'Rejeite loteria, entretenimento, celebridades, fofoca, resultados esportivos sem '
-                            . 'relevância pública, curiosidades, acidentes isolados sem relevância institucional '
-                            . 'e qualquer assunto viral sem relação política ou social — mesmo que a notícia '
-                            . 'apenas cite de passagem uma palavra como "governo": a relação precisa ser central '
-                            . 'ao assunto da notícia, não incidental. Pergunta-guia: essa notícia ajuda alguém a '
+                            . 'Rejeite loteria, entretenimento, celebridades, fofoca, prêmios e indicações '
+                            . 'artísticas (ex: Grammy, Oscar), shows e turnês de artistas, resultados esportivos '
+                            . 'sem relevância pública, curiosidades, acidentes isolados sem relevância '
+                            . 'institucional e qualquer assunto viral sem relação política ou social — mesmo que '
+                            . 'a notícia apenas cite de passagem uma palavra como "governo": a relação precisa '
+                            . 'ser central ao assunto da notícia, não incidental. O Votus cobre política '
+                            . 'BRASILEIRA: rejeite notícias internacionais (eleições, política, entretenimento '
+                            . 'ou justiça de outros países) que não tenham relação direta com o governo, a '
+                            . 'diplomacia ou as políticas públicas do Brasil — um fato ocorrido fora do Brasil só '
+                            . 'é relevante se a notícia for sobre como isso afeta o Brasil especificamente. '
+                            . 'Pergunta-guia: essa notícia ajuda alguém a '
                             . 'entender política, eleições, governo, políticas públicas, cidadania ou uma questão '
                             . 'social de interesse coletivo? Responda SEMPRE com um JSON válido contendo as '
                             . 'chaves: "resumo" (string, até 3 parágrafos curtos, neutro e objetivo, em '
