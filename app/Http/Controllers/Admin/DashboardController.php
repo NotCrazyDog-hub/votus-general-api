@@ -33,7 +33,17 @@ class DashboardController extends Controller
 
         return response()->json([
             'noticias' => [
+                // "Publicadas" é o que realmente aparece no site (passou pelo
+                // filtro de relevância do Votus); "total" inclui também o que
+                // está pendente, falhou ou foi reprovado por não ter relação
+                // com o propósito do Votus — útil pra operação, mas não deve
+                // ser confundido com "quantas notícias o usuário vê".
                 'total' => News::count(),
+                'publicadas' => News::where('published', true)->count(),
+                // Usado pra desabilitar o botão "Atualizar notícias" no
+                // painel enquanto o resumo de um lote anterior ainda não
+                // terminou (ver Admin\NewsController::collect).
+                'pendentes' => News::whereIn('status_resumo', ['pendente', 'em_processamento'])->count(),
                 'ultima_atualizacao_em' => $ultimaColetaEm?->toJSON(),
                 // Aproximação: conta o que entrou desde a última coleta bem-sucedida de
                 // qualquer fonte, já que a coleta roda em Jobs assíncronos por fonte e não
@@ -58,8 +68,11 @@ class DashboardController extends Controller
                     ]),
             ],
             'dados_politicos' => [
-                'deputados' => Legislator::where('chamber', 'lower_house')->count(),
-                'senadores' => Legislator::where('chamber', 'senate')->count(),
+                // Mesmo filtro aplicado no frontend público (DeputadosPage/
+                // SenadoresPage): exclui suplentes/mandatos inativos, senão
+                // esse número não bate com o que realmente aparece no site.
+                'deputados' => Legislator::where('chamber', 'lower_house')->where('status', '!=', 'inactive')->count(),
+                'senadores' => Legislator::where('chamber', 'senate')->where('status', '!=', 'inactive')->count(),
             ],
             'participacao' => [
                 'santinhos_gerados' => SantinhoGeneration::count(),

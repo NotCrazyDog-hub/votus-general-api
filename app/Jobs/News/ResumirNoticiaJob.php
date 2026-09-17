@@ -64,7 +64,11 @@ class ResumirNoticiaJob implements ShouldQueue
                 'relevance_score' => $resultado['relevancia'],
                 'keywords' => $resultado['palavras_chave'],
                 'status_resumo' => 'concluido',
-                'published' => true,
+                // Filtro de conteúdo (Etapa 2): o Votus não publica notícia
+                // sem relação concreta com política, eleições, governo,
+                // políticas públicas ou cidadania — decidido pela mesma
+                // chamada de resumo, não por um segundo sistema.
+                'published' => $resultado['relevante_votus'],
                 'tentativas_resumo' => $noticia->tentativas_resumo + 1,
             ]);
         } catch (Throwable $e) {

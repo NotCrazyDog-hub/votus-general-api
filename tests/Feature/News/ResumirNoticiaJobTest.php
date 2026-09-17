@@ -28,6 +28,7 @@ class ResumirNoticiaJobTest extends TestCase
                     ['message' => ['content' => json_encode([
                         'resumo' => 'Um resumo objetivo da notícia.',
                         'relevancia' => 8,
+                        'relevante_votus' => true,
                         'palavras_chave' => ['a', 'b'],
                     ])]],
                 ],
@@ -47,6 +48,34 @@ class ResumirNoticiaJobTest extends TestCase
         $this->assertSame('Um resumo objetivo da notícia.', $noticia->ai_summary);
         $this->assertSame(8, $noticia->relevance_score);
         $this->assertTrue($noticia->published);
+    }
+
+    public function test_it_summarizes_but_does_not_publish_a_news_item_outside_the_votus_scope(): void
+    {
+        Http::fake([
+            'api.groq.com/*' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => json_encode([
+                        'resumo' => '',
+                        'relevancia' => 1,
+                        'relevante_votus' => false,
+                        'palavras_chave' => [],
+                    ])]],
+                ],
+            ], 200),
+        ]);
+
+        $noticia = News::factory()->create([
+            'status_resumo' => 'pendente',
+            'ai_summary' => '',
+            'published' => false,
+        ]);
+
+        (new ResumirNoticiaJob($noticia->id))->handle(app(GroqSummarizerService::class));
+
+        $noticia->refresh();
+        $this->assertSame('concluido', $noticia->status_resumo);
+        $this->assertFalse($noticia->published);
     }
 
     public function test_a_summary_failure_keeps_the_news_row_and_marks_it_as_failed(): void

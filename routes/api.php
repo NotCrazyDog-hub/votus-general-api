@@ -82,6 +82,8 @@ Route::prefix('admin')->group(function () {
         Route::post('/news/collect', [AdminNewsController::class, 'collect'])->middleware('throttle:6,1');
         Route::get('/proposals', [AdminProposalController::class, 'index']);
         Route::delete('/proposals/{id}', [AdminProposalController::class, 'destroy']);
+        Route::get('/proposals/{id}/comments', [AdminProposalController::class, 'comments']);
+        Route::delete('/proposals/{id}/comments/{commentId}', [AdminProposalController::class, 'destroyComment']);
         Route::get('/suggestions', [AdminSuggestionController::class, 'index']);
         Route::post('/suggestions', [AdminSuggestionController::class, 'store'])->middleware('throttle:20,1');
         Route::get('/suggestion-questions', [AdminSuggestionQuestionController::class, 'index']);

@@ -5,6 +5,7 @@ namespace App\Jobs\News;
 use App\Models\Fonte;
 use App\Models\News;
 use App\Services\News\LinkNormalizer;
+use App\Services\News\NewsCategoryPriority;
 use App\Services\News\Poder360Collector;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,13 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public int $fonteId)
+    /**
+     * Teto de candidatos avaliados por fonte a cada ciclo — ver o mesmo
+     * comentário em ColetarAgenciaBrasilNoticiasJob.
+     */
+    private const MAX_NOTICIAS_POR_CICLO = 30;
+
+    public function __construct(public int $fonteId, public ?int $limite = null)
     {
         $this->onQueue('coleta');
     }
@@ -41,6 +48,8 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
             return;
         }
 
+        $itensColetados = [];
+
         foreach ($feeds as $categoriaSlug => $feedUrl) {
             try {
                 $itens = $collector->coletar($feedUrl);
@@ -54,14 +63,35 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
             }
 
             foreach ($itens as $item) {
-                try {
-                    $this->persistirItem($fonte, (string) $categoriaSlug, $item, $normalizer);
-                } catch (Throwable $e) {
-                    Log::error("[coleta] falha ao persistir notícia de {$fonte->slug}/{$categoriaSlug}: {$e->getMessage()}", [
-                        'url' => $item['url'] ?? null,
-                        'exception' => $e,
-                    ]);
-                }
+                $item['categoria_slug'] = (string) $categoriaSlug;
+                $itensColetados[] = $item;
+            }
+        }
+
+        // Etapa 1 (filtro por categoria): o Poder360 só tem um feed ("geral"),
+        // mas cada item já vem com sua própria categoria no XML (ex: "Poder
+        // Eleições", "Poder Justiça") — usamos essa, não a chave do feed, pra
+        // priorizar editorias compatíveis com o Votus. A aprovação de fato é
+        // decidida pela Etapa 2 (filtro por conteúdo), no resumo de IA.
+        usort($itensColetados, function (array $a, array $b) {
+            $prioridadeA = NewsCategoryPriority::isPrioritaria($a['category'] ?? null) ? 0 : 1;
+            $prioridadeB = NewsCategoryPriority::isPrioritaria($b['category'] ?? null) ? 0 : 1;
+
+            if ($prioridadeA !== $prioridadeB) {
+                return $prioridadeA <=> $prioridadeB;
+            }
+
+            return strcmp($b['published_at'] ?? '', $a['published_at'] ?? '');
+        });
+
+        foreach (array_slice($itensColetados, 0, $this->limite ?? self::MAX_NOTICIAS_POR_CICLO) as $item) {
+            try {
+                $this->persistirItem($fonte, $item['categoria_slug'], $item, $normalizer);
+            } catch (Throwable $e) {
+                Log::error("[coleta] falha ao persistir notícia de {$fonte->slug}/{$item['categoria_slug']}: {$e->getMessage()}", [
+                    'url' => $item['url'] ?? null,
+                    'exception' => $e,
+                ]);
             }
         }
 
@@ -77,6 +107,10 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
         $linkNormalizado = $normalizer->normalizar($item['url']);
 
         if (News::where('link_normalizado', $linkNormalizado)->exists()) {
+            return;
+        }
+
+        if (News::whereRaw('lower(title) = ?', [mb_strtolower(trim($item['title']))])->exists()) {
             return;
         }
 

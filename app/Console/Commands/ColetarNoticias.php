@@ -9,7 +9,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('noticias:coletar')]
+#[Signature('noticias:coletar {--limite= : Teto de candidatos avaliados por fonte, sobrescrevendo o padrão de cada Job (usado pelo disparo manual do admin, que roda um lote menor)}')]
 #[Description('Despacha os Jobs de coleta de notícias para as fontes ativas e elegíveis no momento.')]
 class ColetarNoticias extends Command
 {
@@ -24,6 +24,9 @@ class ColetarNoticias extends Command
 
     public function handle(): int
     {
+        $limiteOption = $this->option('limite');
+        $limite = $limiteOption !== null ? max(1, (int) $limiteOption) : null;
+
         $fontes = Fonte::query()->where('ativa', true)->get();
 
         foreach ($fontes as $fonte) {
@@ -38,7 +41,7 @@ class ColetarNoticias extends Command
                 continue;
             }
 
-            $jobClass::dispatch($fonte->id);
+            $jobClass::dispatch($fonte->id, $limite);
             $this->info("Coleta despachada para '{$fonte->nome}'.");
         }
 
