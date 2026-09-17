@@ -25,12 +25,14 @@ class SyncLowerHouseLegislators extends Command
             try {
                 $data = $api->getDetails($id);
                 $status = $data['ultimoStatus'];
+                $cpf = $data['cpf'] ?? null;
                 unset($data['cpf']);
 
                 Legislator::updateOrCreate(
                     ['external_id' => $data['id'], 'chamber' => 'lower_house'],
                     [
                         'civil_name' => $data['nomeCivil'],
+                        'cpf' => $cpf,
                         'parliamentary_name' => $status['nome'],
                         'photo_url' => $status['urlFoto'],
                         'party' => $status['siglaPartido'],
