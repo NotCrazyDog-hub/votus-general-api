@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Jobs\News;
+
+use App\Models\News;
+use App\Services\News\GroqSummarizerService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\RateLimited;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+class ResumirNoticiaJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $timeout = 90;
+
+    public int $tries = 20;
+
+    public array $backoff = [30, 120, 300];
+
+    public function __construct(public int $newsId)
+    {
+        $this->onQueue('resumo');
+    }
+
+    public function middleware(): array
+    {
+        return [new RateLimited('resumo-ia')];
+    }
+
+    /**
+     * O rate limiter libera (release) o job de volta pra fila a cada vez que o limite
+     * é atingido, e cada release consome uma tentativa de $tries. Por isso limitamos
+     * pelo relógio (retryUntil) em vez de confiar só na contagem de tentativas.
+     */
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(3);
+    }
+
+    public function handle(GroqSummarizerService $summarizer): void
+    {
+        $noticia = News::find($this->newsId);
+
+        if (!$noticia || $noticia->status_resumo === 'concluido') {
+            return;
+        }
+
+        $noticia->update([
+            'status_resumo' => 'em_processamento',
+            'ultima_tentativa_resumo_em' => now(),
+        ]);
+
+        try {
+            // Envia o texto já limpo (original_summary), não o HTML bruto de
+            // conteudo_original: mesma informação, sem tags/atributos/scripts
+            // no meio — em amostragem real isso reduz o tamanho do conteúdo
+            // enviado à Groq em ~35-40%, o que ajuda bastante a não estourar
+            // o limite de tokens por minuto (TPM) da API. conteudo_original
+            // só entra como fallback se o texto limpo nunca foi gerado.
+            $conteudo = $noticia->original_summary !== null && $noticia->original_summary !== ''
+                ? $noticia->original_summary
+                : trim(strip_tags($noticia->conteudo_original ?? ''));
+
+            $resultado = $summarizer->resumir($noticia->title, $conteudo);
+
+            $noticia->update([
+                'ai_summary' => $resultado['resumo'],
+                'relevance_score' => $resultado['relevancia'],
+                'keywords' => $resultado['palavras_chave'],
+                'status_resumo' => 'concluido',
+                // Filtro de conteúdo (Etapa 2): o Votus não publica notícia
+                // sem relação concreta com política, eleições, governo,
+                // políticas públicas ou cidadania — decidido pela mesma
+                // chamada de resumo, não por um segundo sistema.
+                'published' => $resultado['relevante_votus'],
+                'tentativas_resumo' => $noticia->tentativas_resumo + 1,
+            ]);
+        } catch (Throwable $e) {
+            $noticia->update([
+                'status_resumo' => 'falhou',
+                'erro_resumo' => str($e->getMessage())->limit(500)->toString(),
+                'tentativas_resumo' => $noticia->tentativas_resumo + 1,
+            ]);
+
+            throw $e;
+        }
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        News::where('id', $this->newsId)->update([
+            'status_resumo' => 'falhou',
+            'erro_resumo' => str($exception->getMessage())->limit(500)->toString(),
+        ]);
+
+        Log::error("[resumo] notícia #{$this->newsId} falhou definitivamente: {$exception->getMessage()}", [
+            'exception' => $exception,
+        ]);
+    }
+}

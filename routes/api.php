@@ -9,6 +9,16 @@ use App\Http\Controllers\CommitteeTopicMatchController;
 use App\Http\Controllers\ProposalController;
 use App\Http\Controllers\ProposalCommentController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SantinhoController;
+use App\Http\Controllers\SiteVisitController;
+use App\Http\Controllers\SuggestionController;
+use App\Http\Controllers\SuggestionQuestionController;
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\Admin\ProposalController as AdminProposalController;
+use App\Http\Controllers\Admin\SuggestionController as AdminSuggestionController;
+use App\Http\Controllers\Admin\SuggestionQuestionController as AdminSuggestionQuestionController;
 
 
 Route::get('/deputies', [LegislatorController::class, 'indexForDeputies']);
@@ -16,8 +26,12 @@ Route::get('/deputies/{external_id}', [LegislatorController::class, 'showDeputy'
 Route::get('/senators', [LegislatorController::class, 'indexForSenators']);
 Route::get('/senators/{external_id}', [LegislatorController::class, 'showSenator']);
 Route::get('/schedule/status', [SchedulerController::class, 'status']);
+Route::post('/schedule/coletar-noticias', [SchedulerController::class, 'executarPipelineNoticias'])
+    ->middleware('throttle:6,1');
+Route::post('/schedule/processar-fila-noticias', [SchedulerController::class, 'processarFilaNoticias'])
+    ->middleware('throttle:6,1');
 
-Route::post('/news', [NewsController::class, 'store']);
+Route::post('/news', [NewsController::class, 'store'])->middleware('internal.token');
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{news}', [NewsController::class, 'show']);
 
@@ -51,3 +65,31 @@ Route::delete('/proposals/{id}/comments/{commentId}', [ProposalCommentController
 ->name('proposals.comments.destroy');
 
 Route::get('/categories', [CategoryController::class, 'index']);
+
+Route::post('/santinhos', [SantinhoController::class, 'store'])->middleware('throttle:30,1');
+Route::post('/site-visits', [SiteVisitController::class, 'store'])->middleware('throttle:30,1');
+Route::post('/suggestions', [SuggestionController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/suggestion-questions', [SuggestionQuestionController::class, 'index']);
+
+Route::prefix('admin')->group(function () {
+    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:10,1');
+
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/logout', [AdminAuthController::class, 'logout']);
+        Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+        Route::get('/news', [AdminNewsController::class, 'index']);
+        Route::post('/news/collect', [AdminNewsController::class, 'collect'])->middleware('throttle:6,1');
+        Route::delete('/news/{id}', [AdminNewsController::class, 'destroy']);
+        Route::get('/proposals', [AdminProposalController::class, 'index']);
+        Route::delete('/proposals/{id}', [AdminProposalController::class, 'destroy']);
+        Route::get('/proposals/{id}/comments', [AdminProposalController::class, 'comments']);
+        Route::delete('/proposals/{id}/comments/{commentId}', [AdminProposalController::class, 'destroyComment']);
+        Route::get('/suggestions', [AdminSuggestionController::class, 'index']);
+        Route::post('/suggestions', [AdminSuggestionController::class, 'store'])->middleware('throttle:20,1');
+        Route::get('/suggestion-questions', [AdminSuggestionQuestionController::class, 'index']);
+        Route::post('/suggestion-questions', [AdminSuggestionQuestionController::class, 'store']);
+        Route::put('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'update']);
+        Route::delete('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'destroy']);
+    });
+});

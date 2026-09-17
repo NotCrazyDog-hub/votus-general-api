@@ -14,10 +14,14 @@ class CommitteeTopic extends Model
         'topic_id',
         'ai_confidence',
         'ai_reasoning',
+        'reviewed_at',
     ];
 
     protected $casts = [
         'ai_confidence' => 'decimal:4',
+        'match_score' => 'decimal:4',
+        'reviewed' => 'boolean',
+        'reviewed_at' => 'datetime',
     ];
 
     public function committee(): BelongsTo

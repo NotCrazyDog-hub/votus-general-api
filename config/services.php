@@ -40,8 +40,17 @@ return [
     ],
 
     'groq' => [
-        'api_key' => env('GROQ_API_KEY'),
+        'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),
+        'api_keys' => [
+            env('GROQ_API_KEY_1'),
+            env('GROQ_API_KEY_2'),
+            env('GROQ_API_KEY_3'),
+        ],
+    ],
+
+    'scheduler' => [
+        'token' => env('SCHEDULER_TOKEN'),
     ],
 
 ];

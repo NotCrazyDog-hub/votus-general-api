@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+    <title>Feed Últimas</title>
+    <link>https://agenciabrasil.ebc.com.br/feed/ultimasnoticias/feed.xml</link>
+    <description>Agência Brasil</description>
+    <language>pt-br</language>
+    <item>
+        <title>Governo anuncia novo pacote de medidas econômicas</title>
+        <link>https://agenciabrasil.ebc.com.br/economia/noticia/2026-09/governo-anuncia-pacote?utm_source=teste</link>
+        <imagem-destaque>https://imagens.ebc.com.br/exemplo1.png</imagem-destaque>
+        <description>&lt;p&gt;Conteúdo completo da notícia sobre o pacote econômico anunciado pelo governo.&lt;/p&gt;</description>
+        <pubDate>Sun, 13 Sep 2026 18:12:00 -0300</pubDate>
+        <dc:creator>Agência Brasil</dc:creator>
+        <guid isPermaLink="false">1000001 at https://agenciabrasil.ebc.com.br</guid>
+        <category domain="https://agenciabrasil.ebc.com.br/economia">Economia</category>
+    </item>
+    <item>
+        <title>STF retoma julgamento de caso relevante</title>
+        <link>https://agenciabrasil.ebc.com.br/justica/noticia/2026-09/stf-retoma-julgamento</link>
+        <imagem-destaque>https://imagens.ebc.com.br/exemplo2.png</imagem-destaque>
+        <description>&lt;p&gt;Conteúdo completo da notícia sobre o julgamento no STF.&lt;/p&gt;</description>
+        <pubDate>Sun, 13 Sep 2026 17:00:00 -0300</pubDate>
+        <dc:creator>Agência Brasil</dc:creator>
+        <guid isPermaLink="false">1000002 at https://agenciabrasil.ebc.com.br</guid>
+        <category domain="https://agenciabrasil.ebc.com.br/justica">Justiça</category>
+    </item>
+    <item>
+        <title></title>
+        <link></link>
+        <description>Item inválido sem título nem link, deve ser ignorado.</description>
+        <pubDate>Sun, 13 Sep 2026 16:00:00 -0300</pubDate>
+    </item>
+</channel>
+</rss>

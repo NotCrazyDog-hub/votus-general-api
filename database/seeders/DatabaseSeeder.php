@@ -23,5 +23,6 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(ProposalSeeder::class);
+        $this->call(FontesSeeder::class);
     }
 }

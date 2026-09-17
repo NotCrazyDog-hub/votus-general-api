@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\NewsResource;
 use App\Models\News;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -46,6 +47,8 @@ class NewsController extends Controller
         ], $news->wasRecentlyCreated ? 201 : 200);
     }
 
+    private const SORTABLE_COLUMNS = ['published_at', 'imported_at', 'relevance_score', 'created_at'];
+
     public function index(Request $request)
     {
         $query = News::query()->where('published', true);
@@ -59,15 +62,35 @@ class NewsController extends Controller
         }
 
         $sortBy = $request->get('sort_by', 'published_at');
-        $direction = $request->get('direction', 'desc');
+        $sortBy = in_array($sortBy, self::SORTABLE_COLUMNS, true) ? $sortBy : 'published_at';
 
-        return response()->json(
-            $query->orderBy($sortBy, $direction)->paginate(15)
+        $direction = strtolower((string) $request->get('direction', 'desc'));
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        $paginador = $query->orderBy($sortBy, $direction)->paginate(15);
+
+        // Troca cada item pela versão pública (NewsResource) sem alterar o
+        // formato do paginador em si — o frontend já espera esse mesmo
+        // formato plano (current_page, data, last_page, ...), só que agora
+        // sem os campos internos do pipeline (status_resumo, erro_resumo,
+        // conteudo_original etc.) vazando pra qualquer consumidor público.
+        $paginador->getCollection()->transform(
+            fn (News $noticia) => (new NewsResource($noticia))->resolve()
         );
+
+        return response()->json($paginador);
     }
 
     public function show(News $news)
     {
-        return response()->json($news);
+        // Sem isso, qualquer id (inclusive notícia pendente, em processamento
+        // ou reprovada pelo filtro de relevância) era acessível diretamente
+        // por URL — bastava adivinhar/incrementar o id — e devolvia o model
+        // inteiro, incluindo erro_resumo e o HTML bruto do conteúdo original.
+        // O comportamento público correto é o mesmo do index(): só notícia
+        // publicada existe pra quem está fora do admin.
+        abort_if(!$news->published, 404);
+
+        return new NewsResource($news);
     }
 }
