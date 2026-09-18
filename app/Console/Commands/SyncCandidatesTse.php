@@ -8,6 +8,9 @@ use Illuminate\Console\Command;
 
 class SyncCandidatesTse extends Command
 {
+
+    // comando para ativar o sync:
+    //'php artisan sync:candidates-tse storage/app/tse/consulta_cand_2026_CE.csv --uf=CE --year=2026'
     protected $signature = 'sync:candidates-tse
         {file : Caminho do arquivo CSV do TSE (ex: consulta_cand_2026_CE.csv)}
         {--uf=CE : Sigla da UF a importar}
@@ -15,7 +18,15 @@ class SyncCandidatesTse extends Command
 
     protected $description = 'Importa candidatos (governador, senador, dep. federal, dep. estadual) a partir do CSV de candidaturas do TSE';
 
-    protected array $offices = ['GOVERNADOR', 'SENADOR', 'DEPUTADO FEDERAL', 'DEPUTADO ESTADUAL'];
+    protected array $offices = [
+        'GOVERNADOR',
+        'VICE-GOVERNADOR',
+        'SENADOR',
+        '1º SUPLENTE',
+        '2º SUPLENTE',
+        'DEPUTADO FEDERAL',
+        'DEPUTADO ESTADUAL',
+    ];
 
     public function handle(TseCandidatesCsvService $csv)
     {
