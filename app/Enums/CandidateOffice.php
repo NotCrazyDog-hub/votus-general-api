@@ -19,4 +19,14 @@ enum CandidateOffice: string
             default => null,
         };
     }
+
+    public function toTseDescription(): string
+    {
+        return match ($this) {
+            self::Governor => 'GOVERNADOR',
+            self::Senator => 'SENADOR',
+            self::FederalDeputy => 'DEPUTADO FEDERAL',
+            self::StateDeputy => 'DEPUTADO ESTADUAL',
+        };
+    }
 }
