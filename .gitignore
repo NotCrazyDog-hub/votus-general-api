@@ -19,8 +19,7 @@
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot
-/public/storage
-/storage/*.key
+!/storage/app/tse
 /storage/pail
 /vendor
 _ide_helper.php

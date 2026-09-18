@@ -1,4 +1,7 @@
 *
 !private/
 !public/
+!tse/
+!tse/foto_cand2026_CE_div/
+!tse/consulta_cand_2026_CE.csv
 !.gitignore

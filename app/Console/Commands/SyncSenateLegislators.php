@@ -38,6 +38,7 @@ class SyncSenateLegislators extends Command
                     [
                         'civil_name' => $identification['NomeCompletoParlamentar'] ?? null,
                         'parliamentary_name' => $identification['NomeParlamentar'] ?? null,
+                        'cpf' => null,
                         'photo_url' => str_replace('http://', 'https://', $identification['UrlFotoParlamentar'] ?? null),
                         'party' => $identification['SiglaPartidoParlamentar'] ?? null,
                         'state' => $identification['UfParlamentar'] ?? null,

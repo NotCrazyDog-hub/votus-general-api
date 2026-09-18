@@ -40,6 +40,7 @@ class Legislator extends Model
         'thematic_focus_top_topic_share',
         'thematic_focus_total_bills',
         'thematic_focus_calculated_at',
+        'cpf',
     ];
 
     protected $casts = [
