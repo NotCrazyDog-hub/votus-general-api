@@ -33,12 +33,16 @@ class NewsController extends Controller
     }
 
     /**
-     * Quantas notícias o disparo manual busca por vez — menor que o teto do
-     * ciclo automático de 12h (30/fonte) de propósito: o admin pode clicar a
-     * qualquer momento, inclusive perto de um ciclo automático, então um
-     * lote menor evita empilhar resumo pendente demais de uma vez.
+     * Quantas notícias o disparo manual busca por vez, POR FONTE — menor que
+     * o teto do ciclo automático de 12h (30/fonte) de propósito: o admin
+     * pode clicar a qualquer momento, inclusive perto de um ciclo
+     * automático, então um lote menor evita empilhar resumo pendente demais
+     * de uma vez. Baixado de 10 pra 5: com 2 fontes ativas, 10/fonte podia
+     * somar até ~20 notícias novas num clique só — mais do que o rate limit
+     * de 5/min da IA processa rápido, o que fazia parecer que o botão
+     * "travava" (só estava demorando demais pra terminar).
      */
-    private const LIMITE_COLETA_MANUAL = 10;
+    private const LIMITE_COLETA_MANUAL = 5;
 
     /**
      * Gatilho manual do painel para o mesmo pipeline de notícias já usado
@@ -85,15 +89,20 @@ class NewsController extends Controller
         }
 
         try {
-            // Sem --stop-when-empty: um job travado pelo rate limit da IA
-            // (resumo-ia) volta pra fila com disponibilidade só no futuro, o
-            // que faz --stop-when-empty enxergar "fila vazia" e encerrar
-            // cedo demais, deixando notícias paradas até o próximo clique ou
-            // o ciclo automático. O --max-time já limita a duração da
-            // requisição.
+            // IMPORTANTE: precisa de --stop-when-empty. Sem essa flag, o
+            // worker fica vivo até --max-time esgotar mesmo sem trabalho de
+            // verdade (ex: só falta esperar o rate limit liberar) — isso já
+            // causou a plataforma matar essa requisição no meio de um job
+            // (visto na tabela jobs: job "reservado", attempts incrementado,
+            // nunca completado nem movido pra failed_jobs), deixando notícia
+            // presa em "aguardando resumo" indefinidamente e o botão travado
+            // (a trava por pendentes>0 nem deixa tentar de novo). --max-time
+            // reduzido por segurança, bem abaixo de qualquer timeout de
+            // gateway razoável.
             Artisan::call('queue:work', [
                 '--queue' => 'coleta,resumo',
-                '--max-time' => 50,
+                '--stop-when-empty' => true,
+                '--max-time' => 20,
             ]);
             $saidaFila = trim(Artisan::output());
         } catch (Throwable $e) {
@@ -108,6 +117,32 @@ class NewsController extends Controller
             'status' => 'executado',
             'coleta' => $saidaColeta,
             'fila' => $saidaFila,
+        ]);
+    }
+
+    /**
+     * Drena o que já está na fila, sem coletar nada novo — ao contrário de
+     * collect(), não trava por pendentes>0 (é exatamente o oposto: existe
+     * pra reduzir os pendentes). Cada chamada só tem uma janela curta e seca
+     * (--max-time baixo, ver comentário em collect()), então o painel chama
+     * isso repetidamente enquanto houver pendente, em vez de depender de um
+     * clique só terminar tudo de uma vez — na prática, substitui a
+     * necessidade do cron externo rodar certinho pra continuar drenando.
+     */
+    public function drain(): JsonResponse
+    {
+        Artisan::call('noticias:limpar-pendentes-antigas');
+
+        Artisan::call('queue:work', [
+            '--queue' => 'coleta,resumo',
+            '--stop-when-empty' => true,
+            '--max-time' => 20,
+        ]);
+
+        return response()->json([
+            'status' => 'executado',
+            'fila' => trim(Artisan::output()),
+            'pendentes' => News::whereIn('status_resumo', ['pendente', 'em_processamento'])->count(),
         ]);
     }
 

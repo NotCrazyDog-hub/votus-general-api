@@ -33,5 +33,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('resumo-ia', function () {
             return Limit::perMinute(5);
         });
+
+        // A geração de explicação+quiz usa as MESMAS chaves da Groq do
+        // resumo de notícias, e manda um material de referência maior (várias
+        // fontes) com max_tokens de saída bem mais alto — por isso um limite
+        // ainda mais conservador, protegendo o TPM compartilhado das duas
+        // filas. É uma ação disparada manualmente pelo admin, não em lote,
+        // então 3/min não afeta o uso real.
+        RateLimiter::for('explicacao-quiz', function () {
+            return Limit::perMinute(3);
+        });
     }
 }

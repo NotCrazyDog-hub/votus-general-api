@@ -13,12 +13,15 @@ use App\Http\Controllers\SantinhoController;
 use App\Http\Controllers\SiteVisitController;
 use App\Http\Controllers\SuggestionController;
 use App\Http\Controllers\SuggestionQuestionController;
+use App\Http\Controllers\ExplanationController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
 use App\Http\Controllers\Admin\ProposalController as AdminProposalController;
 use App\Http\Controllers\Admin\SuggestionController as AdminSuggestionController;
 use App\Http\Controllers\Admin\SuggestionQuestionController as AdminSuggestionQuestionController;
+use App\Http\Controllers\Admin\ExplanationController as AdminExplanationController;
+use App\Http\Controllers\Admin\TrustedSourceController as AdminTrustedSourceController;
 
 
 Route::get('/deputies', [LegislatorController::class, 'indexForDeputies']);
@@ -71,6 +74,9 @@ Route::post('/site-visits', [SiteVisitController::class, 'store'])->middleware('
 Route::post('/suggestions', [SuggestionController::class, 'store'])->middleware('throttle:10,1');
 Route::get('/suggestion-questions', [SuggestionQuestionController::class, 'index']);
 
+Route::get('/explanations', [ExplanationController::class, 'index']);
+Route::get('/explanations/{explanation}', [ExplanationController::class, 'show']);
+
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:10,1');
 
@@ -80,6 +86,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/news', [AdminNewsController::class, 'index']);
         Route::post('/news/collect', [AdminNewsController::class, 'collect'])->middleware('throttle:6,1');
+        Route::post('/news/drain', [AdminNewsController::class, 'drain'])->middleware('throttle:20,1');
         Route::delete('/news/{id}', [AdminNewsController::class, 'destroy']);
         Route::get('/proposals', [AdminProposalController::class, 'index']);
         Route::delete('/proposals/{id}', [AdminProposalController::class, 'destroy']);
@@ -87,9 +94,24 @@ Route::prefix('admin')->group(function () {
         Route::delete('/proposals/{id}/comments/{commentId}', [AdminProposalController::class, 'destroyComment']);
         Route::get('/suggestions', [AdminSuggestionController::class, 'index']);
         Route::post('/suggestions', [AdminSuggestionController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('/suggestions/{suggestion}', [AdminSuggestionController::class, 'destroy']);
         Route::get('/suggestion-questions', [AdminSuggestionQuestionController::class, 'index']);
         Route::post('/suggestion-questions', [AdminSuggestionQuestionController::class, 'store']);
         Route::put('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'update']);
         Route::delete('/suggestion-questions/{suggestionQuestion}', [AdminSuggestionQuestionController::class, 'destroy']);
+
+        Route::get('/explanations', [AdminExplanationController::class, 'index']);
+        Route::post('/explanations', [AdminExplanationController::class, 'store'])->middleware('throttle:6,1');
+        Route::post('/explanations/drain', [AdminExplanationController::class, 'drain'])->middleware('throttle:20,1');
+        Route::get('/explanations/{explanation}', [AdminExplanationController::class, 'show']);
+        Route::put('/explanations/{explanation}', [AdminExplanationController::class, 'update']);
+        Route::post('/explanations/{explanation}/publish', [AdminExplanationController::class, 'publish']);
+        Route::patch('/explanations/{explanation}/unpublish', [AdminExplanationController::class, 'unpublish']);
+        Route::delete('/explanations/{explanation}', [AdminExplanationController::class, 'destroy']);
+
+        Route::get('/trusted-sources', [AdminTrustedSourceController::class, 'index']);
+        Route::post('/trusted-sources', [AdminTrustedSourceController::class, 'store']);
+        Route::put('/trusted-sources/{trustedSource}', [AdminTrustedSourceController::class, 'update']);
+        Route::delete('/trusted-sources/{trustedSource}', [AdminTrustedSourceController::class, 'destroy']);
     });
 });

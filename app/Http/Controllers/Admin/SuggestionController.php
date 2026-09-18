@@ -43,4 +43,15 @@ class SuggestionController extends Controller
 
         return response()->json(['data' => $suggestion], 201);
     }
+
+    /**
+     * As respostas (suggestion_answers) têm FK com cascadeOnDelete pra
+     * suggestion_id — apagar aqui já limpa tudo, sem deixar resposta órfã.
+     */
+    public function destroy(Suggestion $suggestion): JsonResponse
+    {
+        $suggestion->delete();
+
+        return response()->json(['message' => 'Sugestão removida.']);
+    }
 }

@@ -30,17 +30,19 @@ class SchedulerController extends Controller
         Artisan::call('noticias:coletar');
         $saidaColeta = Artisan::output();
 
-        // Já aproveita a mesma requisição pra começar a drenar a fila. Sem
-        // --stop-when-empty: com o rate limit da IA (resumo-ia), um job que
-        // esbarra no limite é devolvido pra fila com um "available_at" no
-        // futuro — pra --stop-when-empty isso PARECE fila vazia (não há job
-        // disponível AGORA), então o worker encerrava na primeira notícia
-        // limitada e desperdiçava o resto da janela de 50s sem processar
-        // mais nada. Sem essa flag, o --max-time continua limitando o tempo
-        // da requisição, só que agora ele aproveita a janela inteira.
+        // Já aproveita a mesma requisição pra começar a drenar a fila.
+        // IMPORTANTE: precisa de --stop-when-empty aqui. Sem essa flag, o
+        // worker fica vivo até --max-time esgotar mesmo sem ter mais nada
+        // pra fazer (ex: só falta esperar o rate limit liberar) — e isso já
+        // causou o processo inteiro (essa requisição HTTP) ser encerrado à
+        // força pela plataforma antes do fim, deixando job "reservado" sem
+        // nunca completar nem falhar (visto direto na tabela jobs: attempts
+        // incrementado, nunca removido). --max-time reduzido por segurança,
+        // bem abaixo de qualquer timeout de gateway razoável.
         Artisan::call('queue:work', [
             '--queue' => 'coleta,resumo',
-            '--max-time' => 50,
+            '--stop-when-empty' => true,
+            '--max-time' => 20,
         ]);
         $saidaFila = Artisan::output();
 
@@ -64,13 +66,15 @@ class SchedulerController extends Controller
             return response()->json(['message' => 'Token inválido.'], 401);
         }
 
-        // Sem --stop-when-empty (ver comentário em executarPipelineNoticias):
-        // esse endpoint é chamado com alta frequência exatamente pra drenar
-        // o que ficou represado pelo rate limit da IA, então encerrar cedo
-        // na primeira notícia limitada anula o propósito dele.
+        // Ver comentário em executarPipelineNoticias: --stop-when-empty é
+        // obrigatório, senão o worker fica preso até --max-time mesmo sem
+        // trabalho de verdade, arriscando ser morto pela plataforma no meio
+        // de um job. Chamado com alta frequência (a cada poucos minutos),
+        // então mesmo saindo mais cedo o backlog é drenado aos poucos.
         Artisan::call('queue:work', [
             '--queue' => 'coleta,resumo',
-            '--max-time' => 50,
+            '--stop-when-empty' => true,
+            '--max-time' => 20,
         ]);
         $saidaFila = Artisan::output();
 
