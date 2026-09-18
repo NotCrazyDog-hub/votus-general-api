@@ -3,11 +3,18 @@
 namespace App\Models;
 
 use App\Enums\CandidateOffice;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Candidate extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
+        'running_mate_of_id',
         'external_id',
         'ballot_number',
         'round',
@@ -25,6 +32,7 @@ class Candidate extends Model
         'race_color',
         'election_year',
         'raw_data',
+        'photo_path',
     ];
 
     protected $casts = [
@@ -32,4 +40,38 @@ class Candidate extends Model
         'round' => 'integer',
         'election_year' => 'integer',
     ];
+
+    protected $appends = [
+        'photo_url',
+    ];
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo_path ? Storage::url($this->photo_path) : null;
+    }
+
+    public function mainCandidate(): BelongsTo
+    {
+        return $this->belongsTo(Candidate::class, 'running_mate_of_id');
+    }
+
+    public function runningMateOf(): BelongsTo
+    {
+        return $this->mainCandidate();
+    }
+
+    public function runningMates(): HasMany
+    {
+        return $this->hasMany(Candidate::class, 'running_mate_of_id');
+    }
+
+    public function scopeTitulares($query)
+    {
+        return $query->whereNull('running_mate_of_id');
+    }
+
+    public function scopeRunningMates($query)
+    {
+        return $query->whereNotNull('running_mate_of_id');
+    }
 }
