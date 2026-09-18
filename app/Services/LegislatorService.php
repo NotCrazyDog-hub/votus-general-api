@@ -10,9 +10,6 @@ class LegislatorService
     {
         return Legislator::where('chamber', $chamber)
             ->when($state, fn ($q) => $q->where('state', $state))
-            // Sem isso, LegislatorsResource::whenLoaded('thematicFocusTopTopic')
-            // nunca via a relação carregada e a chave "top_topic" simplesmente
-            // sumia do JSON da listagem (só aparecia no show/detalhe).
             ->with('thematicFocusTopTopic')
             ->orderBy('parliamentary_name')
             ->paginate(50);
