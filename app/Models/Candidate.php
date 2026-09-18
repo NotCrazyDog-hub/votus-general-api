@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Legislator;
 
 class Candidate extends Model
 {
@@ -73,5 +74,10 @@ class Candidate extends Model
     public function scopeRunningMates($query)
     {
         return $query->whereNotNull('running_mate_of_id');
+    }
+
+    public function previousMandates()
+    {
+        return $this->hasMany(Legislator::class, 'cpf', 'cpf');
     }
 }

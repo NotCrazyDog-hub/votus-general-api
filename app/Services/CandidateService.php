@@ -12,7 +12,7 @@ class CandidateService
         return Candidate::titulares()
             ->where('office_name', $office->toTseDescription())
             ->when($state, fn ($q) => $q->where('state', $state))
-            // ->with('runningMates')
+            // ->with(['runningMates', 'previousMandates'])
             ->orderBy('ballot_name')
             ->paginate(50);
     }
@@ -22,7 +22,7 @@ class CandidateService
         return Candidate::titulares()
             ->where('external_id', $externalId)
             ->where('office_name', $office->toTseDescription())
-            ->with('runningMates')
+            ->with(['runningMates', 'previousMandates'])
             ->firstOrFail();
     }
 }
