@@ -27,57 +27,63 @@ use App\Http\Controllers\Admin as Admin;
 |--------------------------------------------------------------------------
 | Legislators & Candidates
 |--------------------------------------------------------------------------
+| cache.headers só adiciona Cache-Control em respostas GET 200 (a própria
+| middleware ignora POST/DELETE) — dados públicos que não mudam a cada
+| segundo, então o navegador pode reaproveitar por um tempo curto em vez
+| de bater no banco de novo a cada navegação de volta pra mesma tela.
 */
-Route::controller(LegislatorController::class)->group(function () {
-    Route::get('/deputies', 'indexForDeputies');
-    Route::get('/deputies/{external_id}', 'showDeputy');
-    Route::get('/senators', 'indexForSenators');
-    Route::get('/senators/{external_id}', 'showSenator');
-});
-
-Route::controller(CandidateController::class)->group(function () {
-    Route::get('/governor-candidates', 'indexForGovernors');
-    Route::get('/governor-candidates/{external_id}', 'showGovernor');
-    Route::get('/senate-candidates', 'indexForSenateCandidates');
-    Route::get('/senate-candidates/{external_id}', 'showSenateCandidate');
-    Route::get('/federal-deputy-candidates', 'indexForFederalDeputyCandidates');
-    Route::get('/federal-deputy-candidates/{external_id}', 'showFederalDeputyCandidate');
-    Route::get('/state-deputy-candidates', 'indexForStateDeputyCandidates');
-    Route::get('/state-deputy-candidates/{external_id}', 'showStateDeputyCandidate');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Content & Publications (News, Proposals, Categories, Explanations)
-|--------------------------------------------------------------------------
-*/
-Route::controller(NewsController::class)->prefix('news')->group(function () {
-    Route::get('/', 'index');
-    Route::get('/{news}', 'show');
-    Route::post('/', 'store')->middleware('internal.token');
-});
-
-Route::prefix('proposals')->group(function () {
-    Route::controller(ProposalController::class)->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{id}', 'show');
-        Route::post('/', 'store')->middleware('throttle:10,1')->name('proposals.store');
-        Route::post('/{id}/vote', 'vote')->middleware('throttle:20,1')->name('proposals.vote');
-        Route::delete('/{id}/vote', 'deleteVote')->middleware('throttle:20,1')->name('proposals.vote.delete');
+Route::middleware('cache.headers')->group(function () {
+    Route::controller(LegislatorController::class)->group(function () {
+        Route::get('/deputies', 'indexForDeputies');
+        Route::get('/deputies/{external_id}', 'showDeputy');
+        Route::get('/senators', 'indexForSenators');
+        Route::get('/senators/{external_id}', 'showSenator');
     });
 
-    Route::controller(ProposalCommentController::class)->prefix('{id}/comments')->group(function () {
-        Route::get('/', 'index');
-        Route::post('/', 'store')->middleware('throttle:15,1')->name('proposals.comments.store');
-        Route::delete('/{commentId}', 'destroy')->middleware('throttle:15,1')->name('proposals.comments.destroy');
+    Route::controller(CandidateController::class)->group(function () {
+        Route::get('/governor-candidates', 'indexForGovernors');
+        Route::get('/governor-candidates/{external_id}', 'showGovernor');
+        Route::get('/senate-candidates', 'indexForSenateCandidates');
+        Route::get('/senate-candidates/{external_id}', 'showSenateCandidate');
+        Route::get('/federal-deputy-candidates', 'indexForFederalDeputyCandidates');
+        Route::get('/federal-deputy-candidates/{external_id}', 'showFederalDeputyCandidate');
+        Route::get('/state-deputy-candidates', 'indexForStateDeputyCandidates');
+        Route::get('/state-deputy-candidates/{external_id}', 'showStateDeputyCandidate');
     });
-});
 
-Route::get('/categories', [CategoryController::class, 'index']);
+    /*
+    |----------------------------------------------------------------------
+    | Content & Publications (News, Proposals, Categories, Explanations)
+    |----------------------------------------------------------------------
+    */
+    Route::controller(NewsController::class)->prefix('news')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{news}', 'show');
+        Route::post('/', 'store')->middleware('internal.token');
+    });
 
-Route::controller(ExplanationController::class)->prefix('explanations')->group(function () {
-    Route::get('/', 'index');
-    Route::get('/{explanation}', 'show');
+    Route::prefix('proposals')->group(function () {
+        Route::controller(ProposalController::class)->group(function () {
+            Route::get('/', 'index');
+            Route::get('/{id}', 'show');
+            Route::post('/', 'store')->middleware('throttle:10,1')->name('proposals.store');
+            Route::post('/{id}/vote', 'vote')->middleware('throttle:20,1')->name('proposals.vote');
+            Route::delete('/{id}/vote', 'deleteVote')->middleware('throttle:20,1')->name('proposals.vote.delete');
+        });
+
+        Route::controller(ProposalCommentController::class)->prefix('{id}/comments')->group(function () {
+            Route::get('/', 'index');
+            Route::post('/', 'store')->middleware('throttle:15,1')->name('proposals.comments.store');
+            Route::delete('/{commentId}', 'destroy')->middleware('throttle:15,1')->name('proposals.comments.destroy');
+        });
+    });
+
+    Route::get('/categories', [CategoryController::class, 'index']);
+
+    Route::controller(ExplanationController::class)->prefix('explanations')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{explanation}', 'show');
+    });
 });
 
 /*

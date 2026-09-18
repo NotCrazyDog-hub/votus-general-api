@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CacheHeaders;
 use App\Http\Middleware\EnsureIsAdmin;
 use App\Http\Middleware\VerificaTokenInterno;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'internal.token' => VerificaTokenInterno::class,
             'admin' => EnsureIsAdmin::class,
+            'cache.headers' => CacheHeaders::class,
         ]);
 
         // API pura, sem tela de login web: sem isso, o middleware "auth:sanctum"
