@@ -38,6 +38,7 @@ return [
     'n8n' => [
         'generate_explanation_url' => env('N8N_GENERATE_EXPLANATION_URL'),
         'secret' => env('N8N_WEBHOOK_SECRET'),
+        'public_opportunities_url' => env('N8N_PUBLIC_OPPORTUNITIES_URL'),
     ],
 
 ];
