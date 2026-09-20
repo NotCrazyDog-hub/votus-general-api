@@ -12,7 +12,7 @@ class N8nContentService
     ): array {
 
         $url = config(
-            'services.n8n.generate_explanation_url'
+            'services.n8n.public_opportunities_url'
         );
 
         if (!$url) {
