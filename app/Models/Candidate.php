@@ -34,6 +34,7 @@ class Candidate extends Model
         'election_year',
         'raw_data',
         'photo_path',
+        'proposal_document_path',
     ];
 
     protected $casts = [
@@ -44,11 +45,19 @@ class Candidate extends Model
 
     protected $appends = [
         'photo_url',
+        'proposal_document_url',
     ];
 
     public function getPhotoUrlAttribute(): ?string
     {
         return $this->photo_path ? Storage::url($this->photo_path) : null;
+    }
+
+    public function getProposalDocumentUrlAttribute(): ?string
+    {
+        return $this->proposal_document_path
+            ? Storage::disk('supabase')->url($this->proposal_document_path)
+            : null;
     }
 
     public function mainCandidate(): BelongsTo
