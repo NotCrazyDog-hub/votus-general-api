@@ -119,4 +119,9 @@ class PublicOpportunity extends Model
             }
         );
     }
+
+    public function getRouteKeyName(): string
+    {
+        return 'source_key';
+    }
 }

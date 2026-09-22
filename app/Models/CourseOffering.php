@@ -47,9 +47,4 @@ class CourseOffering extends Model
             'course_offering_id'
         );
     }
-
-    public function getRouteKeyName(): string
-    {
-        return 'mec_course_code';
-    }
 }
