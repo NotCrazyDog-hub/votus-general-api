@@ -90,14 +90,14 @@ Route::middleware('cache.headers')->group(function () {
         Route::get('/{explanation}', 'show');
     });
 
-    Route::controller(UniversityController::class)->group(function () {
-        Route::get('/universities', 'index');
-        Route::get('/universities/options/municipalities', 'municipalities');
-        Route::get('/universities/options/courses', 'courses');
-        Route::get('/universities/{university}', 'show');
-    });
+    Route::get('/universities/{university}', [UniversityController::class, 'show']);
 
-    Route::get('/course-offerings/{courseOffering}', [CourseOfferingController::class, 'show']);
+    Route::controller(CourseOfferingController::class)->prefix('course-offerings')->group(function () {
+        Route::get('/options/municipalities', 'municipalities');
+        Route::get('/options/courses', 'courses');
+        Route::get('/', 'index');
+        Route::get('/{courseOffering}', 'show');
+    });
 
     Route::controller(PublicOpportunityController::class)->prefix('public-opportunities')->group(function () {
         Route::get('/', 'index');
