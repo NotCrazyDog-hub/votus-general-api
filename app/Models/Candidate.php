@@ -45,7 +45,7 @@ class Candidate extends Model
 
     protected $appends = [
         'photo_url',
-        'proposal_document_url',
+        // 'proposal_document_url',
     ];
 
     public function getPhotoUrlAttribute(): ?string
