@@ -17,7 +17,12 @@ use App\Http\Controllers\{
     SchedulerController,
     SiteVisitController,
     SuggestionController,
-    SuggestionQuestionController
+    SuggestionQuestionController,
+    CourseOfferingController,
+    OpportunityController,
+    PublicOpportunityController,
+    PublicOpportunityImportController,
+    UniversityController
 };
 
 // Admin Controllers
@@ -84,6 +89,22 @@ Route::middleware('cache.headers')->group(function () {
         Route::get('/', 'index');
         Route::get('/{explanation}', 'show');
     });
+
+    Route::get('/universities/{university}', [UniversityController::class, 'show']);
+
+    Route::controller(CourseOfferingController::class)->prefix('course-offerings')->group(function () {
+        Route::get('/options/municipalities', 'municipalities');
+        Route::get('/options/courses', 'courses');
+        Route::get('/', 'index');
+        Route::get('/{courseOffering}', 'show');
+    });
+
+    Route::controller(PublicOpportunityController::class)->prefix('public-opportunities')->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{publicOpportunity}', 'show');
+    });
+
+    Route::get('/opportunities', [OpportunityController::class, 'index']);
 });
 
 /*
@@ -119,6 +140,9 @@ Route::middleware('auth:sanctum')->prefix('internal')->group(function () {
         Route::post('/{committeeTopic}/review', 'review');
     });
 });
+
+Route::post('/public-opportunities/import', [PublicOpportunityImportController::class, 'store'])
+    ->middleware('internal.token'); // ou 'n8n.token', dependendo da sua resposta acima
 
 /*
 |--------------------------------------------------------------------------
