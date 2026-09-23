@@ -142,7 +142,7 @@ Route::middleware('auth:sanctum')->prefix('internal')->group(function () {
 });
 
 Route::post('/public-opportunities/import', [PublicOpportunityImportController::class, 'store'])
-    ->middleware('internal.token'); // ou 'n8n.token', dependendo da sua resposta acima
+    ->middleware('internal.token');
 
 /*
 |--------------------------------------------------------------------------
@@ -207,6 +207,16 @@ Route::prefix('admin')->group(function () {
             Route::post('/', 'store');
             Route::put('/{trustedSource}', 'update');
             Route::delete('/{trustedSource}', 'destroy');
+        });
+
+        // Public Opportunities Management
+        Route::controller(Admin\PublicOpportunityController::class)->prefix('public-opportunities')->group(function () {
+            Route::get('/', 'index');
+            Route::get('/{publicOpportunity}', 'show');
+            Route::put('/{publicOpportunity}', 'update');
+            Route::post('/{publicOpportunity}/approve', 'approve');
+            Route::post('/{publicOpportunity}/reject', 'reject');
+            Route::patch('/{publicOpportunity}/toggle-published', 'togglePublished');
         });
     });
 });
