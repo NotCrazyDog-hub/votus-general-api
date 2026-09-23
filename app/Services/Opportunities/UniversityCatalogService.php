@@ -4,7 +4,7 @@ namespace App\Services\Opportunities;
 
 use App\Models\Campus;
 use App\Models\CourseOffering;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Support\Collection;
 
 class UniversityCatalogService
@@ -18,7 +18,7 @@ class UniversityCatalogService
      * vira só mais um filtro: quem quiser os dois
      * setores separados faz duas chamadas.
      */
-    public function filterOfferings(array $filters): LengthAwarePaginator
+    public function filterOfferings(array $filters): Paginator
     {
         $query = CourseOffering::query()
             ->with([
@@ -72,9 +72,12 @@ class UniversityCatalogService
             );
         }
 
+        // simplePaginate: mesmo ajuste já aplicado em Opportunity/
+        // PublicOpportunity/Legislator/Candidate — evita a query de COUNT,
+        // cara no Supabase remoto (497 ofertas só no Ceará, sem filtro).
         return $query
             ->orderBy('name')
-            ->paginate(12)
+            ->simplePaginate(12)
             ->withQueryString();
     }
 

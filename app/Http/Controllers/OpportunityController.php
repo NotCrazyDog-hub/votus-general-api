@@ -34,9 +34,13 @@ class OpportunityController extends Controller
             });
         }
 
+        // simplePaginate em vez de paginate: evita a query extra de COUNT,
+        // que no Supabase remoto custa segundos de round-trip de rede (ver o
+        // mesmo ajuste em LegislatorService/CandidateService). O front
+        // estima a última página pelo link "next" em vez de usar total.
         $opportunities = $query
             ->orderByDesc('published_at')
-            ->paginate(12)
+            ->simplePaginate(12)
             ->withQueryString();
 
         return OpportunityResource::collection($opportunities);
