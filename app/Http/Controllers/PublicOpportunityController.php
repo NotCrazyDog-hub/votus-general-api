@@ -51,7 +51,9 @@ class PublicOpportunityController extends Controller
         $query->orderByRaw('registration_end IS NULL');
         $query->orderBy('registration_end');
 
-        $opportunities = $query->paginate(12)->withQueryString();
+        // simplePaginate: mesmo ajuste de OpportunityController — evita a
+        // query de COUNT, cara no Supabase remoto.
+        $opportunities = $query->simplePaginate(12)->withQueryString();
 
         return PublicOpportunityResource::collection($opportunities);
     }
