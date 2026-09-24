@@ -56,10 +56,10 @@ class Candidate extends Model
     public function getProposalDocumentUrlAttribute(): ?string
     {
         return $this->proposal_document_path
-            ? Storage::disk('supabase')->url($this->proposal_document_path)
+            ? config('filesystems.disks.supabase.public_url') . '/' . $this->proposal_document_path
             : null;
     }
-
+    
     public function mainCandidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class, 'running_mate_of_id');
@@ -88,5 +88,10 @@ class Candidate extends Model
     public function previousMandates()
     {
         return $this->hasMany(Legislator::class, 'cpf', 'cpf');
+    }
+
+    public function candidacyHistory(): HasMany
+    {
+        return $this->hasMany(CandidacyHistory::class)->orderByDesc('election_year');
     }
 }

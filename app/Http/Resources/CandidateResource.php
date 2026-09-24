@@ -28,6 +28,26 @@ class CandidateResource extends JsonResource
             'election_year' => $this->election_year,
             'running_mates' => CandidateResource::collection($this->whenLoaded('runningMates')),
             'previous_mandates' => LegislatorSummaryResource::collection($this->whenLoaded('previousMandates')),
+            'candidacy_history' => $this->whenLoaded('candidacyHistory', function () {
+                return $this->candidacyHistory->map(function ($history) {
+                    return [
+                        'id' => $history->candidacy_external_id,
+                        'election_year' => $history->election_year,
+                        'round' => $history->round,
+                        'state' => $history->state,
+                        'office' => $history->office_name,
+                        'ballot_number' => $history->ballot_number,
+
+                        'party' => [
+                            'acronym' => $history->party_acronym,
+                            'name' => $history->party_name,
+                        ],
+
+                        'candidacy_status' => $history->candidacy_status,
+                        'result_status' => $history->result_status,
+                    ];
+                });
+            }),
         ];
     }
 }

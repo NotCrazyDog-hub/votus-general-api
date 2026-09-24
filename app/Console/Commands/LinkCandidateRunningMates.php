@@ -16,6 +16,7 @@ class LinkCandidateRunningMates extends Command
     protected $description = 'Vincula vice-governadores e suplentes de senador ao titular da mesma chapa (via SQ_COLIGACAO)';
 
     protected array $tickets = [
+        'PRESIDENTE' => ['VICE-PRESIDENTE'],
         'GOVERNADOR' => ['VICE-GOVERNADOR'],
         'SENADOR' => ['1º SUPLENTE', '2º SUPLENTE'],
     ];

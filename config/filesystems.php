@@ -69,6 +69,8 @@ return [
             'endpoint' => env('SUPABASE_STORAGE_ENDPOINT'),
             'use_path_style_endpoint' => true,
             'throw' => true,
+
+            'public_url' => env('SUPABASE_STORAGE_PUBLIC_URL'),
         ],
 
     ],

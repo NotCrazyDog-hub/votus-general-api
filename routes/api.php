@@ -46,6 +46,8 @@ Route::middleware('cache.headers')->group(function () {
     });
 
     Route::controller(CandidateController::class)->group(function () {
+        Route::get('/president-candidates', 'indexForPresidents');
+        Route::get('/president-candidates/{external_id}', 'showPresident');
         Route::get('/governor-candidates', 'indexForGovernors');
         Route::get('/governor-candidates/{external_id}', 'showGovernor');
         Route::get('/senate-candidates', 'indexForSenateCandidates');
