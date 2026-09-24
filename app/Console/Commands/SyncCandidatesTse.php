@@ -16,9 +16,11 @@ class SyncCandidatesTse extends Command
         {--uf=CE : Sigla da UF a importar}
         {--year=2026 : Ano da eleição}';
 
-    protected $description = 'Importa candidatos (governador, senador, dep. federal, dep. estadual) a partir do CSV de candidaturas do TSE';
+    protected $description = 'Importa candidatos (presidente, governador, senador, dep. federal, dep. estadual) a partir do CSV de candidaturas do TSE';
 
     protected array $offices = [
+        'PRESIDENTE',
+        'VICE-PRESIDENTE',
         'GOVERNADOR',
         'VICE-GOVERNADOR',
         'SENADOR',

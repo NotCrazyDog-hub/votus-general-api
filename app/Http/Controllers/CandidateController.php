@@ -11,6 +11,19 @@ class CandidateController extends Controller
 {
     public function __construct(protected CandidateService $service) {}
 
+    public function indexForPresidents(Request $request)
+    {
+        $candidates = $this->service->listByOffice(CandidateOffice::President, $request->state);
+        return CandidateResource::collection($candidates);
+    }
+
+    public function showPresident(int $external_id)
+    {
+        return new CandidateResource(
+            $this->service->findByOffice($external_id, CandidateOffice::President)
+        );
+    }
+
     public function indexForGovernors(Request $request)
     {
         $candidates = $this->service->listByOffice(CandidateOffice::Governor, $request->state);
