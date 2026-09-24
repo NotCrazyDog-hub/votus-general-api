@@ -89,4 +89,9 @@ class Candidate extends Model
     {
         return $this->hasMany(Legislator::class, 'cpf', 'cpf');
     }
+
+    public function candidacyHistory(): HasMany
+    {
+        return $this->hasMany(CandidacyHistory::class)->orderByDesc('election_year');
+    }
 }

@@ -28,7 +28,7 @@ class CandidateService
         return Candidate::titulares()
             ->where('external_id', $externalId)
             ->where('office_name', $office->toTseDescription())
-            ->with(['runningMates', 'previousMandates'])
+            ->with(['runningMates', 'previousMandates', 'candidacyHistory'])
             ->firstOrFail();
     }
 }
