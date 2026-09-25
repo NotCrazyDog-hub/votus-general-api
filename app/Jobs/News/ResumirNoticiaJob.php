@@ -40,7 +40,13 @@ class ResumirNoticiaJob implements ShouldQueue
      */
     public function retryUntil(): \DateTime
     {
-        return now()->addHours(3);
+        // Era 3h. O prazo é contado a partir do DESPACHO, não do início do
+        // processamento — e a fila só andava quando o cron externo de drenagem
+        // chamava a API. Resultado visto no banco: os resumos de 24/09 foram
+        // marcados "attempted too many times" sem nunca terem rodado
+        // (tentativas_resumo = 0). 20h cobre com folga o intervalo entre
+        // ciclos e fica abaixo da limpeza de 24h (LimparNoticiasPendentesAntigas).
+        return now()->addHours(20);
     }
 
     public function handle(GroqSummarizerService $summarizer): void

@@ -5,13 +5,11 @@ namespace Tests\Feature\News;
 use App\Jobs\News\ResumirNoticiaJob;
 use App\Models\News;
 use App\Services\News\GroqSummarizerService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-class ResumirNoticiaJobTest extends TestCase
+class ResumirNoticiaJobTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     protected function setUp(): void
     {

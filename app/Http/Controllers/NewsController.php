@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\NewsResource;
 use App\Models\News;
+use App\Services\News\CicloAutomaticoNoticias;
+use App\Services\News\SelecionadorDestaqueNoticia;
+use App\Services\News\ValidadorImagemNoticia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -36,6 +39,17 @@ class NewsController extends Controller
 
         $data = $validator->validated();
 
+        // Mesma regra do pipeline de coleta: sem imagem válida, não entra no
+        // banco (ver ValidadorImagemNoticia). Checado antes de gravar.
+        $motivoImagem = app(ValidadorImagemNoticia::class)->motivoInvalida($data['image_url'] ?? null);
+
+        if ($motivoImagem !== null) {
+            return response()->json([
+                'message' => 'Dados inválidos',
+                'errors' => ['image_url' => ["Notícia sem imagem válida ({$motivoImagem}) não é aceita."]],
+            ], 422);
+        }
+
         $news = News::firstOrCreate(
             ['url' => $data['url']],
             $data
@@ -49,9 +63,12 @@ class NewsController extends Controller
 
     private const SORTABLE_COLUMNS = ['published_at', 'imported_at', 'relevance_score', 'created_at'];
 
-    public function index(Request $request)
+    public function index(Request $request, CicloAutomaticoNoticias $ciclo, SelecionadorDestaqueNoticia $destaque)
     {
-        $query = News::query()->where('published', true);
+        // Rede de segurança do ciclo de 12h (ver CicloAutomaticoNoticias).
+        $ciclo->dispararSeVencido();
+
+        $query = News::query()->where('published', true)->comImagemPublicavel();
 
         if ($request->has('search')) {
             $query->where('title', 'ilike', '%' . $request->search . '%');
@@ -73,7 +90,9 @@ class NewsController extends Controller
         // enfileirada no servidor. Uma só resolve.
         $porPagina = min(max((int) $request->get('per_page', 15), 1), 150);
 
-        $paginador = $query->orderBy($sortBy, $direction)->paginate($porPagina);
+        // Desempate por id: sem ele, notícias com o mesmo published_at podiam
+        // trocar de lugar entre páginas e aparecer repetidas/omitidas.
+        $paginador = $query->orderBy($sortBy, $direction)->orderBy('id', $direction)->paginate($porPagina);
 
         // Troca cada item pela versão pública (NewsResource) sem alterar o
         // formato do paginador em si — o frontend já espera esse mesmo
@@ -84,7 +103,17 @@ class NewsController extends Controller
             fn (News $noticia) => (new NewsResource($noticia))->resolve()
         );
 
-        return response()->json($paginador);
+        $resposta = $paginador->toArray();
+
+        // Campo novo e opcional (não altera nenhum campo existente): a notícia
+        // principal do momento, escolhida no backend — ver
+        // SelecionadorDestaqueNoticia. Só na 1ª página, que é onde o painel usa.
+        if ($paginador->currentPage() === 1) {
+            $principal = $destaque->selecionar();
+            $resposta['destaque'] = $principal ? (new NewsResource($principal))->resolve() : null;
+        }
+
+        return response()->json($resposta);
     }
 
     public function show(News $news)

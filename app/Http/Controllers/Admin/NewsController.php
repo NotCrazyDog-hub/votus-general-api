@@ -45,16 +45,19 @@ class NewsController extends Controller
     private const LIMITE_COLETA_MANUAL = 5;
 
     /**
-     * Gatilho manual do painel para o mesmo pipeline de notícias já usado
-     * pelo cron externo (ver SchedulerController::executarPipelineNoticias).
+     * Gatilho manual do painel para o mesmo pipeline de notícias usado pelo
+     * ciclo automático de 12h (ver SchedulerController::executarPipelineNoticias).
      * Não duplica a coleta: chama os mesmos comandos Artisan, só que
      * autenticado por login de admin em vez do token do scheduler.
      *
-     * Trava enquanto houver notícia pendente/em processamento: sem isso, um
-     * segundo clique (ou o ciclo automático caindo no meio) empilharia mais
-     * resumo em cima do que a fila (rate limited a 10/min) ainda nem
-     * terminou de processar. O ciclo automático de 12h continua rodando
-     * normalmente — essa trava é só pro botão manual.
+     * Independente do automático nos dois sentidos:
+     * - --forcar ignora a janela mínima entre coletas da fonte, então o botão
+     *   roda na hora mesmo logo depois de um ciclo automático (antes, dentro
+     *   dessa janela a fonte era pulada e o clique não fazia nada);
+     * - não bloqueia mais quando há resumos pendentes (antes respondia 409 e
+     *   travava o botão sempre que o ciclo automático tinha deixado resumo na
+     *   fila). Concorrência continua protegida pela trava por fonte dos Jobs
+     *   e pela deduplicação — notícia repetida não é gravada duas vezes.
      *
      * Cada etapa é isolada num try/catch pra devolver uma mensagem legível
      * pro painel em vez de estourar uma exceção crua — o admin precisa saber
@@ -63,23 +66,10 @@ class NewsController extends Controller
      */
     public function collect(): JsonResponse
     {
-        // Limpa primeiro: se o backlog travado for só notícia velha (cron de
-        // resumo que não rodou), isso já destrava o botão nesta mesma
-        // requisição, sem esperar o próximo ciclo agendado.
         Artisan::call('noticias:limpar-pendentes-antigas');
 
-        $pendentes = News::whereIn('status_resumo', ['pendente', 'em_processamento'])->count();
-
-        if ($pendentes > 0) {
-            return response()->json([
-                'status' => 'aguardando',
-                'message' => "Ainda há {$pendentes} notícia(s) sendo processada(s) pelo resumo de IA. Aguarde terminar antes de buscar mais.",
-                'pendentes' => $pendentes,
-            ], 409);
-        }
-
         try {
-            Artisan::call('noticias:coletar', ['--limite' => self::LIMITE_COLETA_MANUAL]);
+            Artisan::call('noticias:coletar', ['--limite' => self::LIMITE_COLETA_MANUAL, '--forcar' => true]);
             $saidaColeta = trim(Artisan::output());
         } catch (Throwable $e) {
             return response()->json([

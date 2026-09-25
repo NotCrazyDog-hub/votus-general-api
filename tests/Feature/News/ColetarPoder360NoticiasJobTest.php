@@ -8,14 +8,12 @@ use App\Models\Fonte;
 use App\Models\News;
 use App\Services\News\LinkNormalizer;
 use App\Services\News\Poder360Collector;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
-class ColetarPoder360NoticiasJobTest extends TestCase
+class ColetarPoder360NoticiasJobTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     private function feedXml(): string
     {
@@ -34,7 +32,13 @@ class ColetarPoder360NoticiasJobTest extends TestCase
     public function test_it_persists_new_items_and_dispatches_a_summary_job_for_each(): void
     {
         Queue::fake();
-        Http::fake(['https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200)]);
+        Http::fake([
+            'https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200),
+            // Regra nova: sem <img> no feed, usa a og:image da matéria; e a
+            // imagem precisa responder como imagem.
+            'https://www.poder360.com.br/*' => Http::response('<html><head><meta property="og:image" content="https://static.poder360.com.br/uploads/2026/09/capa.jpg"></head></html>', 200),
+            'https://static.poder360.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/jpeg']),
+        ]);
 
         $fonte = $this->fonte();
 
@@ -55,7 +59,13 @@ class ColetarPoder360NoticiasJobTest extends TestCase
     public function test_it_does_not_duplicate_news_on_a_second_run(): void
     {
         Queue::fake();
-        Http::fake(['https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200)]);
+        Http::fake([
+            'https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200),
+            // Regra nova: sem <img> no feed, usa a og:image da matéria; e a
+            // imagem precisa responder como imagem.
+            'https://www.poder360.com.br/*' => Http::response('<html><head><meta property="og:image" content="https://static.poder360.com.br/uploads/2026/09/capa.jpg"></head></html>', 200),
+            'https://static.poder360.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/jpeg']),
+        ]);
 
         $fonte = $this->fonte();
         $job = new ColetarPoder360NoticiasJob($fonte->id);
