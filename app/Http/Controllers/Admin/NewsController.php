@@ -23,7 +23,7 @@ class NewsController extends Controller
 
         return response()->json(
             News::query()
-                ->when($busca !== '', fn ($query) => $query->where('title', 'like', "%{$busca}%"))
+                ->when($busca !== '', fn ($query) => $query->where('title', 'ilike', "%{$busca}%"))
                 ->orderByDesc('imported_at')
                 ->paginate(15, [
                     'id', 'title', 'category', 'published', 'image_url',

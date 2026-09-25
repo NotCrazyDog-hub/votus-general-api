@@ -172,6 +172,7 @@ Route::prefix('admin')->group(function () {
         Route::controller(Admin\ProposalController::class)->prefix('proposals')->group(function () {
             Route::get('/', 'index');
             Route::delete('/{id}', 'destroy');
+            Route::patch('/{id}/restore', 'restore');
             Route::get('/{id}/comments', 'comments');
             Route::delete('/{id}/comments/{commentId}', 'destroyComment');
         });

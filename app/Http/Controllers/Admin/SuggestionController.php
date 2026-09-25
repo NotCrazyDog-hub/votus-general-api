@@ -18,9 +18,9 @@ class SuggestionController extends Controller
                 ->with('answers.question:id,text')
                 ->when($busca !== '', fn ($query) => $query
                     ->where(fn ($q) => $q
-                        ->where('name', 'like', "%{$busca}%")
-                        ->orWhere('message', 'like', "%{$busca}%")
-                        ->orWhereHas('answers', fn ($a) => $a->where('answer', 'like', "%{$busca}%"))))
+                        ->where('name', 'ilike', "%{$busca}%")
+                        ->orWhere('message', 'ilike', "%{$busca}%")
+                        ->orWhereHas('answers', fn ($a) => $a->where('answer', 'ilike', "%{$busca}%"))))
                 ->orderByDesc('created_at')
                 ->paginate(15)
         );

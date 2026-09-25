@@ -54,7 +54,7 @@ class NewsController extends Controller
         $query = News::query()->where('published', true);
 
         if ($request->has('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'ilike', '%' . $request->search . '%');
         }
 
         if ($request->has('relevance_min')) {
@@ -67,7 +67,13 @@ class NewsController extends Controller
         $direction = strtolower((string) $request->get('direction', 'desc'));
         $direction = $direction === 'asc' ? 'asc' : 'desc';
 
-        $paginador = $query->orderBy($sortBy, $direction)->paginate(15);
+        // per_page opcional (padrão 15, como sempre foi; teto 150): o painel
+        // de notícias do front lista até 150 notícias e antes precisava de 10
+        // requisições de 15 pra isso — cada uma com a latência do Supabase e
+        // enfileirada no servidor. Uma só resolve.
+        $porPagina = min(max((int) $request->get('per_page', 15), 1), 150);
+
+        $paginador = $query->orderBy($sortBy, $direction)->paginate($porPagina);
 
         // Troca cada item pela versão pública (NewsResource) sem alterar o
         // formato do paginador em si — o frontend já espera esse mesmo

@@ -25,8 +25,10 @@ class ProposalController extends Controller
             ->with('categories:id,name')
             ->when($busca !== '', fn ($query) => $query
                 ->where(fn ($q) => $q
-                    ->where('title', 'like', "%{$busca}%")
-                    ->orWhere('author', 'like', "%{$busca}%")))
+                    // ilike: no Postgres "like" diferencia maiúsculas, então
+                    // buscar "joão" não achava "João".
+                    ->where('title', 'ilike', "%{$busca}%")
+                    ->orWhere('author', 'ilike', "%{$busca}%")))
             ->orderByDesc('created_at')
             ->paginate(15);
 
@@ -55,6 +57,20 @@ class ProposalController extends Controller
         $proposal->update(['status' => ProposalStatus::Removed]);
 
         return response()->json(['message' => 'Proposta removida.']);
+    }
+
+    /**
+     * Desfaz uma remoção: a proposta volta a ficar publicada. Existe porque a
+     * remoção sempre foi soft delete ("reversível", ver destroy()), mas não
+     * havia como reverter pelo painel. Só age sobre propostas removidas —
+     * não mexe em rascunhos nem nas já publicadas.
+     */
+    public function restore(int $id): JsonResponse
+    {
+        $proposal = Proposal::where('status', ProposalStatus::Removed)->findOrFail($id);
+        $proposal->update(['status' => ProposalStatus::Published]);
+
+        return response()->json(['message' => 'Proposta restaurada.']);
     }
 
     /**
