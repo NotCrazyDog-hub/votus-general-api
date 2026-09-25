@@ -13,7 +13,7 @@ class ImportCandidatePhotos extends Command
     
     protected $signature = 'import:candidate-photos
         {directory : Caminho da pasta com os JPGs (ex: foto_cand2026_CE_div)}
-        {--disk=public : Disco de destino}';
+        {--disk=supabase : Disco de destino}';
 
     protected $description = 'Importa fotos de candidatos a partir de uma pasta local e vincula pelo SQ_CANDIDATO (external_id)';
 
@@ -62,7 +62,7 @@ class ImportCandidatePhotos extends Command
                 continue;
             }
 
-            $storedPath = "candidates/{$externalId}.jpg";
+            $storedPath = "candidates/photos/{$externalId}.jpg";
             Storage::disk($disk)->put($storedPath, file_get_contents($filePath));
 
             $candidate->update(['photo_path' => $storedPath]);

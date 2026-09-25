@@ -50,7 +50,9 @@ class Candidate extends Model
 
     public function getPhotoUrlAttribute(): ?string
     {
-        return $this->photo_path ? Storage::url($this->photo_path) : null;
+        return $this->photo_path
+            ? config('filesystems.disks.supabase.public_url') . '/' . $this->photo_path
+            : null;
     }
 
     public function getProposalDocumentUrlAttribute(): ?string
