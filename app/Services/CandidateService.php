@@ -38,12 +38,10 @@ class CandidateService
     ) {
         $search = $search !== null ? trim($search) : null;
 
-        // simplePaginate em vez de paginate: a mesma correção já aplicada em
-        // LegislatorService::listByChamber — paginate() roda uma query extra
-        // de COUNT que, no Supabase remoto, custa segundos por causa do
-        // round-trip de rede, não da complexidade da query em si. Sem
-        // last_page/total prontos, o front estima a última página pelo link
-        // "next" (ver SimplePaginatedResponse no frontend).
+        // paginate() (era simplePaginate): o front precisa do total real de
+        // páginas — ver o mesmo comentário em LegislatorService::listByChamber.
+        // Sem isso, o botão "próxima" nunca desabilitava de verdade e o
+        // número de páginas exibido crescia a cada clique.
         return Candidate::titulares()
             ->select(self::LIST_COLUMNS)
             ->where('office_name', $office->toTseDescription())
@@ -59,7 +57,7 @@ class CandidateService
                     ->orWhere('ballot_number', 'like', $termo));
             })
             ->orderBy('ballot_name')
-            ->simplePaginate(50)
+            ->paginate(50)
             // Mantém party/search nos links "next"/"prev" da paginação.
             ->withQueryString();
     }

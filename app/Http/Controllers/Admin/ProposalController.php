@@ -60,6 +60,20 @@ class ProposalController extends Controller
     }
 
     /**
+     * Apaga a proposta PERMANENTEMENTE (linha e votos/comentários/categorias
+     * associados, via cascadeOnDelete no banco) — ao contrário de destroy(),
+     * que só marca como Removed e mantém o registro. Não tem como desfazer;
+     * o frontend confirma com o admin antes de chamar isto.
+     */
+    public function forceDestroy(int $id): JsonResponse
+    {
+        $proposal = Proposal::findOrFail($id);
+        $proposal->delete();
+
+        return response()->json(['message' => 'Proposta apagada permanentemente.']);
+    }
+
+    /**
      * Desfaz uma remoção: a proposta volta a ficar publicada. Existe porque a
      * remoção sempre foi soft delete ("reversível", ver destroy()), mas não
      * havia como reverter pelo painel. Só age sobre propostas removidas —
