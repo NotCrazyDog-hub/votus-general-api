@@ -21,8 +21,6 @@ class PublicOpportunityResource extends JsonResource
             'municipality' => $this->municipality,
             'state' => $this->state,
 
-            'positions' => $this->positions,
-            'education_levels' => $this->education_levels,
             'positions' => $this->positions ?? [],
             'education_levels' => $this->education_levels ?? [],
             'vacancies' => $this->vacancies,
