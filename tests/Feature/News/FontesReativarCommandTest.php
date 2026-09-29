@@ -3,12 +3,10 @@
 namespace Tests\Feature\News;
 
 use App\Models\Fonte;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class FontesReativarCommandTest extends TestCase
+class FontesReativarCommandTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     public function test_it_reactivates_a_disabled_source_and_resets_the_failure_counter(): void
     {

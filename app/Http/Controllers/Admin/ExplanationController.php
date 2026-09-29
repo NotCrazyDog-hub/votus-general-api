@@ -30,7 +30,7 @@ class ExplanationController extends Controller
 
         $explanations = Explanation::query()
             ->when($busca !== '', fn ($query) => $query->where(
-                fn ($q) => $q->where('title', 'like', "%{$busca}%")->orWhere('question_title', 'like', "%{$busca}%")
+                fn ($q) => $q->where('title', 'ilike', "%{$busca}%")->orWhere('question_title', 'ilike', "%{$busca}%")
             ))
             ->withCount(['sources', 'quizQuestions'])
             ->latest()

@@ -8,17 +8,18 @@ class LegislatorService
 {
     public function listByChamber(string $chamber, ?string $state = null)
     {
-        // simplePaginate em vez de paginate: essa listagem sempre cabe numa
-        // única página (~20-30 deputados/senadores no total), então a query
-        // extra de COUNT que o paginate() roda pra saber o total de páginas
-        // é puro custo sem benefício — e cada ida ao banco aqui tem um
-        // custo de rede relevante (Supabase remoto), então cortar uma
-        // dessas idas importa de verdade pro tempo de resposta.
+        // paginate() (era simplePaginate): o front precisa do total real de
+        // páginas pra desabilitar corretamente o botão "próxima" — com
+        // simplePaginate ele só sabe se EXISTE uma próxima página, e ao
+        // estimar o total incrementando a cada clique (page+1) o número de
+        // páginas "crescia" indefinidamente. Essa listagem é pequena
+        // (~20-30 registros, 1 página), então o COUNT extra é barato.
         return Legislator::where('chamber', $chamber)
             ->when($state, fn ($q) => $q->where('state', $state))
             ->with('thematicFocusTopTopic')
             ->orderBy('parliamentary_name')
-            ->simplePaginate(50);
+            ->paginate(50)
+            ->withQueryString();
     }
 
     public function findByChamber(int $external_id, string $chamber): Legislator

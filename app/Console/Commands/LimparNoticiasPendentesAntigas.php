@@ -11,7 +11,10 @@ use Illuminate\Console\Command;
 #[Description('Remove notícias cujo resumo não terminou (ou falhou) em até 8h — normalmente sinal de que o cron externo de resumo não rodou a tempo, ou de erro definitivo (ex: rate limit da IA).')]
 class LimparNoticiasPendentesAntigas extends Command
 {
-    private const HORAS_LIMITE = 8;
+    // Era 8h — menor que o prazo de retentativa do resumo, então apagava
+    // notícia ainda válida que só estava esperando a fila andar. 24h fica
+    // acima do retryUntil (20h) do ResumirNoticiaJob.
+    private const HORAS_LIMITE = 24;
 
     public function handle(): int
     {

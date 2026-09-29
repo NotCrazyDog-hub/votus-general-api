@@ -2,13 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\News;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use Tests\Feature\News\NewsTestCase;
 
-class NewsControllerTest extends TestCase
+use App\Models\News;
+
+class NewsControllerTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -19,11 +18,14 @@ class NewsControllerTest extends TestCase
 
     public function test_it_can_create_a_news_article_with_a_valid_token(): void
     {
+        \Illuminate\Support\Facades\Http::fake(['https://imagens.exemplo.com/*' => \Illuminate\Support\Facades\Http::response('', 200, ['Content-Type' => 'image/jpeg'])]);
+
         $payload = [
             'title' => 'Nova notícia',
             'original_summary' => 'Resumo original',
             'ai_summary' => 'Resumo gerado por IA',
             'url' => 'https://example.com/noticia',
+            'image_url' => 'https://imagens.exemplo.com/foto.jpg',
             'source' => 'Agência Brasil',
             'category' => 'Política',
             'published_at' => '2026-07-18 10:00:00',

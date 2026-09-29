@@ -6,14 +6,12 @@ use App\Jobs\News\ColetarAgenciaBrasilNoticiasJob;
 use App\Jobs\News\ResumirNoticiaJob;
 use App\Models\Fonte;
 use App\Models\News;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
-class ColetarAgenciaBrasilNoticiasJobTest extends TestCase
+class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     private function feedXml(): string
     {
@@ -23,7 +21,11 @@ class ColetarAgenciaBrasilNoticiasJobTest extends TestCase
     public function test_it_persists_new_items_and_dispatches_a_summary_job_for_each(): void
     {
         Queue::fake();
-        Http::fake(['https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200)]);
+        Http::fake([
+            'https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200),
+            // Regra nova: só grava com imagem que responde como imagem.
+            'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
+        ]);
 
         $fonte = Fonte::factory()->create();
 
@@ -49,7 +51,11 @@ class ColetarAgenciaBrasilNoticiasJobTest extends TestCase
     public function test_it_does_not_duplicate_news_on_a_second_run(): void
     {
         Queue::fake();
-        Http::fake(['https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200)]);
+        Http::fake([
+            'https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200),
+            // Regra nova: só grava com imagem que responde como imagem.
+            'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
+        ]);
 
         $fonte = Fonte::factory()->create();
         $job = new ColetarAgenciaBrasilNoticiasJob($fonte->id);
@@ -94,7 +100,11 @@ class ColetarAgenciaBrasilNoticiasJobTest extends TestCase
 
     public function test_an_inactive_source_is_skipped(): void
     {
-        Http::fake(['https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200)]);
+        Http::fake([
+            'https://exemplo.com/feed.xml' => Http::response($this->feedXml(), 200),
+            // Regra nova: só grava com imagem que responde como imagem.
+            'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
+        ]);
 
         $fonte = Fonte::factory()->create(['ativa' => false]);
 

@@ -11,7 +11,7 @@ class CategoryController extends Controller
     {
         $search = $request->get('q');
 
-        $categories = Category::when($search, fn ($query) => $query->where('name', 'like', "%{$search}%"))
+        $categories = Category::when($search, fn ($query) => $query->where('name', 'ilike', "%{$search}%"))
             ->orderBy('name')
             ->limit(20)
             ->get(['id', 'name']);

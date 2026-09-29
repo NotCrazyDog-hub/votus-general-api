@@ -3,19 +3,72 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\PublicOpportunityResource;
 use App\Models\PublicOpportunity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PublicOpportunityController extends Controller
 {
     /**
+     * Campos usados na moderação (lista + detalhe): os mesmos da
+     * PublicOpportunityResource pública, mais o que só interessa ao admin
+     * (id numérico, review_status, quantas publicações/retificações
+     * existem, quando foi vista pela 1ª/última vez pelo import do n8n). A
+     * Resource pública não expõe esses campos de propósito — quem consome
+     * a listagem pública (Juventude em Pauta) não precisa saber o status de
+     * moderação nem controles internos.
+     */
+    private function toAdminArray(PublicOpportunity $opportunity, bool $comPublicacoes = false): array
+    {
+        $dados = [
+            'id' => $opportunity->id,
+            'source_key' => $opportunity->source_key,
+            'type' => $opportunity->type,
+            'title' => $opportunity->title,
+            'notice_number' => $opportunity->notice_number,
+            'agency' => $opportunity->agency,
+            'municipality' => $opportunity->municipality,
+            'state' => $opportunity->state,
+            'positions' => $opportunity->positions,
+            'education_levels' => $opportunity->education_levels,
+            'vacancies' => $opportunity->vacancies,
+            'salary_min' => $opportunity->salary_min,
+            'salary_max' => $opportunity->salary_max,
+            'registration_start' => $opportunity->registration_start?->toDateString(),
+            'registration_end' => $opportunity->registration_end?->toDateString(),
+            'exam_date' => $opportunity->exam_date?->toDateString(),
+            'fee_min' => $opportunity->fee_min,
+            'fee_max' => $opportunity->fee_max,
+            'registration_url' => $opportunity->registration_url,
+            'summary' => $opportunity->summary,
+            // Status computado (aberto/em_breve/encerrado/indefinido) —
+            // mesmo cálculo da listagem pública, só informativo aqui.
+            'status' => $opportunity->status,
+            // Status de moderação de verdade: é o que o admin usa pra
+            // decidir aprovar/rejeitar/republicar.
+            'review_status' => $opportunity->review_status,
+            'publications_count' => $opportunity->publications_count ?? $opportunity->publications()->count(),
+            'first_seen_at' => $opportunity->first_seen_at?->toIso8601String(),
+            'last_seen_at' => $opportunity->last_seen_at?->toIso8601String(),
+        ];
+
+        if ($comPublicacoes) {
+            $dados['publications'] = $opportunity->publications->map(fn ($publicacao) => [
+                'publication_type' => $publicacao->publication_type,
+                'gazette_date' => $publicacao->gazette_date?->toDateString(),
+                'edition' => $publicacao->edition,
+                'gazette_url' => $publicacao->gazette_url,
+            ])->values();
+        }
+
+        return $dados;
+    }
+
+    /**
      * Lista as oportunidades para revisão, com contagem
      * de publicações e filtro por status/pesquisa.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $query = PublicOpportunity::query()
             ->withCount('publications')
@@ -38,8 +91,9 @@ class PublicOpportunityController extends Controller
         }
 
         $opportunities = $query->paginate(15)->withQueryString();
+        $opportunities->getCollection()->transform(fn (PublicOpportunity $o) => $this->toAdminArray($o));
 
-        return PublicOpportunityResource::collection($opportunities);
+        return response()->json($opportunities);
     }
 
     /**
@@ -49,13 +103,13 @@ class PublicOpportunityController extends Controller
      * No admin, o abort_unless de review_status não se aplica:
      * é aqui que pending/rejected também precisam ser vistos.
      */
-    public function show(PublicOpportunity $publicOpportunity): PublicOpportunityResource
+    public function show(PublicOpportunity $publicOpportunity): JsonResponse
     {
         $publicOpportunity->load([
             'publications' => fn ($query) => $query->orderByDesc('gazette_date'),
         ]);
 
-        return new PublicOpportunityResource($publicOpportunity);
+        return response()->json(['data' => $this->toAdminArray($publicOpportunity, comPublicacoes: true)]);
     }
 
     /**
@@ -92,9 +146,7 @@ class PublicOpportunityController extends Controller
 
         $publicOpportunity->update($data);
 
-        return response()->json(
-            new PublicOpportunityResource($publicOpportunity)
-        );
+        return response()->json(['data' => $this->toAdminArray($publicOpportunity)]);
     }
 
     /**
@@ -105,9 +157,7 @@ class PublicOpportunityController extends Controller
     {
         $publicOpportunity->update(['review_status' => 'approved']);
 
-        return response()->json(
-            new PublicOpportunityResource($publicOpportunity)
-        );
+        return response()->json(['data' => $this->toAdminArray($publicOpportunity)]);
     }
 
     /**
@@ -120,9 +170,7 @@ class PublicOpportunityController extends Controller
     {
         $publicOpportunity->update(['review_status' => 'rejected']);
 
-        return response()->json(
-            new PublicOpportunityResource($publicOpportunity)
-        );
+        return response()->json(['data' => $this->toAdminArray($publicOpportunity)]);
     }
 
     public function togglePublished(PublicOpportunity $publicOpportunity): JsonResponse
@@ -133,8 +181,6 @@ class PublicOpportunityController extends Controller
                 : 'approved',
         ]);
 
-        return response()->json(
-            new PublicOpportunityResource($publicOpportunity)
-        );
+        return response()->json(['data' => $this->toAdminArray($publicOpportunity)]);
     }
 }

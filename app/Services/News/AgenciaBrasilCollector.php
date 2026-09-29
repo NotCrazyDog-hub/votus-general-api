@@ -75,7 +75,10 @@ class AgenciaBrasilCollector
         }
 
         try {
-            return Carbon::parse($pubDate)->toDateTimeString();
+            // utc(): o feed traz o fuso (ex.: -0300) e o banco guarda em UTC;
+            // sem converter, toDateTimeString() descartava o fuso e as datas
+            // de fontes com fusos diferentes ficavam desalinhadas em até 3h.
+            return Carbon::parse($pubDate)->utc()->toDateTimeString();
         } catch (Throwable) {
             return null;
         }

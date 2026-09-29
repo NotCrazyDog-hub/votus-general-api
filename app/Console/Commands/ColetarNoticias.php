@@ -8,8 +8,12 @@ use App\Models\Fonte;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
-#[Signature('noticias:coletar {--limite= : Teto de candidatos avaliados por fonte, sobrescrevendo o padrão de cada Job (usado pelo disparo manual do admin, que roda um lote menor)}')]
+#[Signature('noticias:coletar
+    {--limite= : Teto de notícias novas gravadas POR FONTE, sobrescrevendo a divisão automática da meta do ciclo (usado pelo disparo manual do admin, que roda um lote menor)}
+    {--forcar : Ignora a janela mínima entre coletas da fonte (offset_minutos). Usado pelo botão do admin, que deve rodar na hora, independente de quando foi a última execução automática}')]
 #[Description('Despacha os Jobs de coleta de notícias para as fontes ativas e elegíveis no momento.')]
 class ColetarNoticias extends Command
 {
@@ -22,27 +26,65 @@ class ColetarNoticias extends Command
         'poder360' => ColetarPoder360NoticiasJob::class,
     ];
 
+    /**
+     * Meta de notícias NOVAS e VÁLIDAS por execução, somando as fontes.
+     */
+    private const META_POR_EXECUCAO = 15;
+
     public function handle(): int
     {
-        $limiteOption = $this->option('limite');
-        $limite = $limiteOption !== null ? max(1, (int) $limiteOption) : null;
+        // Evita despacho duplo quando cron e admin chegam no mesmo instante.
+        // Os Jobs têm a própria trava por fonte (WithoutOverlapping) e o
+        // índice único de link_normalizado segura qualquer corrida restante.
+        $trava = Cache::lock('noticias:despacho-coleta', 30);
 
-        $fontes = Fonte::query()->where('ativa', true)->get();
+        if (!$trava->get()) {
+            $this->warn('Outra coleta está sendo despachada neste momento; nada a fazer.');
+            Log::info('[NEWS] Ciclo ignorado: outra coleta sendo despachada agora.');
+            return self::SUCCESS;
+        }
+
+        try {
+            return $this->despachar();
+        } finally {
+            $trava->release();
+        }
+    }
+
+    private function despachar(): int
+    {
+        $forcar = (bool) $this->option('forcar');
+        $limiteOption = $this->option('limite');
+
+        Log::info('[NEWS] Ciclo iniciado' . ($forcar ? ' (manual, forçado)' : ''));
+
+        $fontes = Fonte::query()->where('ativa', true)->get()
+            ->filter(fn (Fonte $fonte) => $forcar || $this->elegivel($fonte));
+
+        if ($fontes->isEmpty()) {
+            $this->info('Nenhuma fonte ativa elegível neste momento.');
+            Log::info('[NEWS] Ciclo finalizado: nenhuma fonte elegível.');
+            return self::SUCCESS;
+        }
+
+        // Sem --limite, a meta do ciclo é repartida entre as fontes elegíveis
+        // (ex.: 2 fontes -> até 8 novas cada, ~15 no total).
+        $limite = $limiteOption !== null
+            ? max(1, (int) $limiteOption)
+            : (int) ceil(self::META_POR_EXECUCAO / $fontes->count());
 
         foreach ($fontes as $fonte) {
-            if (!$this->elegivel($fonte)) {
-                continue;
-            }
-
             $jobClass = self::JOBS_POR_SLUG[$fonte->slug] ?? null;
 
             if (!$jobClass) {
                 $this->warn("Fonte '{$fonte->slug}' está ativa mas não possui Job de coleta registrado.");
+                Log::warning("[NEWS] Fonte '{$fonte->slug}' ativa sem Job de coleta registrado.");
                 continue;
             }
 
             $jobClass::dispatch($fonte->id, $limite);
-            $this->info("Coleta despachada para '{$fonte->nome}'.");
+            $this->info("Coleta despachada para '{$fonte->nome}' (até {$limite} novas).");
+            Log::info("[NEWS] Coleta despachada: {$fonte->nome} (até {$limite} novas)");
         }
 
         return self::SUCCESS;

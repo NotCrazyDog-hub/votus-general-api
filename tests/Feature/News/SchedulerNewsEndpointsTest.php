@@ -2,13 +2,11 @@
 
 namespace Tests\Feature\News;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-class SchedulerNewsEndpointsTest extends TestCase
+class SchedulerNewsEndpointsTest extends NewsTestCase
 {
-    use RefreshDatabase;
 
     protected function setUp(): void
     {

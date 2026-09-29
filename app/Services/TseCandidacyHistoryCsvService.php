@@ -77,13 +77,6 @@ class TseCandidacyHistoryCsvService
                     continue;
                 }
 
-                if (
-                    mb_strtoupper(trim((string) ($data['DS_SIT_TOT_TURNO'] ?? '')))
-                    !== 'ELEITO'
-                ) {
-                    continue;
-                }
-
                 yield $data;
             }
         } finally {

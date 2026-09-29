@@ -2,8 +2,8 @@
 
 namespace App\Jobs\News;
 
+use App\Jobs\News\Concerns\PersisteNoticiasValidas;
 use App\Models\Fonte;
-use App\Models\News;
 use App\Services\News\LinkNormalizer;
 use App\Services\News\NewsCategoryPriority;
 use App\Services\News\Poder360Collector;
@@ -11,27 +11,40 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ColetarPoder360NoticiasJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PersisteNoticiasValidas;
 
-    public int $timeout = 120;
+    // Maior que antes (120s): agora cada item novo pode exigir buscar a
+    // og:image da matéria e checar se a imagem responde.
+    public int $timeout = 300;
 
     public int $tries = 1;
 
     /**
-     * Teto de candidatos avaliados por fonte a cada ciclo — ver o mesmo
-     * comentário em ColetarAgenciaBrasilNoticiasJob.
+     * Teto de notícias NOVAS e VÁLIDAS gravadas por ciclo quando o Job é
+     * despachado sem limite explícito — ver ColetarAgenciaBrasilNoticiasJob.
      */
-    private const MAX_NOTICIAS_POR_CICLO = 30;
+    private const MAX_NOTICIAS_POR_CICLO = 15;
 
     public function __construct(public int $fonteId, public ?int $limite = null)
     {
         $this->onQueue('coleta');
+    }
+
+    /**
+     * Cron (12h) e botão do admin são independentes e podem cair juntos: a
+     * mesma fonte nunca é coletada por dois workers ao mesmo tempo — o
+     * segundo é descartado, a coleta em andamento já cobre.
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping("coleta-fonte-{$this->fonteId}"))->dontRelease()->expireAfter($this->timeout)];
     }
 
     public function handle(Poder360Collector $collector, LinkNormalizer $normalizer): void
@@ -54,7 +67,7 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
             try {
                 $itens = $collector->coletar($feedUrl);
             } catch (Throwable $e) {
-                Log::error("[coleta] {$fonte->slug}/{$categoriaSlug} falhou: {$e->getMessage()}", [
+                Log::error("[NEWS] Fonte {$fonte->slug}/{$categoriaSlug} falhou: {$e->getMessage()}", [
                     'fonte_id' => $fonte->id,
                     'exception' => $e,
                 ]);
@@ -84,55 +97,10 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
             return strcmp($b['published_at'] ?? '', $a['published_at'] ?? '');
         });
 
-        foreach (array_slice($itensColetados, 0, $this->limite ?? self::MAX_NOTICIAS_POR_CICLO) as $item) {
-            try {
-                $this->persistirItem($fonte, $item['categoria_slug'], $item, $normalizer);
-            } catch (Throwable $e) {
-                Log::error("[coleta] falha ao persistir notícia de {$fonte->slug}/{$item['categoria_slug']}: {$e->getMessage()}", [
-                    'url' => $item['url'] ?? null,
-                    'exception' => $e,
-                ]);
-            }
-        }
+        // Deduplica, valida imagem e grava até o limite de notícias novas —
+        // ver Concerns\PersisteNoticiasValidas.
+        $this->persistirNovasValidas($fonte, $itensColetados, $this->limite ?? self::MAX_NOTICIAS_POR_CICLO, $normalizer);
 
         $fonte->registrarSucesso();
-    }
-
-    private function persistirItem(Fonte $fonte, string $categoriaSlug, array $item, LinkNormalizer $normalizer): void
-    {
-        if (empty($item['title']) || empty($item['url'])) {
-            return;
-        }
-
-        $linkNormalizado = $normalizer->normalizar($item['url']);
-
-        if (News::where('link_normalizado', $linkNormalizado)->exists()) {
-            return;
-        }
-
-        if (News::whereRaw('lower(title) = ?', [mb_strtolower(trim($item['title']))])->exists()) {
-            return;
-        }
-
-        $noticia = News::create([
-            'fonte_id' => $fonte->id,
-            'title' => $item['title'],
-            'conteudo_original' => $item['conteudo_original'] ?? '',
-            'original_summary' => $item['original_summary'] ?? null,
-            'ai_summary' => '',
-            'status_resumo' => 'pendente',
-            'url' => $item['url'],
-            'link_normalizado' => $linkNormalizado,
-            'source' => $fonte->nome,
-            'category' => $item['category'] ?? null,
-            'eixo' => $categoriaSlug,
-            'published_at' => $item['published_at'] ?? now(),
-            'relevance_score' => 5,
-            'keywords' => [],
-            'published' => false,
-            'image_url' => $item['image_url'] ?? null,
-        ]);
-
-        ResumirNoticiaJob::dispatch($noticia->id);
     }
 }

@@ -97,8 +97,15 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // ATTR_PERSISTENT: cada worker do `artisan serve` reaproveita a
+            // mesma conexão com o pooler do Supabase entre requisições. Sem
+            // isso, toda requisição abria uma conexão nova (TCP + TLS +
+            // autenticação SCRAM) — medido em ~1-2s, mais do que as queries
+            // em si, e pago até no endpoint mais simples. DB_PERSISTENT=false
+            // desliga se algum dia precisar.
             'options' => extension_loaded('pdo_pgsql') ? array_filter([
                 \PDO::ATTR_EMULATE_PREPARES => true,
+                \PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', true),
             ]) : [],
         ],
 

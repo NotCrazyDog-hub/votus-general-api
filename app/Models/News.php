@@ -48,4 +48,24 @@ class News extends Model
     {
         return $this->belongsTo(Fonte::class, 'fonte_id');
     }
+
+    /**
+     * Só notícias com imagem utilizável aparecem publicamente. Novas notícias
+     * sem imagem já nem são gravadas (ValidadorImagemNoticia, antes da
+     * persistência); isto cobre os registros antigos — 33 publicadas sem
+     * imagem no banco em 25/09 e as que usam arte genérica da fonte — sem
+     * apagar nada: elas continuam no banco, só não entram na vitrine.
+     */
+    public function scopeComImagemPublicavel($query)
+    {
+        $query->whereNotNull('image_url')->where('image_url', '<>', '');
+
+        // lower() + like: funciona igual no Postgres (produção) e no SQLite
+        // (testes) — mesmos trechos que o validador usa antes de gravar.
+        foreach (\App\Services\News\ValidadorImagemNoticia::TRECHOS_GENERICOS as $trecho) {
+            $query->whereRaw('lower(image_url) not like ?', ['%' . $trecho . '%']);
+        }
+
+        return $query;
+    }
 }

@@ -4,8 +4,10 @@ namespace App\Services\Opportunities;
 
 use App\Models\Campus;
 use App\Models\CourseOffering;
-use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class UniversityCatalogService
 {
@@ -18,7 +20,7 @@ class UniversityCatalogService
      * vira só mais um filtro: quem quiser os dois
      * setores separados faz duas chamadas.
      */
-    public function filterOfferings(array $filters): Paginator
+    public function filterOfferings(array $filters): LengthAwarePaginatorContract
     {
         $query = CourseOffering::query()
             ->with([
@@ -72,13 +74,34 @@ class UniversityCatalogService
             );
         }
 
-        // simplePaginate: mesmo ajuste já aplicado em Opportunity/
-        // PublicOpportunity/Legislator/Candidate — evita a query de COUNT,
-        // cara no Supabase remoto (497 ofertas só no Ceará, sem filtro).
-        return $query
-            ->orderBy('name')
-            ->simplePaginate(12)
-            ->withQueryString();
+        // O front precisa do total real de páginas (mesmo motivo do
+        // comentário em LegislatorService::listByChamber), mas aqui o COUNT
+        // não é barato como nas outras listagens: medido contra o Supabase
+        // de produção, "todas as ofertas do Ceará" (10.314 linhas) levou de
+        // ~1 a ~5s só pra contar, e sem filtro nenhum (263 mil linhas) ~2s.
+        // Como o catálogo de cursos só muda quando o sync do MEC roda (não a
+        // cada request), o total fica em cache por um tempo curto — o COUNT
+        // caro roda no máximo 1x a cada 10min por combinação de filtros, os
+        // outros pedidos reaproveitam. A página em si (os 12 registros)
+        // sempre busca fresco, só o TOTAL fica em cache.
+        $query->orderBy('name');
+
+        $perPage = 12;
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        $chaveCache = 'course-offerings:total:' . md5(json_encode($filters));
+        $total = Cache::store('file')->remember(
+            $chaveCache,
+            now()->addMinutes(10),
+            fn () => (clone $query)->toBase()->getCountForPagination()
+        );
+
+        $itens = $total > 0 ? $query->forPage($page, $perPage)->get() : collect();
+
+        return new LengthAwarePaginator($itens, $total, $perPage, $page, [
+            'path' => LengthAwarePaginator::resolveCurrentPath(),
+            'query' => request()->query(),
+        ]);
     }
 
     public function states(): Collection
