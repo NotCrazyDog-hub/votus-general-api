@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 
 class SyncCandidateExpensePaymentsTse extends Command
 {
+    // php artisan sync:candidate-expense-payments-tse storage/app/tse/despesas_pagas_candidatos_2026_CE.csv --uf=CE
     protected $signature = 'sync:candidate-expense-payments-tse
         {file : Caminho do arquivo CSV de despesas pagas}
         {--uf=CE : Sigla da UF a importar}';
