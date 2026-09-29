@@ -32,4 +32,9 @@ class CandidateExpense extends Model
     {
         return $this->belongsTo(Candidate::class);
     }
+
+    public function payments()
+    {
+        return $this->hasMany(CandidateExpensePayment::class);
+    }
 }
