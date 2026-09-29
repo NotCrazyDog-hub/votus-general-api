@@ -23,6 +23,12 @@ class LegislatorController extends Controller
         return LegislatorsResource::collection($senators);
     }
 
+    public function indexForStateDeputies(Request $request) 
+    { 
+        $deputies = $this->service->listByChamber( 'state_house', $request->state ); 
+        return LegislatorsResource::collection($deputies); 
+    }
+
     public function showDeputy(int $external_id)
     {
         return response()->json(
@@ -35,5 +41,12 @@ class LegislatorController extends Controller
         return response()->json(
             $this->service->findByChamber($external_id, 'senate')
         );
+    }
+
+    public function showStateDeputy(string $source_slug) 
+    { 
+        return response()->json( 
+            $this->service->findByChamberSlug( $source_slug, 'state_house' ) 
+        ); 
     }
 }

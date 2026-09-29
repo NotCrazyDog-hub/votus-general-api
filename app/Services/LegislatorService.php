@@ -29,4 +29,12 @@ class LegislatorService
             ->with(['committees', 'bills.topics', 'professions', 'thematicFocusTopTopic'])
             ->firstOrFail();
     }
+
+    public function findByChamberSlug(string $source_slug, string $chamber): Legislator
+    {
+        return Legislator::where('source_slug', $source_slug)
+            ->where('chamber', $chamber)
+            ->with(['committees', 'bills.topics', 'professions', 'thematicFocusTopTopic'])
+            ->firstOrFail();
+    }
 }

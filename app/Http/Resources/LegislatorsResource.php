@@ -23,6 +23,7 @@ class LegislatorsResource extends JsonResource
             'state' => $this->state,
             'electoral_status' => $this->electoral_status,
             'status' => $this->status,
+            'source_slug' => $this->source_slug,
             'metrics' => [
                 'effectiveness' => [
                     'rate' => $this->effectiveness_rate !== null ? (float) $this->effectiveness_rate : null,

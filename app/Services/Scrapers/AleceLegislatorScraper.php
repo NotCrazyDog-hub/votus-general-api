@@ -15,7 +15,8 @@ class AleceLegislatorScraper
     }
 
     /**
-     * Descobre as URLs dos deputados no site da ALECE.
+     * Descobre as URLs dos deputados no site da ALECE
+     * juntamente com o contexto da composição atual.
      */
     public function getLegislatorUrls(): array
     {
@@ -38,19 +39,21 @@ class AleceLegislatorScraper
 
         /*
         * 31ª Legislatura.
-        *
-        * A página atual da ALECE está dentro da 31ª Legislatura.
         */
         $legislature = 31;
 
         /*
-        * Localiza as seções:
+        * A página possui duas seções:
         *
-        * - Em Exercício e Licenciados
-        * - Suplentes em Exercício
+        * 1. Em Exercício e Licenciados
+        * 2. Suplentes em Exercício
+        *
+        * A primeira usa <h1>.
+        * A segunda usa <h2>.
         */
         $headings = $xpath->query(
-            '//h2[contains(@class, "main_page--title")]'
+            '//h1[contains(@class, "main_page--title")]
+            | //h2[contains(@class, "main_page--title")]'
         );
 
         if ($headings === false) {
@@ -62,6 +65,18 @@ class AleceLegislatorScraper
                 continue;
             }
 
+            /*
+            * textContent também captura o texto
+            * que está dentro do <span>.
+            *
+            * Exemplo:
+            *
+            * Em Exercício e <span>Licenciados</span>
+            *
+            * vira:
+            *
+            * Em Exercício e Licenciados
+            */
             $title = trim(
                 preg_replace(
                     '/\s+/u',
@@ -79,20 +94,21 @@ class AleceLegislatorScraper
                     'Suplentes em Exercício'
                 ) !== false
             ) {
-                $electoralStatus = 'suplente';
+                $electoralStatus = 'alternate';
             } elseif (
                 mb_stripos(
                     $title,
                     'Em Exercício e Licenciados'
                 ) !== false
             ) {
-                $electoralStatus = 'titular';
+                $electoralStatus = 'sitting';
             } else {
                 continue;
             }
 
             /*
-            * O <h2> e os cards estão dentro do mesmo .row.
+            * O título e os cards estão dentro
+            * do mesmo <div class="row ...">.
             */
             $container = $heading->parentNode;
 
@@ -100,8 +116,15 @@ class AleceLegislatorScraper
                 continue;
             }
 
+            /*
+            * Busca somente os cards pertencentes
+            * à seção atual.
+            */
             $cards = $xpath->query(
-                './/div[contains(concat(" ", normalize-space(@class), " "), " deputado_card ")]',
+                './/div[contains(
+                    concat(" ", normalize-space(@class), " "),
+                    " deputado_card "
+                )]',
                 $container
             );
 
@@ -114,6 +137,9 @@ class AleceLegislatorScraper
                     continue;
                 }
 
+                /*
+                * Localiza o link do parlamentar.
+                */
                 $link = $xpath->query(
                     './/p[contains(@class, "deputado_card--nome")]//a[@href]',
                     $card
@@ -134,8 +160,11 @@ class AleceLegislatorScraper
                 }
 
                 /*
-                * A ALECE usa a classe "licenciado"
-                * para deputados que não estão em exercício.
+                * Verifica se o parlamentar está licenciado.
+                *
+                * Exemplo:
+                *
+                * class="deputado_card licenciado"
                 */
                 $class = ' ' . trim(
                     preg_replace(
@@ -152,17 +181,25 @@ class AleceLegislatorScraper
 
                 $results[] = [
                     'url' => $url,
+
                     'status' => $isLicensed
                         ? 'inactive'
                         : 'active',
+
                     'electoral_status' => $electoralStatus,
+
                     'legislature' => $legislature,
+
+                    'state' => 'CE',
                 ];
             }
         }
 
         /*
         * Remove possíveis duplicados pelo URL.
+        *
+        * Isso é importante porque um parlamentar pode
+        * aparecer em mais de uma seção.
         */
         $unique = [];
 
@@ -176,8 +213,10 @@ class AleceLegislatorScraper
     /**
      * Faz o scraping de um parlamentar.
      */
-    public function scrape(string $url, array $context = []): array
-    {
+    public function scrape(
+        string $url,
+        array $context = []
+    ): array {
         $html = $this->http->get($url);
 
         return $this->parser->parse(
@@ -186,7 +225,6 @@ class AleceLegislatorScraper
             $context
         );
     }
-
 
     /**
      * Faz o scraping de todos os parlamentares encontrados.
@@ -211,7 +249,6 @@ class AleceLegislatorScraper
         return $legislators;
     }
 
-
     /**
      * Verifica se uma URL parece ser de um parlamentar.
      */
@@ -225,7 +262,11 @@ class AleceLegislatorScraper
 
         $path = trim($path, '/');
 
-        if (!preg_match('#^deputados/([^/]+)$#i', $path, $matches)) {
+        if (!preg_match(
+            '#^deputados/([^/]+)$#i',
+            $path,
+            $matches
+        )) {
             return false;
         }
 
@@ -251,7 +292,10 @@ class AleceLegislatorScraper
             return null;
         }
 
-        if (preg_match('/^https?:\/\//i', $url)) {
+        if (preg_match(
+            '#^https?://#i',
+            $url
+        )) {
             return $url;
         }
 
@@ -263,6 +307,7 @@ class AleceLegislatorScraper
             return rtrim($this->baseUrl, '/') . $url;
         }
 
-        return rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
+        return rtrim($this->baseUrl, '/') . '/'
+            . ltrim($url, '/');
     }
 }

@@ -43,6 +43,8 @@ Route::middleware('cache.headers')->group(function () {
         Route::get('/deputies/{external_id}', 'showDeputy');
         Route::get('/senators', 'indexForSenators');
         Route::get('/senators/{external_id}', 'showSenator');
+        Route::get('/state-deputies', 'indexForStateDeputies'); 
+        Route::get('/state-deputies/{source_slug}', 'showStateDeputy');
     });
 
     Route::controller(CandidateController::class)->group(function () {

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Legislator;
-use App\Models\LegislatorHistory;
 use App\Services\Scrapers\AleceLegislatorScraper;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -74,8 +73,10 @@ class AleceLegislatorService
             [
                 'external_id' => $data['external_id'] ?? null,
                 'chamber' => 'state_house',
+
                 'civil_name' => $data['name'] ?? null,
                 'parliamentary_name' => $data['parliamentary_name'] ?? null,
+
                 'photo_url' => $data['photo_url'] ?? null,
                 'party' => $data['party'] ?? null,
 
@@ -94,10 +95,10 @@ class AleceLegislatorService
         );
 
         /*
-        * Mantemos esses campos explícitos porque
-        * anteriormente o updateOrCreate não estava
-        * persistindo corretamente a identidade da fonte.
-        */
+         * Mantemos esses campos explícitos porque
+         * anteriormente o updateOrCreate não estava
+         * persistindo corretamente a identidade da fonte.
+         */
         $legislator->source = $data['source'];
         $legislator->source_slug = $data['source_slug'];
         $legislator->source_url = $data['source_url'] ?? null;
@@ -108,47 +109,19 @@ class AleceLegislatorService
     }
 
     /**
-     * Salva o histórico parlamentar quando houver informações históricas.
+     * Importa ou atualiza um parlamentar individualmente.
      */
-    public function saveHistory(
-        Legislator $legislator,
-        array $data
-    ): ?LegislatorHistory {
-        if (empty($data['history'])) {
-            return null;
-        }
-
-        $history = $data['history'];
-
-        return LegislatorHistory::updateOrCreate(
-            [
-                'legislator_id' => $legislator->id,
-                'legislature' => $history['legislature'] ?? null,
-                'start_date' => $history['start_date'] ?? null,
-            ],
-            [
-                'end_date' => $history['end_date'] ?? null,
-                'party' => $history['party'] ?? null,
-                'office' => $history['office'] ?? null,
-                'status' => $history['status'] ?? null,
-                'raw_data' => $history,
-            ]
+    public function syncOne(
+        string $url,
+        array $context = []
+    ): Legislator {
+        $data = $this->scraper->scrape(
+            $url,
+            $context
         );
-    }
-
-    /**
-     * Importa um parlamentar individualmente.
-     */
-    public function syncOne(string $url): Legislator
-    {
-        $data = $this->scraper->scrape($url);
 
         return DB::transaction(function () use ($data) {
-            $legislator = $this->saveLegislator($data);
-
-            $this->saveHistory($legislator, $data);
-
-            return $legislator;
+            return $this->saveLegislator($data);
         });
     }
 }
