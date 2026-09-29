@@ -28,6 +28,7 @@ class CandidateService
         'photo_path',
         'proposal_document_path',
         'election_year',
+        'judgment_status',
     ];
 
     public function listByOffice(
