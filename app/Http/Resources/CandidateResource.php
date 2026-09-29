@@ -26,6 +26,7 @@ class CandidateResource extends JsonResource
             'photo_url' => $this->photo_url,
             'proposal_document_url' => $this->proposal_document_url,
             'election_year' => $this->election_year,
+            'judgment_status' => $this->judgment_status,
             'running_mates' => CandidateResource::collection($this->whenLoaded('runningMates')),
             'previous_mandates' => LegislatorSummaryResource::collection($this->whenLoaded('previousMandates')),
             'candidacy_history' => $this->whenLoaded('candidacyHistory', function () {
