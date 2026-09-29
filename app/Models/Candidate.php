@@ -35,6 +35,8 @@ class Candidate extends Model
         'raw_data',
         'photo_path',
         'proposal_document_path',
+        'judgment_status_code',
+        'judgment_status',
     ];
 
     protected $casts = [
@@ -95,5 +97,20 @@ class Candidate extends Model
     public function candidacyHistory(): HasMany
     {
         return $this->hasMany(CandidacyHistory::class)->orderByDesc('election_year');
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(CandidateExpense::class);
+    }
+
+    public function scopeIndeferidos($query)
+    {
+        return $query->where('judgment_status', 'INDEFERIDO');
+    }
+
+    public function scopeDeferidos($query)
+    {
+        return $query->where('judgment_status', 'DEFERIDO');
     }
 }
