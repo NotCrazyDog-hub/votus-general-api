@@ -37,6 +37,9 @@ class Candidate extends Model
         'proposal_document_path',
         'judgment_status_code',
         'judgment_status',
+        'source',
+        'source_slug',
+        'source_url',
     ];
 
     protected $casts = [
