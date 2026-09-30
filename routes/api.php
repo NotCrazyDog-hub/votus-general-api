@@ -22,7 +22,8 @@ use App\Http\Controllers\{
     OpportunityController,
     PublicOpportunityController,
     PublicOpportunityImportController,
-    UniversityController
+    UniversityController,
+    ExecutiveController
 };
 
 // Admin Controllers
@@ -45,6 +46,13 @@ Route::middleware('cache.headers')->group(function () {
         Route::get('/senators/{external_id}', 'showSenator');
         Route::get('/state-deputies', 'indexForStateDeputies'); 
         Route::get('/state-deputies/{source_slug}', 'showStateDeputy');
+    });
+
+    Route::controller(ExecutiveController::class)->group(function () {
+        Route::get('/president', 'indexForPresident');
+        Route::get('/president/{id}', 'showPresident');
+        Route::get('/governors', 'indexForGovernors');
+        Route::get('/governors/{id}', 'showGovernor');
     });
 
     Route::controller(CandidateController::class)->group(function () {
