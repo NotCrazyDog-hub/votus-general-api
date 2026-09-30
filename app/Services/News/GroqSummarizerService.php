@@ -59,7 +59,7 @@ class GroqSummarizerService
         }
 
         $totalChaves = count($chaves);
-        $indiceInicial = (Cache::increment(self::CACHE_INDICE_ROTATIVO) - 1) % $totalChaves;
+        $indiceInicial = ($this->proximoIndiceRotativo() - 1) % $totalChaves;
         $ultimoErro = null;
 
         for ($tentativa = 0; $tentativa < $totalChaves; $tentativa++) {
@@ -88,6 +88,24 @@ class GroqSummarizerService
     private function chavesDisponiveis(): array
     {
         return array_values(array_filter(config('services.groq.api_keys', [])));
+    }
+
+    /**
+     * Cache::increment() sozinho, no driver 'database' (o usado em
+     * produção), retorna false em vez de criar a chave quando ela ainda não
+     * existe — descoberto em produção: isso zerava o índice pra false, que
+     * em aritmética vira 0, e (0 - 1) % 5 dá -1 em PHP (o operador % daqui
+     * não normaliza pra positivo como em outras linguagens), causando
+     * "Undefined array key -1" ao indexar $chaves. Cache::add() garante que
+     * a chave existe antes do increment; o "?: 1" é só uma rede de segurança
+     * adicional caso increment falhe por outro motivo (nunca deixa cair pra
+     * false/0 de novo).
+     */
+    private function proximoIndiceRotativo(): int
+    {
+        Cache::add(self::CACHE_INDICE_ROTATIVO, 0, now()->addDay());
+
+        return Cache::increment(self::CACHE_INDICE_ROTATIVO) ?: 1;
     }
 
     private function chamarGroq(string $chave, string $titulo, string $conteudo): array
