@@ -16,10 +16,14 @@ class ExecutiveService
             ->withQueryString();
     }
 
-   public function findGovernorWithVice(int $id): array
+    public function findStateExecutive(int $id): Executive
     {
-        $governor = Executive::where('id', $id)
-            ->where('office', 'governor')
+        return Executive::where('id', $id)
+            ->where('level', 'state')
+            ->whereIn('office', [
+                'governor',
+                'vice_governor',
+            ])
             ->where('is_current', true)
             ->with([
                 'actions' => fn ($query) => $query
@@ -27,16 +31,22 @@ class ExecutiveService
                     ->orderByDesc('published_at'),
             ])
             ->firstOrFail();
-    
-        $viceGovernor = Executive::where('office', 'vice_governor')
-            ->where('level', 'state')
-            ->where('state', $governor->state)
+    }
+
+    public function findFederalExecutive(int $id): Executive
+    {
+        return Executive::where('id', $id)
+            ->where('level', 'federal')
+            ->whereIn('office', [
+                'president',
+                'vice_president',
+            ])
             ->where('is_current', true)
-            ->first();
-    
-        return [
-            'governor' => $governor,
-            'vice_governor' => $viceGovernor,
-        ];
+            ->with([
+                'actions' => fn ($query) => $query
+                    ->orderByDesc('occurred_at')
+                    ->orderByDesc('published_at'),
+            ])
+            ->firstOrFail();
     }
 }
