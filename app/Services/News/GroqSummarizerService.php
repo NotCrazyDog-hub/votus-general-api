@@ -2,7 +2,9 @@
 
 namespace App\Services\News;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -20,8 +22,22 @@ class GroqSummarizerService
     private const MAX_CONTEUDO_CHARS = 6000;
 
     /**
+     * Chave de cache do contador rotativo usado para espalhar as chamadas
+     * entre as chaves da Groq (ver resumir()).
+     */
+    private const CACHE_INDICE_ROTATIVO = 'groq:proxima-chave';
+
+    /**
      * Gera um resumo de IA para a notícia, alternando entre as chaves da Groq
      * configuradas para distribuir a carga e evitar que uma única chave esgote sua cota.
+     *
+     * A chave inicial de cada chamada vem de um contador rotativo atômico
+     * (Cache::increment), não de um hash do título: com N chaves, a cada N
+     * chamadas consecutivas cada uma é usada exatamente uma vez — o que um
+     * hash não garante para lotes pequenos (ex.: 15 notícias / 5 chaves podia
+     * sair 6/2/4/2/1 por coincidência de hash). Se a chave escolhida falhar,
+     * tenta em sequência as demais chaves configuradas antes de desistir —
+     * uma notícia só falha de vez se todas as chaves falharem.
      *
      * Além do resumo, essa mesma chamada decide se a notícia é publicável no
      * Votus (relevante_votus) — o Votus não é um agregador geral de notícias,
@@ -35,23 +51,31 @@ class GroqSummarizerService
         $chaves = $this->chavesDisponiveis();
 
         if (empty($chaves)) {
-            throw new RuntimeException('Nenhuma chave da Groq configurada (GROQ_API_KEY_1/2/3).');
+            throw new RuntimeException('Nenhuma chave da Groq configurada (GROQ_API_KEY_1 a GROQ_API_KEY_5).');
         }
 
         if (mb_strlen($conteudo) > self::MAX_CONTEUDO_CHARS) {
             $conteudo = mb_substr($conteudo, 0, self::MAX_CONTEUDO_CHARS);
         }
 
-        $indiceInicial = crc32($titulo) % count($chaves);
+        $totalChaves = count($chaves);
+        $indiceInicial = (Cache::increment(self::CACHE_INDICE_ROTATIVO) - 1) % $totalChaves;
         $ultimoErro = null;
 
-        for ($tentativa = 0; $tentativa < count($chaves); $tentativa++) {
-            $chave = $chaves[($indiceInicial + $tentativa) % count($chaves)];
+        for ($tentativa = 0; $tentativa < $totalChaves; $tentativa++) {
+            $posicao = ($indiceInicial + $tentativa) % $totalChaves;
+            $chave = $chaves[$posicao];
 
             try {
                 return $this->chamarGroq($chave, $titulo, $conteudo);
             } catch (Throwable $e) {
                 $ultimoErro = $e;
+                Log::warning(sprintf(
+                    '[NEWS] Chave Groq #%d de %d falhou, tentando próxima: %s',
+                    $posicao + 1,
+                    $totalChaves,
+                    $e->getMessage()
+                ));
             }
         }
 

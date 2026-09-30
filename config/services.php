@@ -46,6 +46,8 @@ return [
             env('GROQ_API_KEY_1'),
             env('GROQ_API_KEY_2'),
             env('GROQ_API_KEY_3'),
+            env('GROQ_API_KEY_4'),
+            env('GROQ_API_KEY_5'),
         ],
     ],
 

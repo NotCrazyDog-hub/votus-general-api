@@ -91,7 +91,7 @@ Em seguida, copie o resultado e cole na variável "SCHEDULER_TOKEN" do .env (ess
 
 Preencha também a variável "N8N_WEBHOOK_URL" do .env com a URL do n8n para conectar com seu agente de IA (usada apenas pelo `/api/agente/perguntar`, sem relação com a coleta de notícias)
 
-Para o pipeline de notícias, preencha as variáveis `GROQ_API_KEY_1`, `GROQ_API_KEY_2` e `GROQ_API_KEY_3` com chaves da [Groq](https://console.groq.com) — o resumo de IA alterna entre elas para distribuir o limite de uso
+Para o pipeline de notícias, preencha as variáveis `GROQ_API_KEY_1` a `GROQ_API_KEY_5` com chaves da [Groq](https://console.groq.com) — o resumo de IA roda um contador rotativo entre as chaves configuradas para distribuir a carga de forma equilibrada, e faz fallback sequencial pelas demais chaves se uma delas falhar (rate limit, chave inválida, etc.). Não é obrigatório preencher as 5: o serviço usa quantas chaves não-vazias encontrar em `config('services.groq.api_keys')`.
 
 Para importar documentos de propostas de candidatos, configure também o armazenamento S3 do Supabase:
 
@@ -275,8 +275,10 @@ A coleta e o resumo de notícias rodam nativamente em Laravel (Jobs + Filas), se
 
 * **Fontes** ficam cadastradas na tabela `fontes` (uma fonte pode ter várias categorias/feeds em `feeds`, como a Agência Brasil).
 * **Coleta** (`fila coleta`): um Job isolado por fonte busca os feeds, normaliza os links, deduplica por `link_normalizado` e persiste a notícia original.
-* **Resumo** (`fila resumo`): um Job isolado por notícia chama a API da Groq (alternando entre até 3 chaves) para gerar o resumo, a relevância e as palavras-chave, respeitando rate limiting.
+* **Resumo** (`fila resumo`): um Job isolado por notícia chama a API da Groq (rotacionando entre até 5 chaves configuradas, com fallback sequencial pelas demais em caso de falha de uma delas) para gerar o resumo, a relevância e as palavras-chave, respeitando rate limiting.
 * **Circuit breaker**: uma fonte é desativada automaticamente após atingir `limite_falhas` falhas consecutivas de coleta.
+* **Rede de segurança do ciclo de 12h** (`App\Services\News\CicloAutomaticoNoticias`): como o agendamento principal depende do cron-job.org externo, toda leitura pública de `GET /api/news` verifica se a última coleta de todas as fontes ativas passou de 12h e, se sim, dispara `noticias:coletar` sozinha (com trava de 1h para não disparar em duplicidade) — checagem em cache por 10 min, sem impacto perceptível na resposta.
+* **Disparo manual pelo Admin**: `POST /api/admin/news/collect` (autenticado) roda o mesmo pipeline com um lote menor (5 notícias/fonte) e ignora a janela `offset_minutos`; `POST /api/admin/news/drain` só drena o que já está na fila, sem coletar nada novo — o painel chama esse segundo endpoint a cada poucos segundos enquanto houver pendências, em vez de depender de um único clique terminar tudo.
 
 ```bash
 php artisan noticias:coletar
