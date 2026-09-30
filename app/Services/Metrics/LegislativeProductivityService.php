@@ -44,7 +44,9 @@ class LegislativeProductivityService
             return $this->senateApi->getMandateStartDate($legislator->external_id);
         }
 
-        $period = LegislaturePeriod::where('legislature_number', $legislator->legislature)->first();
+        $period = LegislaturePeriod::where('legislature_number', $legislator->legislature)
+            ->where('chamber', $legislator->chamber)
+            ->first();
 
         return $period?->starts_at?->toDateString();
     }

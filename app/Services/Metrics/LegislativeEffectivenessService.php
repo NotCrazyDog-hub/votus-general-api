@@ -41,6 +41,17 @@ class LegislativeEffectivenessService
             );
         }
 
+        if ($bill->chamber === 'state_house') {
+            // Sem histórico de tramitação granular nesse scraper — só temos o
+            // status final. "Avançou" aqui significa "virou lei", que é um
+            // critério mais rígido do que os das outras câmaras (que capturam
+            // progresso parcial, tipo aprovação em comissão). Os números não
+            // são diretamente comparáveis entre câmaras por causa dessa diferença.
+            $lawNumber = $bill->raw_data['law_number'] ?? null;
+
+            return !empty($lawNumber) && $lawNumber !== '-';
+        }
+
         $advancedCodes = config('legislative_metrics.effectiveness.senate_advanced_status_codes');
 
         return $bill->tramitations->contains(
