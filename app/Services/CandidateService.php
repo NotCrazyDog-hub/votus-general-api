@@ -120,12 +120,25 @@ class CandidateService
     }
 
     /**
-     * Quantos já tiveram mandato de parlamentar antes (CPF batendo com algum
-     * registro em Legislator, ver Candidate::previousMandates).
+     * Quantos já foram eleitos antes, pra qualquer cargo — usa
+     * candidacy_history (histórico real de candidaturas do TSE), não
+     * Candidate::previousMandates: essa segunda só cruza CPF com a
+     * legislatura ATUAL rastreada pelo Votus (só deputados/senadores em
+     * exercício hoje), perdendo ex-governador, ex-prefeito ou quem foi
+     * parlamentar numa legislatura passada — exatamente o problema já
+     * corrigido no perfil individual do candidato (ver
+     * CandidatoDetailClient.tsx no frontend, "Histórico de candidaturas").
+     * Mesmo critério de "foi eleito" usado lá (foiEleito()): contém
+     * "eleito" e não contém "não eleito"/"nao eleito".
      */
     public function jaFoiParlamentarByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->contarComFiltro('ja-foi-parlamentar', $office, $state, fn ($q) => $q->whereHas('previousMandates'));
+        return $this->contarComFiltro('ja-foi-parlamentar', $office, $state, fn ($q) => $q->whereHas(
+            'candidacyHistory',
+            fn ($h) => $h->where('result_status', 'ilike', '%eleito%')
+                ->where('result_status', 'not ilike', '%não eleito%')
+                ->where('result_status', 'not ilike', '%nao eleito%'),
+        ));
     }
 
     /**
