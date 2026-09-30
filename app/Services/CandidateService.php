@@ -46,6 +46,7 @@ class CandidateService
         return Candidate::titulares()
             ->select(self::LIST_COLUMNS)
             ->where('office_name', $office->toTseDescription())
+            ->deferidos()
             ->when($state, fn ($q) => $q->where('state', $state))
             ->when($party, fn ($q) => $q->where('party_acronym', $party))
             ->when($search, function ($q) use ($search) {
@@ -78,12 +79,74 @@ class CandidateService
             now()->addHour(),
             fn () => Candidate::titulares()
                 ->where('office_name', $office->toTseDescription())
+                ->deferidos()
                 ->when($state, fn ($q) => $q->where('state', $state))
                 ->whereNotNull('party_acronym')
                 ->distinct()
                 ->orderBy('party_acronym')
                 ->pluck('party_acronym')
                 ->all(),
+        );
+    }
+
+    /**
+     * Quantos candidatos titulares do cargo têm plano de governo anexado
+     * (proposal_document_path). Igual a partiesByOffice: precisa contar
+     * entre TODOS os candidatos do cargo, não só os 50 da página atual, daí
+     * o mesmo cache de 1h em disco em vez de deixar o front somar sozinho.
+     */
+    public function comPropostaByOffice(CandidateOffice $office, ?string $state = null): int
+    {
+        return $this->contarComFiltro('com-proposta', $office, $state, fn ($q) => $q->whereNotNull('proposal_document_path'));
+    }
+
+    /**
+     * Quantos declararam "SUPERIOR COMPLETO" como escolaridade — mesma
+     * string usada pelo TSE em DS_GRAU_INSTRUCAO, confirmada nos dados reais.
+     */
+    public function comEnsinoSuperiorByOffice(CandidateOffice $office, ?string $state = null): int
+    {
+        return $this->contarComFiltro('ensino-superior', $office, $state, fn ($q) => $q->where('education_level', 'SUPERIOR COMPLETO'));
+    }
+
+    /**
+     * Quantos têm vice ou suplentes registrados na chapa (running_mates) —
+     * só existe pra Presidente/Governador/Senador; Deputado Federal/Estadual
+     * não tem vice, então esse número vem sempre 0 pra esses dois cargos.
+     */
+    public function comChapaByOffice(CandidateOffice $office, ?string $state = null): int
+    {
+        return $this->contarComFiltro('com-chapa', $office, $state, fn ($q) => $q->whereHas('runningMates'));
+    }
+
+    /**
+     * Quantos já tiveram mandato de parlamentar antes (CPF batendo com algum
+     * registro em Legislator, ver Candidate::previousMandates).
+     */
+    public function jaFoiParlamentarByOffice(CandidateOffice $office, ?string $state = null): int
+    {
+        return $this->contarComFiltro('ja-foi-parlamentar', $office, $state, fn ($q) => $q->whereHas('previousMandates'));
+    }
+
+    /**
+     * Base compartilhada pelos contadores agregados acima: candidatos
+     * titulares deferidos do cargo, com um filtro extra, contados entre
+     * TODOS (não só a página atual) e cacheados por 1h em disco — a lista
+     * só muda quando o sync do TSE roda.
+     */
+    private function contarComFiltro(string $chaveCache, CandidateOffice $office, ?string $state, \Closure $filtro): int
+    {
+        return Cache::store('file')->remember(
+            "candidates:{$chaveCache}:{$office->value}:".($state ?? 'all'),
+            now()->addHour(),
+            function () use ($office, $state, $filtro) {
+                $query = Candidate::titulares()
+                    ->where('office_name', $office->toTseDescription())
+                    ->deferidos()
+                    ->when($state, fn ($q) => $q->where('state', $state));
+
+                return $filtro($query)->count();
+            },
         );
     }
 

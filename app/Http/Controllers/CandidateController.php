@@ -96,6 +96,10 @@ class CandidateController extends Controller
         return CandidateResource::collection($candidates)->additional([
             'filters' => [
                 'parties' => $this->service->partiesByOffice($office, $state),
+                'com_proposta' => $this->service->comPropostaByOffice($office, $state),
+                'com_ensino_superior' => $this->service->comEnsinoSuperiorByOffice($office, $state),
+                'com_chapa' => $this->service->comChapaByOffice($office, $state),
+                'ja_foi_parlamentar' => $this->service->jaFoiParlamentarByOffice($office, $state),
             ],
         ]);
     }
