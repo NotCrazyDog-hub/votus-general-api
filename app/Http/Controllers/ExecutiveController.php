@@ -24,14 +24,16 @@ class ExecutiveController extends Controller
 
     public function showGovernor(int $id)
     {
-        return new ExecutivesResource(
-            $this->service->findByOffice(
-                $id,
-                'governor'
-            )
-        );
+        $data = $this->service->findGovernorWithVice($id);
+    
+        return response()->json([
+            'governor' => new ExecutivesResource($data['governor']),
+            'vice_governor' => $data['vice_governor']
+                ? new ExecutivesResource($data['vice_governor'])
+                : null,
+        ]);
     }
-
+    
     public function indexForPresident()
     {
         $president = $this->service->listByLevel('federal');
@@ -41,11 +43,13 @@ class ExecutiveController extends Controller
 
     public function showPresident(int $id)
     {
-        return new ExecutivesResource(
-            $this->service->findByOffice(
-                $id,
-                'president'
-            )
-        );
+        $data = $this->service->findPresidentWithVice($id);
+    
+        return response()->json([
+            'president' => new ExecutivesResource($data['president']),
+            'vice_president' => $data['vice_president']
+                ? new ExecutivesResource($data['vice_president'])
+                : null,
+        ]);
     }
 }
