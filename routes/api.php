@@ -141,9 +141,6 @@ Route::get('/suggestion-questions', [SuggestionQuestionController::class, 'index
 Route::controller(SchedulerController::class)->prefix('schedule')->group(function () {
     Route::get('/status', 'status');
     Route::middleware('throttle:6,1')->group(function () {
-        // URIs ficam em português de propósito (chamadas por um agendador
-        // externo, cron-job.org, configurado fora deste repositório) — só
-        // os métodos do Controller foram padronizados pra inglês.
         Route::post('/coletar-noticias', 'runNewsPipeline');
         Route::post('/processar-fila-noticias', 'processNewsQueue');
     });

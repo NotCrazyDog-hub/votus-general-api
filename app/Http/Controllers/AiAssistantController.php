@@ -11,8 +11,6 @@ class AiAssistantController extends Controller
 {
     public function ask(Request $request): JsonResponse
     {
-        // 'mensagem'/'resposta': contrato com o webhook do n8n (configurado
-        // fora deste repositório), não renomeado — ver decisão de escopo.
         $data = $request->validate([
             'mensagem' => [
                 'required',

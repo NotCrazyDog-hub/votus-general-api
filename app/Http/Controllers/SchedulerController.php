@@ -20,12 +20,6 @@ class SchedulerController extends Controller
      * chamado com muito mais frequência (ex: a cada 5-10 min). Se os dois
      * estivessem no mesmo endpoint, uma coleta de 12h em 12h nunca daria
      * tempo de resumir tudo antes da próxima leva de notícias chegar.
-     *
-     * Rota (/api/schedule/coletar-noticias) propositalmente NÃO foi
-     * renomeada apesar do método/código internos terem virado inglês: é
-     * chamada por um agendador externo (cron-job.org) configurado fora
-     * deste repositório — mudar a URI exigiria atualizar aquele cron job
-     * manualmente, coordenado com o deploy.
      */
     public function runNewsPipeline(Request $request): JsonResponse
     {
@@ -65,9 +59,6 @@ class SchedulerController extends Controller
      * Disparado externamente (cron-job.org) com alta frequência (ex: a cada
      * 5-10 min) só para continuar drenando o que a coleta das últimas 12h
      * deixou pendente na fila de resumo, respeitando o rate limiting da IA.
-     *
-     * Rota (/api/schedule/processar-fila-noticias) também propositalmente
-     * não renomeada — mesmo motivo do método acima.
      */
     public function processNewsQueue(Request $request): JsonResponse
     {
