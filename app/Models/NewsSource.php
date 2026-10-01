@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Fonte extends Model
+class NewsSource extends Model
 {
     use HasFactory;
 
+    // Nome da classe em inglês (NewsSource), mas a tabela em si continua
+    // 'fontes' — não renomeamos banco de dados, só a camada de código.
     protected $table = 'fontes';
 
     protected $fillable = [
@@ -43,11 +45,11 @@ class Fonte extends Model
         return $this->hasMany(News::class, 'fonte_id');
     }
 
-    public function registrarFalha(string $erro): void
+    public function recordFailure(string $error): void
     {
         $this->falhas_consecutivas++;
         $this->ultima_falha_em = now();
-        $this->ultimo_erro = str($erro)->limit(500)->toString();
+        $this->ultimo_erro = str($error)->limit(500)->toString();
 
         if ($this->falhas_consecutivas >= $this->limite_falhas) {
             $this->ativa = false;
@@ -57,14 +59,14 @@ class Fonte extends Model
         $this->save();
     }
 
-    public function registrarSucesso(): void
+    public function recordSuccess(): void
     {
         $this->falhas_consecutivas = 0;
         $this->ultima_coleta_em = now();
         $this->save();
     }
 
-    public function reativar(): void
+    public function reactivate(): void
     {
         $this->ativa = true;
         $this->falhas_consecutivas = 0;

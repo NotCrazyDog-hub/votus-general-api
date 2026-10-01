@@ -43,10 +43,10 @@ class CandidateService
         // páginas — ver o mesmo comentário em LegislatorService::listByChamber.
         // Sem isso, o botão "próxima" nunca desabilitava de verdade e o
         // número de páginas exibido crescia a cada clique.
-        return Candidate::titulares()
+        return Candidate::mainCandidates()
             ->select(self::LIST_COLUMNS)
             ->where('office_name', $office->toTseDescription())
-            ->deferidos()
+            ->approved()
             ->when($state, fn ($q) => $q->where('state', $state))
             ->when($party, fn ($q) => $q->where('party_acronym', $party))
             ->when($search, function ($q) use ($search) {
@@ -77,9 +77,9 @@ class CandidateService
         return Cache::store('file')->remember(
             "candidates:parties:{$office->value}:".($state ?? 'all'),
             now()->addHour(),
-            fn () => Candidate::titulares()
+            fn () => Candidate::mainCandidates()
                 ->where('office_name', $office->toTseDescription())
-                ->deferidos()
+                ->approved()
                 ->when($state, fn ($q) => $q->where('state', $state))
                 ->whereNotNull('party_acronym')
                 ->distinct()
@@ -153,9 +153,9 @@ class CandidateService
             "candidates:{$chaveCache}:{$office->value}:".($state ?? 'all'),
             now()->addHour(),
             function () use ($office, $state, $filtro) {
-                $query = Candidate::titulares()
+                $query = Candidate::mainCandidates()
                     ->where('office_name', $office->toTseDescription())
-                    ->deferidos()
+                    ->approved()
                     ->when($state, fn ($q) => $q->where('state', $state));
 
                 return $filtro($query)->count();
@@ -165,7 +165,7 @@ class CandidateService
 
     public function findByOffice(int $externalId, CandidateOffice $office): Candidate
     {
-        return Candidate::titulares()
+        return Candidate::mainCandidates()
             ->where('external_id', $externalId)
             ->where('office_name', $office->toTseDescription())
             ->with(['runningMates', 'previousMandates', 'candidacyHistory'])

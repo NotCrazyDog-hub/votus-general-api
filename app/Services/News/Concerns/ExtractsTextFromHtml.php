@@ -9,20 +9,20 @@ namespace App\Services\News\Concerns;
  * original exibido na API — o HTML bruto fica só em conteudo_original,
  * pra auditoria.
  */
-trait ExtraiTextoDeHtml
+trait ExtractsTextFromHtml
 {
-    public function textoLimpo(string $html): string
+    public function cleanText(string $html): string
     {
         $html = preg_replace('/<(p|div|h[1-6]|li)[^>]*>/i', '', $html) ?? $html;
         $html = preg_replace('/<\/(p|div|h[1-6]|li)>/i', "\n\n", $html) ?? $html;
         $html = preg_replace('/<br\s*\/?>/i', "\n", $html) ?? $html;
 
-        $texto = strip_tags($html);
-        $texto = html_entity_decode($texto, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $texto = preg_replace('/[ \t]+/', ' ', $texto) ?? $texto;
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[ \t]+/', ' ', $text) ?? $text;
 
-        $linhas = array_filter(array_map('trim', explode("\n", $texto)), fn ($linha) => $linha !== '');
+        $lines = array_filter(array_map('trim', explode("\n", $text)), fn ($line) => $line !== '');
 
-        return trim(implode("\n\n", $linhas));
+        return trim(implode("\n\n", $lines));
     }
 }

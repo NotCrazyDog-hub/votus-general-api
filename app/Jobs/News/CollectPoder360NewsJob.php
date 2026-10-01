@@ -2,8 +2,8 @@
 
 namespace App\Jobs\News;
 
-use App\Jobs\News\Concerns\PersisteNoticiasValidas;
-use App\Models\Fonte;
+use App\Jobs\News\Concerns\PersistsValidNews;
+use App\Models\NewsSource;
 use App\Services\News\LinkNormalizer;
 use App\Services\News\NewsCategoryPriority;
 use App\Services\News\Poder360Collector;
@@ -16,9 +16,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class ColetarPoder360NoticiasJob implements ShouldQueue
+class CollectPoder360NewsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PersisteNoticiasValidas;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PersistsValidNews;
 
     // Maior que antes (120s): agora cada item novo pode exigir buscar a
     // og:image da matéria e checar se a imagem responde.
@@ -28,11 +28,11 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
 
     /**
      * Teto de notícias NOVAS e VÁLIDAS gravadas por ciclo quando o Job é
-     * despachado sem limite explícito — ver ColetarAgenciaBrasilNoticiasJob.
+     * despachado sem limite explícito — ver CollectAgenciaBrasilNewsJob.
      */
     private const MAX_NOTICIAS_POR_CICLO = 15;
 
-    public function __construct(public int $fonteId, public ?int $limite = null)
+    public function __construct(public int $sourceId, public ?int $limit = null)
     {
         $this->onQueue('coleta');
     }
@@ -44,40 +44,40 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
      */
     public function middleware(): array
     {
-        return [(new WithoutOverlapping("coleta-fonte-{$this->fonteId}"))->dontRelease()->expireAfter($this->timeout)];
+        return [(new WithoutOverlapping("coleta-fonte-{$this->sourceId}"))->dontRelease()->expireAfter($this->timeout)];
     }
 
     public function handle(Poder360Collector $collector, LinkNormalizer $normalizer): void
     {
-        $fonte = Fonte::find($this->fonteId);
+        $source = NewsSource::find($this->sourceId);
 
-        if (!$fonte || !$fonte->ativa) {
+        if (!$source || !$source->ativa) {
             return;
         }
 
-        $feeds = $fonte->feeds ?? [];
+        $feeds = $source->feeds ?? [];
 
         if (empty($feeds)) {
             return;
         }
 
-        $itensColetados = [];
+        $collectedItems = [];
 
-        foreach ($feeds as $categoriaSlug => $feedUrl) {
+        foreach ($feeds as $categorySlug => $feedUrl) {
             try {
-                $itens = $collector->coletar($feedUrl);
+                $items = $collector->collect($feedUrl);
             } catch (Throwable $e) {
-                Log::error("[NEWS] Fonte {$fonte->slug}/{$categoriaSlug} falhou: {$e->getMessage()}", [
-                    'fonte_id' => $fonte->id,
+                Log::error("[NEWS] Fonte {$source->slug}/{$categorySlug} falhou: {$e->getMessage()}", [
+                    'fonte_id' => $source->id,
                     'exception' => $e,
                 ]);
-                $fonte->registrarFalha($e->getMessage());
+                $source->recordFailure($e->getMessage());
                 return;
             }
 
-            foreach ($itens as $item) {
-                $item['categoria_slug'] = (string) $categoriaSlug;
-                $itensColetados[] = $item;
+            foreach ($items as $item) {
+                $item['categoria_slug'] = (string) $categorySlug;
+                $collectedItems[] = $item;
             }
         }
 
@@ -86,21 +86,21 @@ class ColetarPoder360NoticiasJob implements ShouldQueue
         // Eleições", "Poder Justiça") — usamos essa, não a chave do feed, pra
         // priorizar editorias compatíveis com o Votus. A aprovação de fato é
         // decidida pela Etapa 2 (filtro por conteúdo), no resumo de IA.
-        usort($itensColetados, function (array $a, array $b) {
-            $prioridadeA = NewsCategoryPriority::isPrioritaria($a['category'] ?? null) ? 0 : 1;
-            $prioridadeB = NewsCategoryPriority::isPrioritaria($b['category'] ?? null) ? 0 : 1;
+        usort($collectedItems, function (array $a, array $b) {
+            $priorityA = NewsCategoryPriority::isPriority($a['category'] ?? null) ? 0 : 1;
+            $priorityB = NewsCategoryPriority::isPriority($b['category'] ?? null) ? 0 : 1;
 
-            if ($prioridadeA !== $prioridadeB) {
-                return $prioridadeA <=> $prioridadeB;
+            if ($priorityA !== $priorityB) {
+                return $priorityA <=> $priorityB;
             }
 
             return strcmp($b['published_at'] ?? '', $a['published_at'] ?? '');
         });
 
         // Deduplica, valida imagem e grava até o limite de notícias novas —
-        // ver Concerns\PersisteNoticiasValidas.
-        $this->persistirNovasValidas($fonte, $itensColetados, $this->limite ?? self::MAX_NOTICIAS_POR_CICLO, $normalizer);
+        // ver Concerns\PersistsValidNews.
+        $this->persistNewValid($source, $collectedItems, $this->limit ?? self::MAX_NOTICIAS_POR_CICLO, $normalizer);
 
-        $fonte->registrarSucesso();
+        $source->recordSuccess();
     }
 }

@@ -8,12 +8,12 @@ use Throwable;
 
 /**
  * Regra do Votus: notícia sem imagem real e utilizável não entra no banco.
- * Chamado ANTES da persistência (ver Concerns\PersisteNoticiasValidas) —
+ * Chamado ANTES da persistência (ver Concerns\PersistsValidNews) —
  * nada é salvo para ser "corrigido depois".
  *
  * Nunca inventa nem substitui imagem: só diz se a que veio da fonte serve.
  */
-class ValidadorImagemNoticia
+class NewsImageValidator
 {
     public const SEM_IMAGEM = 'sem_imagem';
     public const INVALIDA = 'imagem_invalida';
@@ -25,7 +25,7 @@ class ValidadorImagemNoticia
      * não foto da matéria — ex.: a Agência Brasil reaproveita
      * "eleicoes-2026-banner.png" e "banner_agenda_-_1170x700.png" em várias
      * notícias diferentes (visto no banco: 5 e 4 notícias com a mesma arte).
-     * Também usado no filtro da listagem pública (News::scopeComImagemPublicavel).
+     * Também usado no filtro da listagem pública (News::scopePubliclyDisplayable).
      */
     public const TRECHOS_GENERICOS = [
         'banner',
@@ -49,7 +49,7 @@ class ValidadorImagemNoticia
      * @return string|null null quando a imagem é válida; caso contrário, o
      *                     motivo (uma das constantes acima), usado nos logs.
      */
-    public function motivoInvalida(?string $url): ?string
+    public function invalidReason(?string $url): ?string
     {
         $url = trim((string) $url);
 
@@ -61,23 +61,23 @@ class ValidadorImagemNoticia
             return self::INVALIDA;
         }
 
-        if ($this->pareceGenerica($url)) {
+        if ($this->looksGeneric($url)) {
             return self::GENERICA;
         }
 
-        if (!$this->responde($url)) {
+        if (!$this->respondsAsImage($url)) {
             return self::INACESSIVEL;
         }
 
         return null;
     }
 
-    private function pareceGenerica(string $url): bool
+    private function looksGeneric(string $url): bool
     {
-        $urlMinuscula = mb_strtolower($url);
+        $lowerUrl = mb_strtolower($url);
 
-        foreach (self::TRECHOS_GENERICOS as $trecho) {
-            if (str_contains($urlMinuscula, $trecho)) {
+        foreach (self::TRECHOS_GENERICOS as $snippet) {
+            if (str_contains($lowerUrl, $snippet)) {
                 return true;
             }
         }
@@ -90,20 +90,20 @@ class ValidadorImagemNoticia
      * (next/image) vai buscar. HEAD primeiro (barato); alguns servidores não
      * aceitam HEAD, então cai para um GET limitado ao primeiro byte.
      */
-    private function responde(string $url): bool
+    private function respondsAsImage(string $url): bool
     {
         try {
-            $resposta = Http::timeout(8)->withHeaders(['User-Agent' => 'Mozilla/5.0 (Votus)'])->head($url);
+            $response = Http::timeout(8)->withHeaders(['User-Agent' => 'Mozilla/5.0 (Votus)'])->head($url);
 
-            if (in_array($resposta->status(), [403, 405, 501], true)) {
-                $resposta = Http::timeout(8)
+            if (in_array($response->status(), [403, 405, 501], true)) {
+                $response = Http::timeout(8)
                     ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Votus)', 'Range' => 'bytes=0-0'])
                     ->get($url);
             }
 
-            $tipo = mb_strtolower((string) $resposta->header('Content-Type'));
+            $contentType = mb_strtolower((string) $response->header('Content-Type'));
 
-            return $resposta->successful() && str_starts_with($tipo, 'image/');
+            return $response->successful() && str_starts_with($contentType, 'image/');
         } catch (Throwable) {
             return false;
         }

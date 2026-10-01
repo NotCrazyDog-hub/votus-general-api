@@ -57,7 +57,7 @@ php artisan migrate
 Popule os dados iniciais:
 
 ```bash
-php artisan db:seed --class=FontesSeeder
+php artisan db:seed --class=NewsSourcesSeeder
 php artisan db:seed --class=SuggestionQuestionsSeeder
 php artisan db:seed --class=LegislaturePeriodSeeder
 ```
@@ -125,7 +125,7 @@ CACHE_STORE=database
 php artisan migrate
 ```
 ```bash
-php artisan db:seed --class=FontesSeeder
+php artisan db:seed --class=NewsSourcesSeeder
 ```
 Sincronize os dados legislativos em sequência:
 
@@ -456,7 +456,7 @@ Services/
   LegislatorService.php             Queries no banco de dados
   TseCandidatesCsvService.php       Leitura do CSV de candidatos do TSE
 database/seeders/
-  FontesSeeder.php                  Fontes de notícias
+  NewsSourcesSeeder.php                  Fontes de notícias
   LegislaturePeriodSeeder.php       Períodos legislativos
   ProposalSeeder.php                Dados de exemplo de propostas
   SuggestionQuestionsSeeder.php     Perguntas de sugestões

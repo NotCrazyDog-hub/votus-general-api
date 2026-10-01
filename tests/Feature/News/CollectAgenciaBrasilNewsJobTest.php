@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\ColetarAgenciaBrasilNoticiasJob;
-use App\Jobs\News\ResumirNoticiaJob;
-use App\Models\Fonte;
+use App\Jobs\News\CollectAgenciaBrasilNewsJob;
+use App\Jobs\News\SummarizeNewsJob;
+use App\Models\NewsSource;
 use App\Models\News;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
-class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
+class CollectAgenciaBrasilNewsJobTest extends NewsTestCase
 {
 
     private function feedXml(): string
@@ -27,25 +27,25 @@ class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
             'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
         ]);
 
-        $fonte = Fonte::factory()->create();
+        $source = NewsSource::factory()->create();
 
-        (new ColetarAgenciaBrasilNoticiasJob($fonte->id))->handle(
+        (new CollectAgenciaBrasilNewsJob($source->id))->handle(
             app(\App\Services\News\AgenciaBrasilCollector::class),
             app(\App\Services\News\LinkNormalizer::class),
         );
 
         $this->assertSame(2, News::count());
-        Queue::assertPushed(ResumirNoticiaJob::class, 2);
+        Queue::assertPushed(SummarizeNewsJob::class, 2);
 
         $noticia = News::first();
         $this->assertSame('pendente', $noticia->status_resumo);
         $this->assertFalse($noticia->published);
-        $this->assertSame($fonte->id, $noticia->fonte_id);
+        $this->assertSame($source->id, $noticia->fonte_id);
         $this->assertSame('ultimasnoticias', $noticia->eixo);
 
-        $fonte->refresh();
-        $this->assertSame(0, $fonte->falhas_consecutivas);
-        $this->assertNotNull($fonte->ultima_coleta_em);
+        $source->refresh();
+        $this->assertSame(0, $source->falhas_consecutivas);
+        $this->assertNotNull($source->ultima_coleta_em);
     }
 
     public function test_it_does_not_duplicate_news_on_a_second_run(): void
@@ -57,8 +57,8 @@ class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
             'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
         ]);
 
-        $fonte = Fonte::factory()->create();
-        $job = new ColetarAgenciaBrasilNoticiasJob($fonte->id);
+        $source = NewsSource::factory()->create();
+        $job = new CollectAgenciaBrasilNewsJob($source->id);
         $collector = app(\App\Services\News\AgenciaBrasilCollector::class);
         $normalizer = app(\App\Services\News\LinkNormalizer::class);
 
@@ -73,29 +73,29 @@ class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
         Queue::fake();
         Http::fake(['https://exemplo.com/feed.xml' => Http::response('erro interno', 500)]);
 
-        $fonte = Fonte::factory()->create(['limite_falhas' => 2]);
+        $source = NewsSource::factory()->create(['limite_falhas' => 2]);
 
-        (new ColetarAgenciaBrasilNoticiasJob($fonte->id))->handle(
+        (new CollectAgenciaBrasilNewsJob($source->id))->handle(
             app(\App\Services\News\AgenciaBrasilCollector::class),
             app(\App\Services\News\LinkNormalizer::class),
         );
 
-        $fonte->refresh();
+        $source->refresh();
         $this->assertSame(0, News::count());
-        $this->assertSame(1, $fonte->falhas_consecutivas);
-        $this->assertTrue($fonte->ativa);
-        $this->assertNotNull($fonte->ultima_falha_em);
+        $this->assertSame(1, $source->falhas_consecutivas);
+        $this->assertTrue($source->ativa);
+        $this->assertNotNull($source->ultima_falha_em);
 
         // segunda falha consecutiva atinge o limite e desativa a fonte
-        (new ColetarAgenciaBrasilNoticiasJob($fonte->id))->handle(
+        (new CollectAgenciaBrasilNewsJob($source->id))->handle(
             app(\App\Services\News\AgenciaBrasilCollector::class),
             app(\App\Services\News\LinkNormalizer::class),
         );
 
-        $fonte->refresh();
-        $this->assertSame(2, $fonte->falhas_consecutivas);
-        $this->assertFalse($fonte->ativa);
-        $this->assertNotNull($fonte->desativada_em);
+        $source->refresh();
+        $this->assertSame(2, $source->falhas_consecutivas);
+        $this->assertFalse($source->ativa);
+        $this->assertNotNull($source->desativada_em);
     }
 
     public function test_an_inactive_source_is_skipped(): void
@@ -106,9 +106,9 @@ class ColetarAgenciaBrasilNoticiasJobTest extends NewsTestCase
             'https://imagens.ebc.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/png']),
         ]);
 
-        $fonte = Fonte::factory()->create(['ativa' => false]);
+        $source = NewsSource::factory()->create(['ativa' => false]);
 
-        (new ColetarAgenciaBrasilNoticiasJob($fonte->id))->handle(
+        (new CollectAgenciaBrasilNewsJob($source->id))->handle(
             app(\App\Services\News\AgenciaBrasilCollector::class),
             app(\App\Services\News\LinkNormalizer::class),
         );

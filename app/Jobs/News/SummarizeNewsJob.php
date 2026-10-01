@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class ResumirNoticiaJob implements ShouldQueue
+class SummarizeNewsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -45,19 +45,19 @@ class ResumirNoticiaJob implements ShouldQueue
         // chamava a API. Resultado visto no banco: os resumos de 24/09 foram
         // marcados "attempted too many times" sem nunca terem rodado
         // (tentativas_resumo = 0). 20h cobre com folga o intervalo entre
-        // ciclos e fica abaixo da limpeza de 24h (LimparNoticiasPendentesAntigas).
+        // ciclos e fica abaixo da limpeza de 24h (ClearStalePendingNews).
         return now()->addHours(20);
     }
 
     public function handle(GroqSummarizerService $summarizer): void
     {
-        $noticia = News::find($this->newsId);
+        $news = News::find($this->newsId);
 
-        if (!$noticia || $noticia->status_resumo === 'concluido') {
+        if (!$news || $news->status_resumo === 'concluido') {
             return;
         }
 
-        $noticia->update([
+        $news->update([
             'status_resumo' => 'em_processamento',
             'ultima_tentativa_resumo_em' => now(),
         ]);
@@ -69,29 +69,29 @@ class ResumirNoticiaJob implements ShouldQueue
             // enviado à Groq em ~35-40%, o que ajuda bastante a não estourar
             // o limite de tokens por minuto (TPM) da API. conteudo_original
             // só entra como fallback se o texto limpo nunca foi gerado.
-            $conteudo = $noticia->original_summary !== null && $noticia->original_summary !== ''
-                ? $noticia->original_summary
-                : trim(strip_tags($noticia->conteudo_original ?? ''));
+            $content = $news->original_summary !== null && $news->original_summary !== ''
+                ? $news->original_summary
+                : trim(strip_tags($news->conteudo_original ?? ''));
 
-            $resultado = $summarizer->resumir($noticia->title, $conteudo);
+            $result = $summarizer->summarize($news->title, $content);
 
-            $noticia->update([
-                'ai_summary' => $resultado['resumo'],
-                'relevance_score' => $resultado['relevancia'],
-                'keywords' => $resultado['palavras_chave'],
+            $news->update([
+                'ai_summary' => $result['resumo'],
+                'relevance_score' => $result['relevancia'],
+                'keywords' => $result['palavras_chave'],
                 'status_resumo' => 'concluido',
                 // Filtro de conteúdo (Etapa 2): o Votus não publica notícia
                 // sem relação concreta com política, eleições, governo,
                 // políticas públicas ou cidadania — decidido pela mesma
                 // chamada de resumo, não por um segundo sistema.
-                'published' => $resultado['relevante_votus'],
-                'tentativas_resumo' => $noticia->tentativas_resumo + 1,
+                'published' => $result['relevante_votus'],
+                'tentativas_resumo' => $news->tentativas_resumo + 1,
             ]);
         } catch (Throwable $e) {
-            $noticia->update([
+            $news->update([
                 'status_resumo' => 'falhou',
                 'erro_resumo' => str($e->getMessage())->limit(500)->toString(),
-                'tentativas_resumo' => $noticia->tentativas_resumo + 1,
+                'tentativas_resumo' => $news->tentativas_resumo + 1,
             ]);
 
             throw $e;

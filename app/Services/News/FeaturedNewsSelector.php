@@ -22,18 +22,18 @@ use Illuminate\Support\Facades\Log;
  *   horário de Fortaleza), então muda ao longo do dia e muda de novo quando
  *   entram notícias novas.
  */
-class SelecionadorDestaqueNoticia
+class FeaturedNewsSelector
 {
     private const JANELA_RECENTE_HORAS = 48;
     private const FALLBACK_MAIS_RECENTES = 20;
     private const DESTAQUES_POR_DIA = 2;
     private const FUSO = 'America/Fortaleza';
 
-    public function selecionar(): ?News
+    public function select(): ?News
     {
-        $base = fn () => News::query()->where('published', true)->comImagemPublicavel()->whereNotNull('url');
+        $base = fn () => News::query()->where('published', true)->publiclyDisplayable()->whereNotNull('url');
 
-        $candidatas = $base()
+        $candidates = $base()
             ->where('published_at', '>=', now()->subHours(self::JANELA_RECENTE_HORAS))
             ->where('published_at', '<=', now()->addHour())
             ->orderByDesc('relevance_score')
@@ -41,8 +41,8 @@ class SelecionadorDestaqueNoticia
             ->limit(self::DESTAQUES_POR_DIA)
             ->get();
 
-        if ($candidatas->isEmpty()) {
-            $candidatas = $base()
+        if ($candidates->isEmpty()) {
+            $candidates = $base()
                 ->whereIn('id', $base()->orderByDesc('published_at')->limit(self::FALLBACK_MAIS_RECENTES)->pluck('id'))
                 ->orderByDesc('relevance_score')
                 ->orderByDesc('published_at')
@@ -50,25 +50,25 @@ class SelecionadorDestaqueNoticia
                 ->get();
         }
 
-        if ($candidatas->isEmpty()) {
+        if ($candidates->isEmpty()) {
             return null;
         }
 
-        $periodoDoDia = now(self::FUSO)->hour < 12 ? 0 : 1;
-        $escolhida = $candidatas[$periodoDoDia % $candidatas->count()];
+        $timeOfDay = now(self::FUSO)->hour < 12 ? 0 : 1;
+        $chosen = $candidates[$timeOfDay % $candidates->count()];
 
-        $this->registrarSeMudou($escolhida);
+        $this->recordIfChanged($chosen);
 
-        return $escolhida;
+        return $chosen;
     }
 
-    private function registrarSeMudou(News $noticia): void
+    private function recordIfChanged(News $news): void
     {
-        $chave = 'noticias:destaque-atual';
+        $key = 'noticias:destaque-atual';
 
-        if (Cache::store('file')->get($chave) !== $noticia->id) {
-            Cache::store('file')->forever($chave, $noticia->id);
-            Log::info("[NEWS] Principal selecionada: #{$noticia->id} {$noticia->title}");
+        if (Cache::store('file')->get($key) !== $news->id) {
+            Cache::store('file')->forever($key, $news->id);
+            Log::info("[NEWS] Principal selecionada: #{$news->id} {$news->title}");
         }
     }
 }

@@ -17,7 +17,7 @@ class AgenciaBrasilCollectorTest extends TestCase
             'https://exemplo.com/feed.xml' => Http::response($xml, 200),
         ]);
 
-        $itens = (new AgenciaBrasilCollector())->coletar('https://exemplo.com/feed.xml');
+        $itens = (new AgenciaBrasilCollector())->collect('https://exemplo.com/feed.xml');
 
         $this->assertCount(2, $itens);
         $this->assertSame('Governo anuncia novo pacote de medidas econômicas', $itens[0]['title']);
@@ -36,7 +36,7 @@ class AgenciaBrasilCollectorTest extends TestCase
         $html = '<p>Primeiro parágrafo.</p><p>Segundo parágrafo com <strong>destaque</strong>.</p>'
             . '<img src="https://exemplo.com/pixel.gif" style="width:1px" />';
 
-        $texto = (new AgenciaBrasilCollector())->textoLimpo($html);
+        $texto = (new AgenciaBrasilCollector())->cleanText($html);
 
         $this->assertSame("Primeiro parágrafo.\n\nSegundo parágrafo com destaque.", $texto);
     }
@@ -49,7 +49,7 @@ class AgenciaBrasilCollectorTest extends TestCase
 
         $this->expectException(RuntimeException::class);
 
-        (new AgenciaBrasilCollector())->coletar('https://exemplo.com/feed.xml');
+        (new AgenciaBrasilCollector())->collect('https://exemplo.com/feed.xml');
     }
 
     public function test_it_throws_on_invalid_xml(): void
@@ -60,6 +60,6 @@ class AgenciaBrasilCollectorTest extends TestCase
 
         $this->expectException(RuntimeException::class);
 
-        (new AgenciaBrasilCollector())->coletar('https://exemplo.com/feed.xml');
+        (new AgenciaBrasilCollector())->collect('https://exemplo.com/feed.xml');
     }
 }

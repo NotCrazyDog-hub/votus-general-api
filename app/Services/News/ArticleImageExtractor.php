@@ -15,29 +15,29 @@ use Throwable;
  * É a imagem oficial do próprio artigo, não uma substituta: se a página não
  * declarar nenhuma, devolve null e a notícia é descartada pelo validador.
  */
-class ExtratorImagemArtigo
+class ArticleImageExtractor
 {
-    public function extrair(string $urlArtigo): ?string
+    public function extract(string $articleUrl): ?string
     {
         try {
-            $resposta = Http::timeout(10)
+            $response = Http::timeout(10)
                 ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Votus)'])
-                ->get($urlArtigo);
+                ->get($articleUrl);
         } catch (Throwable) {
             return null;
         }
 
-        if (!$resposta->successful()) {
+        if (!$response->successful()) {
             return null;
         }
 
         // Só o <head> interessa; evita rodar regex no HTML inteiro.
-        $html = (string) $resposta->body();
-        $fimHead = stripos($html, '</head>');
-        $head = $fimHead !== false ? substr($html, 0, $fimHead) : substr($html, 0, 200000);
+        $html = (string) $response->body();
+        $headEnd = stripos($html, '</head>');
+        $head = $headEnd !== false ? substr($html, 0, $headEnd) : substr($html, 0, 200000);
 
-        foreach (['og:image', 'og:image:url', 'twitter:image'] as $propriedade) {
-            $url = $this->meta($head, $propriedade);
+        foreach (['og:image', 'og:image:url', 'twitter:image'] as $property) {
+            $url = $this->meta($head, $property);
 
             if ($url !== null) {
                 return html_entity_decode($url, ENT_QUOTES | ENT_HTML5);
@@ -47,18 +47,18 @@ class ExtratorImagemArtigo
         return null;
     }
 
-    private function meta(string $head, string $propriedade): ?string
+    private function meta(string $head, string $property): ?string
     {
-        $prop = preg_quote($propriedade, '/');
+        $escapedProperty = preg_quote($property, '/');
 
         // Aceita property= ou name=, e content antes ou depois do atributo.
-        $padroes = [
-            '/<meta[^>]+(?:property|name)=["\']' . $prop . '["\'][^>]*content=["\']([^"\']+)["\']/i',
-            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\']' . $prop . '["\']/i',
+        $patterns = [
+            '/<meta[^>]+(?:property|name)=["\']' . $escapedProperty . '["\'][^>]*content=["\']([^"\']+)["\']/i',
+            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\']' . $escapedProperty . '["\']/i',
         ];
 
-        foreach ($padroes as $padrao) {
-            if (preg_match($padrao, $head, $m) && trim($m[1]) !== '') {
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $head, $m) && trim($m[1]) !== '') {
                 return trim($m[1]);
             }
         }

@@ -82,7 +82,7 @@ class Candidate extends Model
         return $this->hasMany(Candidate::class, 'running_mate_of_id');
     }
 
-    public function scopeTitulares($query)
+    public function scopeMainCandidates($query)
     {
         return $query->whereNull('running_mate_of_id');
     }
@@ -107,12 +107,12 @@ class Candidate extends Model
         return $this->hasMany(CandidateExpense::class);
     }
 
-    public function scopeIndeferidos($query)
+    public function scopeRejected($query)
     {
         return $query->where('judgment_status', 'INDEFERIDO');
     }
 
-    public function scopeDeferidos($query)
+    public function scopeApproved($query)
     {
         return $query->where('judgment_status', 'DEFERIDO');
     }

@@ -17,7 +17,7 @@ class Poder360CollectorTest extends TestCase
             'https://exemplo.com/feed.xml' => Http::response($xml, 200),
         ]);
 
-        $itens = (new Poder360Collector())->coletar('https://exemplo.com/feed.xml');
+        $itens = (new Poder360Collector())->collect('https://exemplo.com/feed.xml');
 
         $this->assertCount(2, $itens);
         $this->assertSame('Julgamento de caso relevante terá análise preliminar', $itens[0]['title']);
@@ -36,6 +36,6 @@ class Poder360CollectorTest extends TestCase
 
         $this->expectException(RuntimeException::class);
 
-        (new Poder360Collector())->coletar('https://exemplo.com/feed.xml');
+        (new Poder360Collector())->collect('https://exemplo.com/feed.xml');
     }
 }

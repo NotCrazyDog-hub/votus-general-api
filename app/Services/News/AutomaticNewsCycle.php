@@ -2,7 +2,7 @@
 
 namespace App\Services\News;
 
-use App\Models\Fonte;
+use App\Models\NewsSource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -21,23 +21,23 @@ use Throwable;
  * container, ver entrypoint.sh). Não atrasa a resposta de forma relevante:
  * a checagem fica em cache local por alguns minutos.
  */
-class CicloAutomaticoNoticias
+class AutomaticNewsCycle
 {
     public const INTERVALO_HORAS = 12;
 
     // Com que frequência, no máximo, consultar o banco pra saber se venceu.
     private const CHECAGEM_MINUTOS = 10;
 
-    public function dispararSeVencido(): void
+    public function triggerIfDue(): void
     {
         try {
-            $vencido = Cache::store('file')->remember(
+            $due = Cache::store('file')->remember(
                 'noticias:ciclo-vencido',
                 now()->addMinutes(self::CHECAGEM_MINUTOS),
-                fn () => $this->vencido(),
+                fn () => $this->isDue(),
             );
 
-            if (!$vencido) {
+            if (!$due) {
                 return;
             }
 
@@ -52,17 +52,18 @@ class CicloAutomaticoNoticias
             Cache::store('file')->put('noticias:ciclo-vencido', false, now()->addHour());
 
             Log::info('[NEWS] Ciclo automático vencido (>' . self::INTERVALO_HORAS . 'h sem coleta): disparando.');
-            Artisan::call('noticias:coletar');
+            Artisan::call('news:collect');
         } catch (Throwable $e) {
             // Nunca derruba a listagem pública por causa disso.
             Log::error("[NEWS] Falha ao disparar ciclo automático: {$e->getMessage()}");
         }
     }
 
-    private function vencido(): bool
+    private function isDue(): bool
     {
-        $ultima = Fonte::query()->where('ativa', true)->max('ultima_coleta_em');
+        $lastCollectedAt = NewsSource::query()->where('ativa', true)->max('ultima_coleta_em');
 
-        return $ultima === null || now()->diffInHours(Carbon::parse($ultima), true) >= self::INTERVALO_HORAS;
+        return $lastCollectedAt === null
+            || now()->diffInHours(Carbon::parse($lastCollectedAt), true) >= self::INTERVALO_HORAS;
     }
 }

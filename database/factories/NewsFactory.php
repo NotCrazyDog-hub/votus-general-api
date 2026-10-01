@@ -32,7 +32,7 @@ class NewsFactory extends Factory
             'relevance_score' => $this->faker->numberBetween(0, 10),
             'keywords' => $this->faker->words(3),
             'published' => true,
-            // Notícia válida sempre tem imagem (ValidadorImagemNoticia); use
+            // Notícia válida sempre tem imagem (NewsImageValidator); use
             // ->state(['image_url' => null]) pra simular registro antigo sem.
             'image_url' => 'https://imagens.exemplo.com/fotos/' . $this->faker->unique()->uuid() . '.jpg',
             'site_logo_url' => null,

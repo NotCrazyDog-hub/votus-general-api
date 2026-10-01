@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\ResumirNoticiaJob;
+use App\Jobs\News\SummarizeNewsJob;
 use App\Models\News;
 use App\Services\News\GroqSummarizerService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-class ResumirNoticiaJobTest extends NewsTestCase
+class SummarizeNewsJobTest extends NewsTestCase
 {
 
     protected function setUp(): void
@@ -39,7 +39,7 @@ class ResumirNoticiaJobTest extends NewsTestCase
             'published' => false,
         ]);
 
-        (new ResumirNoticiaJob($noticia->id))->handle(app(GroqSummarizerService::class));
+        (new SummarizeNewsJob($noticia->id))->handle(app(GroqSummarizerService::class));
 
         $noticia->refresh();
         $this->assertSame('concluido', $noticia->status_resumo);
@@ -69,7 +69,7 @@ class ResumirNoticiaJobTest extends NewsTestCase
             'published' => false,
         ]);
 
-        (new ResumirNoticiaJob($noticia->id))->handle(app(GroqSummarizerService::class));
+        (new SummarizeNewsJob($noticia->id))->handle(app(GroqSummarizerService::class));
 
         $noticia->refresh();
         $this->assertSame('concluido', $noticia->status_resumo);
@@ -87,7 +87,7 @@ class ResumirNoticiaJobTest extends NewsTestCase
         ]);
 
         try {
-            (new ResumirNoticiaJob($noticia->id))->handle(app(GroqSummarizerService::class));
+            (new SummarizeNewsJob($noticia->id))->handle(app(GroqSummarizerService::class));
             $this->fail('Esperava uma exceção quando todas as chaves da Groq falham.');
         } catch (\Throwable) {
             // esperado: a exceção é relançada para a fila decidir o retry
@@ -121,7 +121,7 @@ class ResumirNoticiaJobTest extends NewsTestCase
             ], 200);
         });
 
-        $resultado = (new GroqSummarizerService())->resumir('Título fixo para hash', 'Conteúdo de teste');
+        $resultado = (new GroqSummarizerService())->summarize('Título fixo para hash', 'Conteúdo de teste');
 
         $this->assertSame('Resumo via chave de backup.', $resultado['resumo']);
         $this->assertGreaterThanOrEqual(1, $tentativas);

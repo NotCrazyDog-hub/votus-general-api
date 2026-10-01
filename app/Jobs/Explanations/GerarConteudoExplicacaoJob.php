@@ -80,7 +80,7 @@ class GerarConteudoExplicacaoJob implements ShouldQueue
         $blocos = [];
 
         foreach ($sources as $source) {
-            $texto = $fetcher->buscarTexto($source->source_url);
+            $texto = $fetcher->fetchText($source->source_url);
             $blocos[] = "Fonte: {$source->source_name} ({$source->source_domain})\n{$texto}";
         }
 

@@ -9,32 +9,32 @@ class LinkNormalizer
         'fbclid', 'gclid', 'mc_cid', 'mc_eid', 'itok',
     ];
 
-    public function normalizar(string $url): string
+    public function normalize(string $url): string
     {
-        $partes = parse_url(trim($url));
+        $parts = parse_url(trim($url));
 
-        if ($partes === false || empty($partes['host'])) {
+        if ($parts === false || empty($parts['host'])) {
             return rtrim(strtolower(trim($url)), '/');
         }
 
-        $host = strtolower(preg_replace('/^www\./', '', $partes['host']));
-        $path = rtrim($partes['path'] ?? '', '/');
+        $host = strtolower(preg_replace('/^www\./', '', $parts['host']));
+        $path = rtrim($parts['path'] ?? '', '/');
 
         $query = [];
-        if (!empty($partes['query'])) {
-            parse_str($partes['query'], $query);
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
             foreach (self::PARAMETROS_DESCARTAVEIS as $param) {
                 unset($query[$param]);
             }
             ksort($query);
         }
 
-        $normalizado = 'https://' . $host . $path;
+        $normalized = 'https://' . $host . $path;
 
         if (!empty($query)) {
-            $normalizado .= '?' . http_build_query($query);
+            $normalized .= '?' . http_build_query($query);
         }
 
-        return $normalizado;
+        return $normalized;
     }
 }

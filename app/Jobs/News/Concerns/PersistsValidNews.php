@@ -2,19 +2,19 @@
 
 namespace App\Jobs\News\Concerns;
 
-use App\Jobs\News\ResumirNoticiaJob;
-use App\Models\Fonte;
+use App\Jobs\News\SummarizeNewsJob;
 use App\Models\News;
-use App\Services\News\ExtratorImagemArtigo;
+use App\Models\NewsSource;
+use App\Services\News\ArticleImageExtractor;
 use App\Services\News\LinkNormalizer;
-use App\Services\News\ValidadorImagemNoticia;
+use App\Services\News\NewsImageValidator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Etapa comum aos Jobs de coleta (uma por fonte): recebe os itens do feed já
- * ordenados por prioridade e grava até $limite notícias NOVAS e VÁLIDAS.
+ * ordenados por prioridade e grava até $limit notícias NOVAS e VÁLIDAS.
  *
  * Ordem de cada item: dados mínimos → duplicata → imagem → grava → resumo.
  *
@@ -25,25 +25,25 @@ use Throwable;
  * Agora o limite conta só o que foi de fato gravado, e o laço continua
  * descendo o feed até achar novas.
  */
-trait PersisteNoticiasValidas
+trait PersistsValidNews
 {
     /**
-     * @param  array<int, array<string, mixed>>  $itens  já ordenados por prioridade
+     * @param  array<int, array<string, mixed>>  $items  já ordenados por prioridade
      * @return array<string, int> contadores do ciclo (também vão pro log)
      */
-    protected function persistirNovasValidas(Fonte $fonte, array $itens, int $limite, LinkNormalizer $normalizer): array
+    protected function persistNewValid(NewsSource $source, array $items, int $limit, LinkNormalizer $normalizer): array
     {
-        $validador = app(ValidadorImagemNoticia::class);
-        $extrator = app(ExtratorImagemArtigo::class);
+        $validator = app(NewsImageValidator::class);
+        $extractor = app(ArticleImageExtractor::class);
 
         $stats = [
-            'encontradas' => count($itens),
+            'encontradas' => count($items),
             'duplicadas' => 0,
             'incompletas' => 0,
-            ValidadorImagemNoticia::SEM_IMAGEM => 0,
-            ValidadorImagemNoticia::INVALIDA => 0,
-            ValidadorImagemNoticia::GENERICA => 0,
-            ValidadorImagemNoticia::INACESSIVEL => 0,
+            NewsImageValidator::SEM_IMAGEM => 0,
+            NewsImageValidator::INVALIDA => 0,
+            NewsImageValidator::GENERICA => 0,
+            NewsImageValidator::INACESSIVEL => 0,
             'persistidas' => 0,
             'erros' => 0,
         ];
@@ -51,106 +51,106 @@ trait PersisteNoticiasValidas
         // Duplicatas já gravadas, carregadas de uma vez (2 queries no total)
         // em vez de 2 por item: a Agência Brasil soma ~180 itens em 9 feeds,
         // e cada ida ao Supabase tem latência de rede considerável.
-        $linksDoLote = [];
-        $titulosDoLote = [];
-        foreach ($itens as $item) {
+        $batchLinks = [];
+        $batchTitles = [];
+        foreach ($items as $item) {
             if (!empty($item['url'])) {
-                $linksDoLote[] = $normalizer->normalizar(trim((string) $item['url']));
+                $batchLinks[] = $normalizer->normalize(trim((string) $item['url']));
             }
             if (!empty($item['title'])) {
-                $titulosDoLote[] = mb_strtolower(trim((string) $item['title']));
+                $batchTitles[] = mb_strtolower(trim((string) $item['title']));
             }
         }
 
-        $linksExistentes = array_flip(
-            News::whereIn('link_normalizado', array_values(array_unique($linksDoLote)))->pluck('link_normalizado')->all()
+        $existingLinks = array_flip(
+            News::whereIn('link_normalizado', array_values(array_unique($batchLinks)))->pluck('link_normalizado')->all()
         );
-        $titulosExistentes = [];
-        foreach (array_chunk(array_values(array_unique($titulosDoLote)), 200) as $bloco) {
-            $marcadores = implode(',', array_fill(0, count($bloco), '?'));
-            foreach (News::whereRaw("lower(title) in ({$marcadores})", $bloco)->pluck('title') as $existente) {
-                $titulosExistentes[mb_strtolower(trim($existente))] = true;
+        $existingTitles = [];
+        foreach (array_chunk(array_values(array_unique($batchTitles)), 200) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+            foreach (News::whereRaw("lower(title) in ({$placeholders})", $chunk)->pluck('title') as $existing) {
+                $existingTitles[mb_strtolower(trim($existing))] = true;
             }
         }
 
-        $vistosNesteCiclo = [];
+        $seenThisCycle = [];
 
         // Cada item novo pode custar até 2 requisições HTTP (og:image + checagem
         // da imagem). Teto de itens NOVOS avaliados por ciclo pra o Job não se
         // arrastar quando a fonte tiver muita coisa sem foto.
-        $maxAvaliacoesDeImagem = max($limite * 4, 12);
-        $avaliacoesDeImagem = 0;
+        $maxImageChecks = max($limit * 4, 12);
+        $imageChecks = 0;
 
-        foreach ($itens as $item) {
-            if ($stats['persistidas'] >= $limite || $avaliacoesDeImagem >= $maxAvaliacoesDeImagem) {
+        foreach ($items as $item) {
+            if ($stats['persistidas'] >= $limit || $imageChecks >= $maxImageChecks) {
                 break;
             }
 
-            $titulo = trim((string) ($item['title'] ?? ''));
+            $title = trim((string) ($item['title'] ?? ''));
             $url = trim((string) ($item['url'] ?? ''));
 
-            if ($titulo === '' || $url === '') {
+            if ($title === '' || $url === '') {
                 $stats['incompletas']++;
                 continue;
             }
 
             try {
-                $linkNormalizado = $normalizer->normalizar($url);
-                $tituloNormalizado = mb_strtolower($titulo);
+                $normalizedLink = $normalizer->normalize($url);
+                $normalizedTitle = mb_strtolower($title);
 
                 // Duplicata: mesma regra de antes (link normalizado OU título
                 // igual), agora também dentro do próprio lote — a Agência
                 // Brasil repete a mesma matéria em várias editorias.
                 if (
-                    isset($vistosNesteCiclo['link:' . $linkNormalizado])
-                    || isset($vistosNesteCiclo['titulo:' . $tituloNormalizado])
-                    || isset($linksExistentes[$linkNormalizado])
-                    || isset($titulosExistentes[$tituloNormalizado])
+                    isset($seenThisCycle['link:' . $normalizedLink])
+                    || isset($seenThisCycle['titulo:' . $normalizedTitle])
+                    || isset($existingLinks[$normalizedLink])
+                    || isset($existingTitles[$normalizedTitle])
                 ) {
                     $stats['duplicadas']++;
                     continue;
                 }
 
-                $vistosNesteCiclo['link:' . $linkNormalizado] = true;
-                $vistosNesteCiclo['titulo:' . $tituloNormalizado] = true;
+                $seenThisCycle['link:' . $normalizedLink] = true;
+                $seenThisCycle['titulo:' . $normalizedTitle] = true;
 
                 // Imagem: a do feed; se não vier, a capa oficial da matéria
                 // (og:image). Nunca uma imagem inventada.
-                $avaliacoesDeImagem++;
-                $imagem = trim((string) ($item['image_url'] ?? ''));
+                $imageChecks++;
+                $image = trim((string) ($item['image_url'] ?? ''));
 
-                if ($imagem === '') {
-                    $imagem = (string) $extrator->extrair($url);
+                if ($image === '') {
+                    $image = (string) $extractor->extract($url);
                 }
 
-                $motivo = $validador->motivoInvalida($imagem);
+                $invalidReason = $validator->invalidReason($image);
 
-                if ($motivo !== null) {
-                    $stats[$motivo]++;
+                if ($invalidReason !== null) {
+                    $stats[$invalidReason]++;
                     continue;
                 }
 
-                $noticia = News::create([
-                    'fonte_id' => $fonte->id,
-                    'title' => $titulo,
+                $news = News::create([
+                    'fonte_id' => $source->id,
+                    'title' => $title,
                     'conteudo_original' => $item['conteudo_original'] ?? '',
                     'original_summary' => $item['original_summary'] ?? null,
                     'ai_summary' => '',
                     'status_resumo' => 'pendente',
                     'url' => $url,
-                    'link_normalizado' => $linkNormalizado,
-                    'source' => $fonte->nome,
+                    'link_normalizado' => $normalizedLink,
+                    'source' => $source->nome,
                     'category' => $item['category'] ?? null,
                     'eixo' => $item['categoria_slug'] ?? null,
                     'published_at' => $item['published_at'] ?? now(),
                     'relevance_score' => 5,
                     'keywords' => [],
                     'published' => false,
-                    'image_url' => $imagem,
+                    'image_url' => $image,
                 ]);
 
                 $stats['persistidas']++;
-                ResumirNoticiaJob::dispatch($noticia->id);
+                SummarizeNewsJob::dispatch($news->id);
             } catch (UniqueConstraintViolationException) {
                 // Outro processo (cron + botão do admin ao mesmo tempo) gravou
                 // a mesma notícia entre a checagem e o insert — o índice único
@@ -158,23 +158,23 @@ trait PersisteNoticiasValidas
                 $stats['duplicadas']++;
             } catch (Throwable $e) {
                 $stats['erros']++;
-                Log::error("[NEWS] {$fonte->slug}: falha ao processar item: {$e->getMessage()}", ['url' => $url]);
+                Log::error("[NEWS] {$source->slug}: falha ao processar item: {$e->getMessage()}", ['url' => $url]);
             }
         }
 
         Log::info(sprintf(
             '[NEWS] Fonte: %s | encontradas: %d | duplicadas: %d | sem imagem: %d | imagem inválida: %d | imagem genérica: %d | imagem inacessível: %d | incompletas: %d | erros: %d | persistidas: %d (limite %d)',
-            $fonte->nome,
+            $source->nome,
             $stats['encontradas'],
             $stats['duplicadas'],
-            $stats[ValidadorImagemNoticia::SEM_IMAGEM],
-            $stats[ValidadorImagemNoticia::INVALIDA],
-            $stats[ValidadorImagemNoticia::GENERICA],
-            $stats[ValidadorImagemNoticia::INACESSIVEL],
+            $stats[NewsImageValidator::SEM_IMAGEM],
+            $stats[NewsImageValidator::INVALIDA],
+            $stats[NewsImageValidator::GENERICA],
+            $stats[NewsImageValidator::INACESSIVEL],
             $stats['incompletas'],
             $stats['erros'],
             $stats['persistidas'],
-            $limite,
+            $limit,
         ));
 
         return $stats;

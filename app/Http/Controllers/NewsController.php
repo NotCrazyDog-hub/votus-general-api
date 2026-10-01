@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\NewsResource;
 use App\Models\News;
-use App\Services\News\CicloAutomaticoNoticias;
-use App\Services\News\SelecionadorDestaqueNoticia;
-use App\Services\News\ValidadorImagemNoticia;
+use App\Services\News\AutomaticNewsCycle;
+use App\Services\News\FeaturedNewsSelector;
+use App\Services\News\NewsImageValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -40,13 +40,13 @@ class NewsController extends Controller
         $data = $validator->validated();
 
         // Mesma regra do pipeline de coleta: sem imagem válida, não entra no
-        // banco (ver ValidadorImagemNoticia). Checado antes de gravar.
-        $motivoImagem = app(ValidadorImagemNoticia::class)->motivoInvalida($data['image_url'] ?? null);
+        // banco (ver NewsImageValidator). Checado antes de gravar.
+        $invalidImageReason = app(NewsImageValidator::class)->invalidReason($data['image_url'] ?? null);
 
-        if ($motivoImagem !== null) {
+        if ($invalidImageReason !== null) {
             return response()->json([
                 'message' => 'Dados inválidos',
-                'errors' => ['image_url' => ["Notícia sem imagem válida ({$motivoImagem}) não é aceita."]],
+                'errors' => ['image_url' => ["Notícia sem imagem válida ({$invalidImageReason}) não é aceita."]],
             ], 422);
         }
 
@@ -63,12 +63,12 @@ class NewsController extends Controller
 
     private const SORTABLE_COLUMNS = ['published_at', 'imported_at', 'relevance_score', 'created_at'];
 
-    public function index(Request $request, CicloAutomaticoNoticias $ciclo, SelecionadorDestaqueNoticia $destaque)
+    public function index(Request $request, AutomaticNewsCycle $cycle, FeaturedNewsSelector $featured)
     {
-        // Rede de segurança do ciclo de 12h (ver CicloAutomaticoNoticias).
-        $ciclo->dispararSeVencido();
+        // Rede de segurança do ciclo de 12h (ver AutomaticNewsCycle).
+        $cycle->triggerIfDue();
 
-        $query = News::query()->where('published', true)->comImagemPublicavel();
+        $query = News::query()->where('published', true)->publiclyDisplayable();
 
         if ($request->has('search')) {
             $query->where('title', 'ilike', '%' . $request->search . '%');
@@ -107,10 +107,10 @@ class NewsController extends Controller
 
         // Campo novo e opcional (não altera nenhum campo existente): a notícia
         // principal do momento, escolhida no backend — ver
-        // SelecionadorDestaqueNoticia. Só na 1ª página, que é onde o painel usa.
+        // FeaturedNewsSelector. Só na 1ª página, que é onde o painel usa.
         if ($paginador->currentPage() === 1) {
-            $principal = $destaque->selecionar();
-            $resposta['destaque'] = $principal ? (new NewsResource($principal))->resolve() : null;
+            $featuredNews = $featured->select();
+            $resposta['destaque'] = $featuredNews ? (new NewsResource($featuredNews))->resolve() : null;
         }
 
         return response()->json($resposta);
