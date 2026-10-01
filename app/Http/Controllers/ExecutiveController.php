@@ -14,38 +14,33 @@ class ExecutiveController extends Controller
 
     public function indexForGovernors(Request $request)
     {
-        $governors = $this->service->listByLevel(
+        $executives = $this->service->listByLevel(
             'state',
             $request->state
         );
-
-        return ExecutivesResource::collection($governors);
+    
+        return ExecutivesResource::collection($executives);
     }
-
+    
     public function showGovernor(int $id)
     {
         return new ExecutivesResource(
-            $this->service->findByOffice(
-                $id,
-                'governor'
-            )
+            $this->service->findStateExecutive($id)
         );
     }
-
+    
     public function indexForPresident()
     {
-        $president = $this->service->listByLevel('federal');
-
-        return ExecutivesResource::collection($president);
+        $executives = $this->service->listByLevel('federal');
+    
+        return ExecutivesResource::collection($executives);
     }
-
+    
     public function showPresident(int $id)
     {
         return new ExecutivesResource(
-            $this->service->findByOffice(
-                $id,
-                'president'
-            )
+            $this->service->findFederalExecutive($id)
         );
     }
+
 }
