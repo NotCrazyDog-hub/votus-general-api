@@ -2,29 +2,29 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Fonte;
+use App\Models\NewsSource;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('fontes:reativar {slug : Slug da fonte a reativar (ex: agencia-brasil)}')]
+#[Signature('sources:reactivate {slug : Slug da fonte a reativar (ex: agencia-brasil)}')]
 #[Description('Reativa manualmente uma fonte desativada pelo circuit breaker, zerando o contador de falhas.')]
-class FontesReativar extends Command
+class ReactivateSource extends Command
 {
     public function handle(): int
     {
         $slug = $this->argument('slug');
-        $fonte = Fonte::where('slug', $slug)->first();
+        $source = NewsSource::where('slug', $slug)->first();
 
-        if (!$fonte) {
+        if (!$source) {
             $this->error("Fonte '{$slug}' não encontrada.");
 
             return self::FAILURE;
         }
 
-        $fonte->reativar();
+        $source->reactivate();
 
-        $this->info("Fonte '{$fonte->nome}' reativada. Falhas consecutivas zeradas.");
+        $this->info("Fonte '{$source->nome}' reativada. Falhas consecutivas zeradas.");
 
         return self::SUCCESS;
     }

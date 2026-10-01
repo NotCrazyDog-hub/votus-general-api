@@ -66,10 +66,10 @@ class NewsController extends Controller
      */
     public function collect(): JsonResponse
     {
-        Artisan::call('noticias:limpar-pendentes-antigas');
+        Artisan::call('news:clear-stale-pending');
 
         try {
-            Artisan::call('noticias:coletar', ['--limite' => self::LIMITE_COLETA_MANUAL, '--forcar' => true]);
+            Artisan::call('news:collect', ['--limit' => self::LIMITE_COLETA_MANUAL, '--force' => true]);
             $saidaColeta = trim(Artisan::output());
         } catch (Throwable $e) {
             return response()->json([
@@ -121,7 +121,7 @@ class NewsController extends Controller
      */
     public function drain(): JsonResponse
     {
-        Artisan::call('noticias:limpar-pendentes-antigas');
+        Artisan::call('news:clear-stale-pending');
 
         Artisan::call('queue:work', [
             '--queue' => 'coleta,resumo',

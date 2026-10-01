@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\ColetarPoder360NoticiasJob;
-use App\Jobs\News\ResumirNoticiaJob;
-use App\Models\Fonte;
+use App\Jobs\News\CollectPoder360NewsJob;
+use App\Jobs\News\SummarizeNewsJob;
+use App\Models\NewsSource;
 use App\Models\News;
 use App\Services\News\LinkNormalizer;
 use App\Services\News\Poder360Collector;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
-class ColetarPoder360NoticiasJobTest extends NewsTestCase
+class CollectPoder360NewsJobTest extends NewsTestCase
 {
 
     private function feedXml(): string
@@ -20,9 +20,9 @@ class ColetarPoder360NoticiasJobTest extends NewsTestCase
         return file_get_contents(base_path('tests/Fixtures/poder360-feed.xml'));
     }
 
-    private function fonte(array $atributos = []): Fonte
+    private function source(array $atributos = []): NewsSource
     {
-        return Fonte::factory()->create(array_merge([
+        return NewsSource::factory()->create(array_merge([
             'slug' => 'poder360',
             'nome' => 'Poder360',
             'feeds' => ['geral' => 'https://exemplo.com/feed.xml'],
@@ -40,18 +40,18 @@ class ColetarPoder360NoticiasJobTest extends NewsTestCase
             'https://static.poder360.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
-        $fonte = $this->fonte();
+        $source = $this->source();
 
-        (new ColetarPoder360NoticiasJob($fonte->id))->handle(
+        (new CollectPoder360NewsJob($source->id))->handle(
             app(Poder360Collector::class),
             app(LinkNormalizer::class),
         );
 
         $this->assertSame(2, News::count());
-        Queue::assertPushed(ResumirNoticiaJob::class, 2);
+        Queue::assertPushed(SummarizeNewsJob::class, 2);
 
         $noticia = News::first();
-        $this->assertSame($fonte->id, $noticia->fonte_id);
+        $this->assertSame($source->id, $noticia->fonte_id);
         $this->assertSame('Poder360', $noticia->source);
         $this->assertNotEmpty($noticia->original_summary);
     }
@@ -67,8 +67,8 @@ class ColetarPoder360NoticiasJobTest extends NewsTestCase
             'https://static.poder360.com.br/*' => Http::response('', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
-        $fonte = $this->fonte();
-        $job = new ColetarPoder360NoticiasJob($fonte->id);
+        $source = $this->source();
+        $job = new CollectPoder360NewsJob($source->id);
         $collector = app(Poder360Collector::class);
         $normalizer = app(LinkNormalizer::class);
 
@@ -83,16 +83,16 @@ class ColetarPoder360NoticiasJobTest extends NewsTestCase
         Queue::fake();
         Http::fake(['https://exemplo.com/feed.xml' => Http::response('erro interno', 500)]);
 
-        $fonte = $this->fonte(['limite_falhas' => 2]);
+        $source = $this->source(['limite_falhas' => 2]);
 
-        (new ColetarPoder360NoticiasJob($fonte->id))->handle(
+        (new CollectPoder360NewsJob($source->id))->handle(
             app(Poder360Collector::class),
             app(LinkNormalizer::class),
         );
 
-        $fonte->refresh();
+        $source->refresh();
         $this->assertSame(0, News::count());
-        $this->assertSame(1, $fonte->falhas_consecutivas);
-        $this->assertTrue($fonte->ativa);
+        $this->assertSame(1, $source->falhas_consecutivas);
+        $this->assertTrue($source->ativa);
     }
 }

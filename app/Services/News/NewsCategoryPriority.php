@@ -36,16 +36,16 @@ class NewsCategoryPriority
      */
     private const TERMOS_CATCH_ALL = ['geral', 'ultimasnoticias', 'últimas', 'brasil'];
 
-    public static function isPrioritaria(?string $categoria): bool
+    public static function isPriority(?string $category): bool
     {
-        if (!$categoria) {
+        if (!$category) {
             return false;
         }
 
-        $normalizado = self::normalizar($categoria);
+        $normalized = self::normalize($category);
 
-        foreach (self::TERMOS_PRIORITARIOS as $termo) {
-            if (str_contains($normalizado, self::normalizar($termo))) {
+        foreach (self::TERMOS_PRIORITARIOS as $term) {
+            if (str_contains($normalized, self::normalize($term))) {
                 return true;
             }
         }
@@ -53,16 +53,16 @@ class NewsCategoryPriority
         return false;
     }
 
-    public static function isCatchAll(?string $categoria): bool
+    public static function isCatchAll(?string $category): bool
     {
-        if (!$categoria) {
+        if (!$category) {
             return true;
         }
 
-        $normalizado = self::normalizar($categoria);
+        $normalized = self::normalize($category);
 
-        foreach (self::TERMOS_CATCH_ALL as $termo) {
-            if (str_contains($normalizado, self::normalizar($termo))) {
+        foreach (self::TERMOS_CATCH_ALL as $term) {
+            if (str_contains($normalized, self::normalize($term))) {
                 return true;
             }
         }
@@ -70,9 +70,9 @@ class NewsCategoryPriority
         return false;
     }
 
-    private static function normalizar(string $valor): string
+    private static function normalize(string $value): string
     {
-        $semAcento = strtr(mb_strtolower($valor), [
+        $withoutAccents = strtr(mb_strtolower($value), [
             'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a',
             'é' => 'e', 'ê' => 'e',
             'í' => 'i',
@@ -81,6 +81,6 @@ class NewsCategoryPriority
             'ç' => 'c',
         ]);
 
-        return trim($semAcento);
+        return trim($withoutAccents);
     }
 }

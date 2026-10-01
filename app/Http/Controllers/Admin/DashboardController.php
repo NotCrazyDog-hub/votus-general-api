@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\ProposalStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Fonte;
 use App\Models\Legislator;
+use App\Models\NewsSource;
 use App\Models\News;
 use App\Models\Proposal;
 use App\Models\SantinhoGeneration;
@@ -20,16 +20,16 @@ class DashboardController extends Controller
 
     public function index(): JsonResponse
     {
-        // Fonte::max() é uma agregação SQL crua: ao contrário de um atributo de
+        // NewsSource::max() é uma agregação SQL crua: ao contrário de um atributo de
         // model, não passa pelo cast "datetime" do Eloquent, então volta como
         // string sem timezone (ex: "2026-09-16 14:29:46"). Sem o "Z" no final,
         // o `new Date(...)` do frontend interpretava isso como hora local do
         // navegador em vez de UTC — daí o horário aparecer errado no painel.
-        $ultimaColetaEmRaw = Fonte::max('ultima_coleta_em');
-        $ultimaColetaEm = $ultimaColetaEmRaw
-            ? Carbon::parse($ultimaColetaEmRaw, 'UTC')
+        $lastCollectedAtRaw = NewsSource::max('ultima_coleta_em');
+        $lastCollectedAt = $lastCollectedAtRaw
+            ? Carbon::parse($lastCollectedAtRaw, 'UTC')
             : null;
-        $fontesComFalha = Fonte::where('ativa', false)->count();
+        $sourcesWithFailure = NewsSource::where('ativa', false)->count();
 
         return response()->json([
             'noticias' => [
@@ -44,15 +44,15 @@ class DashboardController extends Controller
                 // painel enquanto o resumo de um lote anterior ainda não
                 // terminou (ver Admin\NewsController::collect).
                 'pendentes' => News::whereIn('status_resumo', ['pendente', 'em_processamento'])->count(),
-                'ultima_atualizacao_em' => $ultimaColetaEm?->toJSON(),
+                'ultima_atualizacao_em' => $lastCollectedAt?->toJSON(),
                 // Aproximação: conta o que entrou desde a última coleta bem-sucedida de
                 // qualquer fonte, já que a coleta roda em Jobs assíncronos por fonte e não
                 // existe uma tabela de "execuções" para amarrar isso com exatidão.
-                'adicionadas_na_ultima_execucao' => $ultimaColetaEm
-                    ? News::where('imported_at', '>=', $ultimaColetaEm)->count()
+                'adicionadas_na_ultima_execucao' => $lastCollectedAt
+                    ? News::where('imported_at', '>=', $lastCollectedAt)->count()
                     : 0,
-                'status' => $fontesComFalha > 0 ? 'com_falhas' : 'ok',
-                'fontes_com_falha' => $fontesComFalha,
+                'status' => $sourcesWithFailure > 0 ? 'com_falhas' : 'ok',
+                'fontes_com_falha' => $sourcesWithFailure,
                 'ultimas' => News::query()
                     ->orderByDesc('imported_at')
                     ->limit(self::ULTIMAS_NOTICIAS_LIMITE)

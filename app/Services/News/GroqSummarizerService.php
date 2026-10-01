@@ -46,11 +46,11 @@ class GroqSummarizerService
      *
      * @return array{resumo:string, relevancia:int, palavras_chave:array<int,string>, relevante_votus:bool}
      */
-    public function resumir(string $titulo, string $conteudo): array
+    public function summarize(string $titulo, string $conteudo): array
     {
-        $chaves = $this->chavesDisponiveis();
+        $keys = $this->availableKeys();
 
-        if (empty($chaves)) {
+        if (empty($keys)) {
             throw new RuntimeException('Nenhuma chave da Groq configurada (GROQ_API_KEY_1 a GROQ_API_KEY_5).');
         }
 
@@ -58,34 +58,34 @@ class GroqSummarizerService
             $conteudo = mb_substr($conteudo, 0, self::MAX_CONTEUDO_CHARS);
         }
 
-        $totalChaves = count($chaves);
-        $indiceInicial = ($this->proximoIndiceRotativo() - 1) % $totalChaves;
-        $ultimoErro = null;
+        $totalKeys = count($keys);
+        $startIndex = ($this->nextRotatingIndex() - 1) % $totalKeys;
+        $lastError = null;
 
-        for ($tentativa = 0; $tentativa < $totalChaves; $tentativa++) {
-            $posicao = ($indiceInicial + $tentativa) % $totalChaves;
-            $chave = $chaves[$posicao];
+        for ($attempt = 0; $attempt < $totalKeys; $attempt++) {
+            $position = ($startIndex + $attempt) % $totalKeys;
+            $key = $keys[$position];
 
             try {
-                return $this->chamarGroq($chave, $titulo, $conteudo);
+                return $this->callGroq($key, $titulo, $conteudo);
             } catch (Throwable $e) {
-                $ultimoErro = $e;
+                $lastError = $e;
                 Log::warning(sprintf(
                     '[NEWS] Chave Groq #%d de %d falhou, tentando próxima: %s',
-                    $posicao + 1,
-                    $totalChaves,
+                    $position + 1,
+                    $totalKeys,
                     $e->getMessage()
                 ));
             }
         }
 
         throw new RuntimeException(
-            'Todas as chaves da Groq falharam: ' . $ultimoErro?->getMessage(),
-            previous: $ultimoErro
+            'Todas as chaves da Groq falharam: ' . $lastError?->getMessage(),
+            previous: $lastError
         );
     }
 
-    private function chavesDisponiveis(): array
+    private function availableKeys(): array
     {
         return array_values(array_filter(config('services.groq.api_keys', [])));
     }
@@ -101,14 +101,14 @@ class GroqSummarizerService
      * adicional caso increment falhe por outro motivo (nunca deixa cair pra
      * false/0 de novo).
      */
-    private function proximoIndiceRotativo(): int
+    private function nextRotatingIndex(): int
     {
         Cache::add(self::CACHE_INDICE_ROTATIVO, 0, now()->addDay());
 
         return Cache::increment(self::CACHE_INDICE_ROTATIVO) ?: 1;
     }
 
-    private function chamarGroq(string $chave, string $titulo, string $conteudo): array
+    private function callGroq(string $chave, string $titulo, string $conteudo): array
     {
         $resposta = Http::withToken($chave)
             ->baseUrl(config('services.groq.base_url'))
@@ -173,10 +173,10 @@ class GroqSummarizerService
             throw new RuntimeException('Groq retornou uma resposta vazia.');
         }
 
-        return $this->interpretarResposta($texto);
+        return $this->parseResponse($texto);
     }
 
-    private function interpretarResposta(string $texto): array
+    private function parseResponse(string $texto): array
     {
         $dados = json_decode($texto, true);
 

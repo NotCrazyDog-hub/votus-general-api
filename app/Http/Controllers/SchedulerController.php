@@ -16,19 +16,19 @@ class SchedulerController extends Controller
     /**
      * Disparado externamente (cron-job.org) a cada 12h em produção.
      * Só despacha os Jobs de coleta — o resumo respeita rate limiting
-     * (10/min) e por isso é drenado à parte, por `processarFilaNoticias`,
+     * (10/min) e por isso é drenado à parte, por `processNewsQueue`,
      * chamado com muito mais frequência (ex: a cada 5-10 min). Se os dois
      * estivessem no mesmo endpoint, uma coleta de 12h em 12h nunca daria
      * tempo de resumir tudo antes da próxima leva de notícias chegar.
      */
-    public function executarPipelineNoticias(Request $request): JsonResponse
+    public function runNewsPipeline(Request $request): JsonResponse
     {
-        if (!$this->tokenValido($request)) {
+        if (!$this->isTokenValid($request)) {
             return response()->json(['message' => 'Token inválido.'], 401);
         }
 
-        Artisan::call('noticias:coletar');
-        $saidaColeta = Artisan::output();
+        Artisan::call('news:collect');
+        $collectOutput = Artisan::output();
 
         // Já aproveita a mesma requisição pra começar a drenar a fila.
         // IMPORTANTE: precisa de --stop-when-empty aqui. Sem essa flag, o
@@ -44,14 +44,14 @@ class SchedulerController extends Controller
             '--stop-when-empty' => true,
             '--max-time' => 20,
         ]);
-        $saidaFila = Artisan::output();
+        $queueOutput = Artisan::output();
 
-        Artisan::call('noticias:limpar-pendentes-antigas');
+        Artisan::call('news:clear-stale-pending');
 
         return response()->json([
             'status' => 'executado',
-            'coleta' => trim($saidaColeta),
-            'fila' => trim($saidaFila),
+            'coleta' => trim($collectOutput),
+            'fila' => trim($queueOutput),
         ]);
     }
 
@@ -60,13 +60,13 @@ class SchedulerController extends Controller
      * 5-10 min) só para continuar drenando o que a coleta das últimas 12h
      * deixou pendente na fila de resumo, respeitando o rate limiting da IA.
      */
-    public function processarFilaNoticias(Request $request): JsonResponse
+    public function processNewsQueue(Request $request): JsonResponse
     {
-        if (!$this->tokenValido($request)) {
+        if (!$this->isTokenValid($request)) {
             return response()->json(['message' => 'Token inválido.'], 401);
         }
 
-        // Ver comentário em executarPipelineNoticias: --stop-when-empty é
+        // Ver comentário em runNewsPipeline: --stop-when-empty é
         // obrigatório, senão o worker fica preso até --max-time mesmo sem
         // trabalho de verdade, arriscando ser morto pela plataforma no meio
         // de um job. Chamado com alta frequência (a cada poucos minutos),
@@ -76,26 +76,26 @@ class SchedulerController extends Controller
             '--stop-when-empty' => true,
             '--max-time' => 20,
         ]);
-        $saidaFila = Artisan::output();
+        $queueOutput = Artisan::output();
 
-        Artisan::call('noticias:limpar-pendentes-antigas');
+        Artisan::call('news:clear-stale-pending');
 
         return response()->json([
             'status' => 'executado',
-            'fila' => trim($saidaFila),
+            'fila' => trim($queueOutput),
         ]);
     }
 
-    private function tokenValido(Request $request): bool
+    private function isTokenValid(Request $request): bool
     {
-        $esperado = config('services.scheduler.token');
+        $expected = config('services.scheduler.token');
 
-        if (empty($esperado)) {
+        if (empty($expected)) {
             return false;
         }
 
-        $recebido = (string) ($request->header('X-Scheduler-Token') ?? $request->query('token') ?? '');
+        $received = (string) ($request->header('X-Scheduler-Token') ?? $request->query('token') ?? '');
 
-        return hash_equals($esperado, $recebido);
+        return hash_equals($expected, $received);
     }
 }

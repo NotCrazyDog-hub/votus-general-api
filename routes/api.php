@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public Controllers
 use App\Http\Controllers\{
-    AgenteController,
+    AiAssistantController,
     CandidateController,
     CategoryController,
     CommitteeTopicMatchController,
@@ -124,9 +124,9 @@ Route::middleware('cache.headers')->group(function () {
 | Interactive Features, Telemetry & AI
 |--------------------------------------------------------------------------
 */
-Route::post('/agente/perguntar', [AgenteController::class, 'perguntar'])
+Route::post('/ai-assistant/ask', [AiAssistantController::class, 'ask'])
     ->middleware('throttle:10,1')
-    ->name('agente.perguntar');
+    ->name('ai-assistant.ask');
 
 Route::post('/santinhos', [SantinhoController::class, 'store'])->middleware('throttle:30,1');
 Route::post('/site-visits', [SiteVisitController::class, 'store'])->middleware('throttle:30,1');
@@ -141,8 +141,8 @@ Route::get('/suggestion-questions', [SuggestionQuestionController::class, 'index
 Route::controller(SchedulerController::class)->prefix('schedule')->group(function () {
     Route::get('/status', 'status');
     Route::middleware('throttle:6,1')->group(function () {
-        Route::post('/coletar-noticias', 'executarPipelineNoticias');
-        Route::post('/processar-fila-noticias', 'processarFilaNoticias');
+        Route::post('/coletar-noticias', 'runNewsPipeline');
+        Route::post('/processar-fila-noticias', 'processNewsQueue');
     });
 });
 

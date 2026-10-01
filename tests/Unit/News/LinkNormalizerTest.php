@@ -11,8 +11,8 @@ class LinkNormalizerTest extends TestCase
     {
         $normalizer = new LinkNormalizer();
 
-        $comTracking = $normalizer->normalizar('https://site.com/noticia/?utm_source=chatgpt.com&fbclid=abc');
-        $semTracking = $normalizer->normalizar('https://site.com/noticia');
+        $comTracking = $normalizer->normalize('https://site.com/noticia/?utm_source=chatgpt.com&fbclid=abc');
+        $semTracking = $normalizer->normalize('https://site.com/noticia');
 
         $this->assertSame($semTracking, $comTracking);
     }
@@ -21,8 +21,8 @@ class LinkNormalizerTest extends TestCase
     {
         $normalizer = new LinkNormalizer();
 
-        $comWww = $normalizer->normalizar('https://www.site.com/noticia');
-        $semWww = $normalizer->normalizar('https://site.com/noticia');
+        $comWww = $normalizer->normalize('https://www.site.com/noticia');
+        $semWww = $normalizer->normalize('https://site.com/noticia');
 
         $this->assertSame($semWww, $comWww);
     }

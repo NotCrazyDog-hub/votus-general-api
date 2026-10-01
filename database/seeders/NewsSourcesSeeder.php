@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Fonte;
+use App\Models\NewsSource;
 use Illuminate\Database\Seeder;
 
-class FontesSeeder extends Seeder
+class NewsSourcesSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -24,7 +24,7 @@ class FontesSeeder extends Seeder
             'geral' => 'https://agenciabrasil.ebc.com.br/rss/geral/feed.xml',
         ];
 
-        $fonte = Fonte::firstOrCreate(
+        $agenciaBrasil = NewsSource::firstOrCreate(
             ['slug' => 'agencia-brasil'],
             [
                 'nome' => 'Agência Brasil',
@@ -39,25 +39,25 @@ class FontesSeeder extends Seeder
 
         // Reaplica a lista de feeds em fontes já existentes (ex: categorias novas
         // adicionadas depois), sem mexer no estado do circuit breaker (ativa/falhas).
-        $fonte->update(['feeds' => $feeds]);
+        $agenciaBrasil->update(['feeds' => $feeds]);
 
-        $feedsPoder360 = [
+        $poder360Feeds = [
             'geral' => 'https://www.poder360.com.br/feed/',
         ];
 
-        $poder360 = Fonte::firstOrCreate(
+        $poder360 = NewsSource::firstOrCreate(
             ['slug' => 'poder360'],
             [
                 'nome' => 'Poder360',
                 'tipo_coleta' => 'rss',
                 'url_base' => 'https://www.poder360.com.br',
-                'feeds' => $feedsPoder360,
+                'feeds' => $poder360Feeds,
                 'ativa' => true,
                 'offset_minutos' => 15,
                 'limite_falhas' => 5,
             ]
         );
 
-        $poder360->update(['feeds' => $feedsPoder360]);
+        $poder360->update(['feeds' => $poder360Feeds]);
     }
 }

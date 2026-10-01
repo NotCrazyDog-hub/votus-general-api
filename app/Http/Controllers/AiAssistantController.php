@@ -7,12 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
-
-class AgenteController extends Controller
+class AiAssistantController extends Controller
 {
-    public function perguntar(Request $request): JsonResponse
+    public function ask(Request $request): JsonResponse
     {
-        $dados = $request->validate([
+        $data = $request->validate([
             'mensagem' => [
                 'required',
                 'string',
@@ -33,7 +32,7 @@ class AgenteController extends Controller
             $response = Http::acceptJson()
                 ->timeout(90)
                 ->post($webhookUrl, [
-                    'mensagem' => $dados['mensagem'],
+                    'mensagem' => $data['mensagem'],
                 ]);
 
             if ($response->failed()) {
@@ -43,19 +42,19 @@ class AgenteController extends Controller
                 ], 502);
             }
 
-            $resposta = $response->json('resposta');
+            $answer = $response->json('resposta');
 
-            if (!is_string($resposta) || trim($resposta) === '') {
+            if (!is_string($answer) || trim($answer) === '') {
                 return response()->json([
                     'message' => 'O n8n retornou uma resposta inválida.',
                 ], 502);
             }
 
             return response()->json([
-                'resposta' => $resposta,
+                'resposta' => $answer,
             ]);
-        } catch (Throwable $erro) {
-            report($erro);
+        } catch (Throwable $error) {
+            report($error);
 
             return response()->json([
                 'message' => 'Não foi possível conectar ao agente de IA.',
