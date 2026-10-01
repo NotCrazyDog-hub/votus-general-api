@@ -143,22 +143,37 @@ class AleceLegislativeService
         $response = Http::withOptions(['verify' => false])->get($detailUrl);
 
         if ($response->failed()) {
-            throw new \RuntimeException("Falha ao buscar detalhe da proposição: {$detailUrl} — " . $response->status());
+            throw new \RuntimeException(
+                "Falha ao buscar detalhe da proposição: {$detailUrl} — " . $response->status()
+            );
         }
 
         $crawler = new Crawler($response->body());
-        $text = $crawler->text('');
 
-        $entrada = $this->extractField($text, 'Entrada:');
-        $obs = $this->extractField($text, 'OBS:');
+        // Data de entrada
+        $entrada = $crawler->filter('.cel-entrada .valor')->count()
+            ? trim($crawler->filter('.cel-entrada .valor')->text())
+            : null;
 
-        $ementaLink = $crawler->filter('a[href*="tramit"]')->first();
+        // Ementa
+        $ementaLink = $crawler->filter('.linha-ementa a')->first();
+
+        // Observação/status
+        $obs = $crawler->filter('.linha-inferior .bloco-celula')->reduce(
+            fn (Crawler $node) => str_contains($node->text(''), 'OBS:')
+        );
 
         return [
             'presented_at' => $this->parseAleceDate($entrada),
-            'summary' => $ementaLink->count() ? trim($ementaLink->text('')) : null,
-            'summary_url' => $ementaLink->count() ? $this->resolveUrl($ementaLink->attr('href')) : null,
-            'status_description' => $obs,
+            'summary' => $ementaLink->count()
+                ? trim($ementaLink->text())
+                : null,
+            'summary_url' => $ementaLink->count()
+                ? $this->resolveUrl($ementaLink->attr('href'))
+                : null,
+            'status_description' => $obs->count()
+                ? trim($obs->last()->filter('.valor')->text(''))
+                : null,
         ];
     }
 
