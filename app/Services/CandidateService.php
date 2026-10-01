@@ -95,18 +95,18 @@ class CandidateService
      * entre TODOS os candidatos do cargo, não só os 50 da página atual, daí
      * o mesmo cache de 1h em disco em vez de deixar o front somar sozinho.
      */
-    public function comPropostaByOffice(CandidateOffice $office, ?string $state = null): int
+    public function countWithProposalDocumentByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->contarComFiltro('com-proposta', $office, $state, fn ($q) => $q->whereNotNull('proposal_document_path'));
+        return $this->countWithFilter('with-proposal-document', $office, $state, fn ($q) => $q->whereNotNull('proposal_document_path'));
     }
 
     /**
      * Quantos declararam "SUPERIOR COMPLETO" como escolaridade — mesma
      * string usada pelo TSE em DS_GRAU_INSTRUCAO, confirmada nos dados reais.
      */
-    public function comEnsinoSuperiorByOffice(CandidateOffice $office, ?string $state = null): int
+    public function countWithHigherEducationByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->contarComFiltro('ensino-superior', $office, $state, fn ($q) => $q->where('education_level', 'SUPERIOR COMPLETO'));
+        return $this->countWithFilter('higher-education', $office, $state, fn ($q) => $q->where('education_level', 'SUPERIOR COMPLETO'));
     }
 
     /**
@@ -114,9 +114,9 @@ class CandidateService
      * só existe pra Presidente/Governador/Senador; Deputado Federal/Estadual
      * não tem vice, então esse número vem sempre 0 pra esses dois cargos.
      */
-    public function comChapaByOffice(CandidateOffice $office, ?string $state = null): int
+    public function countWithFullTicketByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->contarComFiltro('com-chapa', $office, $state, fn ($q) => $q->whereHas('runningMates'));
+        return $this->countWithFilter('full-ticket', $office, $state, fn ($q) => $q->whereHas('runningMates'));
     }
 
     /**
@@ -131,9 +131,9 @@ class CandidateService
      * Mesmo critério de "foi eleito" usado lá (foiEleito()): contém
      * "eleito" e não contém "não eleito"/"nao eleito".
      */
-    public function jaFoiParlamentarByOffice(CandidateOffice $office, ?string $state = null): int
+    public function countPreviouslyElectedByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->contarComFiltro('ja-foi-parlamentar', $office, $state, fn ($q) => $q->whereHas(
+        return $this->countWithFilter('previously-elected', $office, $state, fn ($q) => $q->whereHas(
             'candidacyHistory',
             fn ($h) => $h->where('result_status', 'ilike', '%eleito%')
                 ->where('result_status', 'not ilike', '%não eleito%')
@@ -147,18 +147,18 @@ class CandidateService
      * TODOS (não só a página atual) e cacheados por 1h em disco — a lista
      * só muda quando o sync do TSE roda.
      */
-    private function contarComFiltro(string $chaveCache, CandidateOffice $office, ?string $state, \Closure $filtro): int
+    private function countWithFilter(string $cacheKey, CandidateOffice $office, ?string $state, \Closure $filter): int
     {
         return Cache::store('file')->remember(
-            "candidates:{$chaveCache}:{$office->value}:".($state ?? 'all'),
+            "candidates:{$cacheKey}:{$office->value}:".($state ?? 'all'),
             now()->addHour(),
-            function () use ($office, $state, $filtro) {
+            function () use ($office, $state, $filter) {
                 $query = Candidate::mainCandidates()
                     ->where('office_name', $office->toTseDescription())
                     ->approved()
                     ->when($state, fn ($q) => $q->where('state', $state));
 
-                return $filtro($query)->count();
+                return $filter($query)->count();
             },
         );
     }
