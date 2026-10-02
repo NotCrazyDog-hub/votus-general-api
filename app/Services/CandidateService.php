@@ -168,7 +168,9 @@ class CandidateService
         return Candidate::mainCandidates()
             ->where('external_id', $externalId)
             ->where('office_name', $office->toTseDescription())
-            ->with(['runningMates', 'previousMandates', 'candidacyHistory'])
+            // previousMandates.bills.topics: eager load pra evitar N+1 ao
+            // montar o histórico legislativo no perfil (LegislatorSummaryResource).
+            ->with(['runningMates', 'previousMandates.bills.topics', 'candidacyHistory'])
             ->firstOrFail();
     }
 }
