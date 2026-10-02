@@ -14,7 +14,7 @@
 
 ## Sobre o projeto
 
-O **Votus** é uma plataforma de transparência política desenvolvida para o **Ceará Científico 2026**. Este repositório é a **API** (Laravel), responsável por toda a coleta, normalização, persistência e disponibilização dos dados consumidos pelo [frontend](https://github.com/NotCrazyDog-hub/votus_frontend) (Next.js).
+O **Votus** é uma plataforma de transparência política desenvolvida para o **Ceará Científico 2026**. Este repositório é a **API** (Laravel), responsável por toda a coleta, normalização, persistência e disponibilização dos dados consumidos pelo [frontend](https://github.com/guisouzsa/votus_front) (Next.js).
 
 A API cobre hoje três grandes domínios de dados políticos, cada um com fonte e escopo geográfico próprios:
 
