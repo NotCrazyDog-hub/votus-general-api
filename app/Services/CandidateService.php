@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Enums\CandidateOffice;
 use App\Models\Candidate;
+use App\Models\CandidateExpense;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class CandidateService
 {
@@ -165,12 +167,131 @@ class CandidateService
 
     public function findByOffice(int $externalId, CandidateOffice $office): Candidate
     {
-        return Candidate::mainCandidates()
+        $candidate = Candidate::mainCandidates()
             ->where('external_id', $externalId)
             ->where('office_name', $office->toTseDescription())
             // previousMandates.bills.topics: eager load pra evitar N+1 ao
             // montar o histórico legislativo no perfil (LegislatorSummaryResource).
             ->with(['runningMates', 'previousMandates.bills.topics', 'candidacyHistory'])
             ->firstOrFail();
+
+        // Atributo dinâmico (não é coluna do banco): só a lista cabe aqui ser
+        // carregada à parte via /expenses, paginada — alguns candidatos têm
+        // mais de 1.200 despesas (ex: Elmano de Freitas), carregar tudo de
+        // uma vez junto com o show() seria pesado demais. null quando o
+        // candidato não declarou nenhuma despesa (hoje, só existe dado real
+        // pros candidatos do Ceará — ver countPreviouslyElectedByOffice pro
+        // mesmo tipo de limitação de cobertura).
+        $candidate->expenses_summary = $this->expensesSummary($candidate->id);
+
+        return $candidate;
+    }
+
+    /**
+     * Resumo agregado (contagem + soma) das despesas de campanha de um
+     * candidato — null se ele não tiver nenhuma declarada. O total é
+     * CALCULADO pelo Votus a partir dos registros oficiais do TSE
+     * (candidate_expenses), não é um campo que o TSE fornece pronto.
+     */
+    /**
+     * O TSE publica relatórios financeiros periódicos durante a campanha —
+     * cada um recebe SQ_DESPESA novos mesmo pra itens já declarados antes.
+     * Somar todas as despesas desde o início da campanha duplicaria o
+     * valor; o correto é olhar só o relatório mais recente de cada
+     * candidato (confirmado comparando com o total oficial do TSE pro
+     * Elmano de Freitas: nosso total batia ~2x o valor real antes disso).
+     * Quando não há accounting_report_date (não deveria acontecer após o
+     * backfill, mas por segurança), não filtra — melhor mostrar tudo que
+     * temos do que esconder despesa real por falta desse campo.
+     */
+    private function latestReportExpenses(int $candidateId)
+    {
+        $latest = CandidateExpense::where('candidate_id', $candidateId)->max('accounting_report_date');
+
+        return CandidateExpense::where('candidate_id', $candidateId)
+            ->when($latest, fn ($q) => $q->where('accounting_report_date', $latest));
+    }
+
+    public function expensesSummary(int $candidateId): ?array
+    {
+        $summary = (clone $this->latestReportExpenses($candidateId))
+            ->toBase()
+            ->selectRaw('count(*) as count, sum(amount) as total, max(updated_at) as last_synced_at')
+            ->first();
+
+        if (! $summary || (int) $summary->count === 0) {
+            return null;
+        }
+
+        // Só os 2 valores reais de supplier_type que o TSE usa — não é uma
+        // categoria de gasto, é o tipo do fornecedor (pra uma mini
+        // visualização legível, não pra fingir uma categorização que não existe).
+        $porTipo = (clone $this->latestReportExpenses($candidateId))
+            ->toBase()
+            ->selectRaw('supplier_type, sum(amount) as total')
+            ->groupBy('supplier_type')
+            ->pluck('total', 'supplier_type');
+
+        $maioresGastos = (clone $this->latestReportExpenses($candidateId))
+            ->orderByDesc('amount')
+            ->limit(3)
+            ->get(['description', 'supplier_name', 'amount']);
+
+        return [
+            'count' => (int) $summary->count,
+            'total' => (float) $summary->total,
+            // Quando o Votus sincronizou essa despesa por último — não é um
+            // dado que o TSE fornece, é da nossa própria coluna updated_at.
+            'last_synced_at' => $summary->last_synced_at,
+            'by_supplier_type' => [
+                'pessoa_fisica' => (float) ($porTipo['PESSOA FÍSICA'] ?? 0),
+                'pessoa_juridica' => (float) ($porTipo['PESSOA JURÍDICA'] ?? 0),
+            ],
+            'top_expenses' => $maioresGastos->map(fn ($e) => [
+                'description' => $e->description,
+                'supplier_name' => $e->supplier_name,
+                'amount' => (float) $e->amount,
+            ])->all(),
+        ];
+    }
+
+    /**
+     * Lista paginada das despesas de um candidato. Filtros e ordenação são
+     * todos opcionais; sem nenhum, mantém o comportamento original (mais
+     * recentes primeiro).
+     *
+     * @param array{search?: ?string, supplierType?: ?string, dateFrom?: ?string, dateTo?: ?string, sort?: ?string} $filters
+     */
+    public function expensesPaginated(int $candidateId, int $page = 1, array $filters = [])
+    {
+        $query = $this->latestReportExpenses($candidateId);
+
+        if (! empty($filters['search'])) {
+            $termo = '%'.addcslashes($filters['search'], '\\%_').'%';
+            $query->where(fn ($q) => $q
+                ->where('description', 'ilike', $termo)
+                ->orWhere('supplier_name', 'ilike', $termo));
+        }
+
+        if (! empty($filters['supplierType'])) {
+            $query->where('supplier_type', $filters['supplierType']);
+        }
+
+        if (! empty($filters['dateFrom'])) {
+            $query->where('expense_date', '>=', $filters['dateFrom']);
+        }
+
+        if (! empty($filters['dateTo'])) {
+            $query->where('expense_date', '<=', $filters['dateTo']);
+        }
+
+        match ($filters['sort'] ?? 'date_desc') {
+            'date_asc' => $query->orderBy('expense_date'),
+            'amount_desc' => $query->orderByDesc('amount'),
+            'amount_asc' => $query->orderBy('amount'),
+            default => $query->orderByDesc('expense_date'),
+        };
+
+        return $query->paginate(20, ['*'], 'page', $page);
     }
 }

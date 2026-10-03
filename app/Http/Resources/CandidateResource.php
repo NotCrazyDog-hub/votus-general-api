@@ -27,6 +27,11 @@ class CandidateResource extends JsonResource
             'proposal_document_url' => $this->proposal_document_url,
             'election_year' => $this->election_year,
             'judgment_status' => $this->judgment_status,
+            // Só presente quando o Service anexou (CandidateService::findByOffice,
+            // detalhe/show) e o candidato de fato declarou despesa — "total" é
+            // CALCULADO pelo Votus a partir dos registros oficiais, não vem
+            // pronto do TSE. Hoje só existe dado real pros candidatos do Ceará.
+            'expenses_summary' => $this->when(isset($this->expenses_summary), fn () => $this->expenses_summary),
             'running_mates' => CandidateResource::collection($this->whenLoaded('runningMates')),
             'previous_mandates' => LegislatorSummaryResource::collection($this->whenLoaded('previousMandates')),
             'candidacy_history' => $this->whenLoaded('candidacyHistory', function () {

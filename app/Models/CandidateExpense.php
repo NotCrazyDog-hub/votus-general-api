@@ -19,12 +19,14 @@ class CandidateExpense extends Model
         'document_type',
         'document_number',
         'expense_origin',
+        'accounting_report_date',
         'raw_data',
     ];
 
     protected $casts = [
         'raw_data' => 'array',
         'expense_date' => 'date',
+        'accounting_report_date' => 'date',
         'amount' => 'decimal:2',
     ];
 

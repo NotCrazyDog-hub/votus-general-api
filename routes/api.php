@@ -58,14 +58,19 @@ Route::middleware('cache.headers')->group(function () {
     Route::controller(CandidateController::class)->group(function () {
         Route::get('/president-candidates', 'indexForPresidents');
         Route::get('/president-candidates/{external_id}', 'showPresident');
+        Route::get('/president-candidates/{external_id}/expenses', 'presidentExpenses');
         Route::get('/governor-candidates', 'indexForGovernors');
         Route::get('/governor-candidates/{external_id}', 'showGovernor');
+        Route::get('/governor-candidates/{external_id}/expenses', 'governorExpenses');
         Route::get('/senate-candidates', 'indexForSenateCandidates');
         Route::get('/senate-candidates/{external_id}', 'showSenateCandidate');
+        Route::get('/senate-candidates/{external_id}/expenses', 'senateExpenses');
         Route::get('/federal-deputy-candidates', 'indexForFederalDeputyCandidates');
         Route::get('/federal-deputy-candidates/{external_id}', 'showFederalDeputyCandidate');
+        Route::get('/federal-deputy-candidates/{external_id}/expenses', 'federalDeputyExpenses');
         Route::get('/state-deputy-candidates', 'indexForStateDeputyCandidates');
         Route::get('/state-deputy-candidates/{external_id}', 'showStateDeputyCandidate');
+        Route::get('/state-deputy-candidates/{external_id}/expenses', 'stateDeputyExpenses');
     });
 
     /*

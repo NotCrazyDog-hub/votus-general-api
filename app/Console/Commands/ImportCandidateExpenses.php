@@ -68,6 +68,11 @@ class ImportCandidateExpenses extends Command
                         'document_type' => $row['DS_TIPO_DOCUMENTO'] ?? null,
                         'document_number' => $row['NR_DOCUMENTO'] ?? null,
                         'expense_origin' => $row['DS_ORIGEM_DESPESA'] ?? null,
+                        // Ver comentário na migration: o TSE publica relatórios
+                        // financeiros periódicos, e somar todos desde o início
+                        // da campanha duplicaria o valor — por isso guardamos
+                        // de qual relatório cada despesa veio.
+                        'accounting_report_date' => $csv->parseBrazilianDate($row['DT_PRESTACAO_CONTAS'] ?? null),
                         'raw_data' => $row,
                     ]
                 );

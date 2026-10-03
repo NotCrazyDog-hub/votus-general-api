@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\CandidateService;
 use App\Enums\CandidateOffice;
 use App\Http\Resources\CandidateResource;
+use App\Http\Resources\CandidateExpenseResource;
 
 class CandidateController extends Controller
 {
@@ -23,6 +24,11 @@ class CandidateController extends Controller
         );
     }
 
+    public function presidentExpenses(Request $request, int $external_id)
+    {
+        return $this->expensesFor($request, $external_id, CandidateOffice::President);
+    }
+
     public function indexForGovernors(Request $request)
     {
         return $this->indexFor(CandidateOffice::Governor, $request);
@@ -33,6 +39,11 @@ class CandidateController extends Controller
         return new CandidateResource(
             $this->service->findByOffice($external_id, CandidateOffice::Governor)
         );
+    }
+
+    public function governorExpenses(Request $request, int $external_id)
+    {
+        return $this->expensesFor($request, $external_id, CandidateOffice::Governor);
     }
 
     public function indexForSenateCandidates(Request $request)
@@ -47,6 +58,11 @@ class CandidateController extends Controller
         );
     }
 
+    public function senateExpenses(Request $request, int $external_id)
+    {
+        return $this->expensesFor($request, $external_id, CandidateOffice::Senator);
+    }
+
     public function indexForFederalDeputyCandidates(Request $request)
     {
         return $this->indexFor(CandidateOffice::FederalDeputy, $request);
@@ -59,6 +75,11 @@ class CandidateController extends Controller
         );
     }
 
+    public function federalDeputyExpenses(Request $request, int $external_id)
+    {
+        return $this->expensesFor($request, $external_id, CandidateOffice::FederalDeputy);
+    }
+
     public function indexForStateDeputyCandidates(Request $request)
     {
         return $this->indexFor(CandidateOffice::StateDeputy, $request);
@@ -69,6 +90,11 @@ class CandidateController extends Controller
         return new CandidateResource(
             $this->service->findByOffice($external_id, CandidateOffice::StateDeputy)
         );
+    }
+
+    public function stateDeputyExpenses(Request $request, int $external_id)
+    {
+        return $this->expensesFor($request, $external_id, CandidateOffice::StateDeputy);
     }
 
     /**
@@ -102,5 +128,30 @@ class CandidateController extends Controller
                 'previously_elected' => $this->service->countPreviouslyElectedByOffice($office, $state),
             ],
         ]);
+    }
+
+    /**
+     * Lista paginada das despesas de campanha de um candidato (?page=).
+     * Hoje só tem dado real pros candidatos do Ceará (ver auditoria de
+     * veracidade) — candidato de outro estado sem despesa importada
+     * simplesmente devolve uma lista vazia, não um erro.
+     */
+    private function expensesFor(Request $request, int $externalId, CandidateOffice $office)
+    {
+        $candidate = $this->service->findByOffice($externalId, $office);
+
+        $page = max(1, (int) $request->get('page', 1));
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'supplierType' => ['nullable', 'string', 'in:PESSOA FÍSICA,PESSOA JURÍDICA'],
+            'dateFrom' => ['nullable', 'date'],
+            'dateTo' => ['nullable', 'date'],
+            'sort' => ['nullable', 'string', 'in:date_desc,date_asc,amount_desc,amount_asc'],
+        ]);
+
+        return CandidateExpenseResource::collection(
+            $this->service->expensesPaginated($candidate->id, $page, $filters)
+        );
     }
 }
