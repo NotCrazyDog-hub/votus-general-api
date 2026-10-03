@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Legislator;
 use App\Services\LowerHouseApiService;
+use App\Services\OfficialPhotoOptimizer;
 use Illuminate\Console\Command;
 use App\Enums\ElectoralStatus;
 use App\Enums\LegislatorStatus;
@@ -13,7 +14,7 @@ class SyncLowerHouseLegislators extends Command
     protected $signature = 'sync:legislators-lower-house';
     protected $description = 'Fetch legislators from Câmara dos Deputados API and save to database';
 
-    public function handle(LowerHouseApiService $api)
+    public function handle(LowerHouseApiService $api, OfficialPhotoOptimizer $photoOptimizer)
     {
         $ids = $api->listIds();
         $this->info('Found ' . count($ids) . ' legislators to sync.');
@@ -34,7 +35,12 @@ class SyncLowerHouseLegislators extends Command
                         'civil_name' => $data['nomeCivil'],
                         'cpf' => $cpf,
                         'parliamentary_name' => $status['nome'],
-                        'photo_url' => $status['urlFoto'],
+                        'photo_url' => $status['urlFoto']
+                            ? ($photoOptimizer->resizeAndStore(
+                                $status['urlFoto'],
+                                "legislators/photos/lower_house-{$data['id']}.jpg"
+                            ) ?? $status['urlFoto'])
+                            : null,
                         'party' => $status['siglaPartido'],
                         'state' => $status['siglaUf'],
                         'legislature' => $status['idLegislatura'] ?? null,

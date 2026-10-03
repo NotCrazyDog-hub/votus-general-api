@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Legislator;
 use App\Services\SenateApiService;
+use App\Services\OfficialPhotoOptimizer;
 use Illuminate\Console\Command;
 use App\Enums\ElectoralStatus;
 use App\Enums\LegislatorStatus;
@@ -13,7 +14,7 @@ class SyncSenateLegislators extends Command
     protected $signature = 'sync:legislators-senate';
     protected $description = 'Fetch senators from Senado Federal API and save to database';
 
-    public function handle(SenateApiService $api)
+    public function handle(SenateApiService $api, OfficialPhotoOptimizer $photoOptimizer)
     {
         $parliamentarians = $api->listParliamentarians('CE');
         $this->info('Found ' . count($parliamentarians) . ' senators to sync.');
@@ -39,7 +40,20 @@ class SyncSenateLegislators extends Command
                         'civil_name' => $identification['NomeCompletoParlamentar'] ?? null,
                         'parliamentary_name' => $identification['NomeParlamentar'] ?? null,
                         'cpf' => null,
-                        'photo_url' => str_replace('http://', 'https://', $identification['UrlFotoParlamentar'] ?? null),
+                        'photo_url' => (function () use ($photoOptimizer, $identification) {
+                            $original = $identification['UrlFotoParlamentar'] ?? null;
+
+                            if (! $original) {
+                                return null;
+                            }
+
+                            $original = str_replace('http://', 'https://', $original);
+
+                            return $photoOptimizer->resizeAndStore(
+                                $original,
+                                "legislators/photos/senate-{$identification['CodigoParlamentar']}.jpg"
+                            ) ?? $original;
+                        })(),
                         'party' => $identification['SiglaPartidoParlamentar'] ?? null,
                         'state' => $identification['UfParlamentar'] ?? null,
                         'legislature' => $api->currentLegislatureNumber($mandate),

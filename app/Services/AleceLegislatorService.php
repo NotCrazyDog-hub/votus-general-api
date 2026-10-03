@@ -10,7 +10,8 @@ use Throwable;
 class AleceLegislatorService
 {
     public function __construct(
-        protected AleceLegislatorScraper $scraper
+        protected AleceLegislatorScraper $scraper,
+        protected OfficialPhotoOptimizer $photoOptimizer
     ) {
     }
 
@@ -77,7 +78,12 @@ class AleceLegislatorService
                 'civil_name' => $data['name'] ?? null,
                 'parliamentary_name' => $data['parliamentary_name'] ?? null,
 
-                'photo_url' => $data['photo_url'] ?? null,
+                'photo_url' => $data['photo_url']
+                    ? ($this->photoOptimizer->resizeAndStore(
+                        $data['photo_url'],
+                        "legislators/photos/state_house-{$data['source_slug']}.jpg"
+                    ) ?? $data['photo_url'])
+                    : null,
                 'party' => $data['party'] ?? null,
 
                 'state' => $data['state'] ?? 'CE',
