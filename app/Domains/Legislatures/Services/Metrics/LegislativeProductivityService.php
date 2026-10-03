@@ -4,7 +4,7 @@ namespace App\Domains\Legislatures\Services\Metrics;
 
 use App\Domains\Legislatures\Models\Legislator;
 use App\Domains\Legislatures\Models\LegislaturePeriod;
-use App\Services\SenateApiService;
+use App\Domains\Legislatures\Services\Senate\SenateApiService;
 use Carbon\Carbon;
 
 class LegislativeProductivityService
