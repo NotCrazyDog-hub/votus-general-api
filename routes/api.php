@@ -39,15 +39,6 @@ use App\Http\Controllers\Admin as Admin;
 | de bater no banco de novo a cada navegação de volta pra mesma tela.
 */
 Route::middleware('cache.headers')->group(function () {
-    Route::controller(LegislatorController::class)->group(function () {
-        Route::get('/deputies', 'indexForDeputies');
-        Route::get('/deputies/{external_id}', 'showDeputy');
-        Route::get('/senators', 'indexForSenators');
-        Route::get('/senators/{external_id}', 'showSenator');
-        Route::get('/state-deputies', 'indexForStateDeputies'); 
-        Route::get('/state-deputies/{source_slug}', 'showStateDeputy');
-    });
-
     Route::controller(ExecutiveController::class)->group(function () {
         Route::get('/president', 'indexForPresident');
         Route::get('/president/{id}', 'showPresident');
@@ -151,13 +142,6 @@ Route::controller(SchedulerController::class)->prefix('schedule')->group(functio
     });
 });
 
-Route::middleware('auth:sanctum')->prefix('internal')->group(function () {
-    Route::controller(CommitteeTopicMatchController::class)->prefix('committee-topic-matches')->group(function () {
-        Route::get('/pending', 'pending');
-        Route::post('/{committeeTopic}/review', 'review');
-    });
-});
-
 Route::post('/public-opportunities/import', [PublicOpportunityImportController::class, 'store'])
     ->middleware('internal.token');
 
@@ -239,3 +223,5 @@ Route::prefix('admin')->group(function () {
         });
     });
 });
+
+require __DIR__.'/api/legislature.php';
