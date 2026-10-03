@@ -15,19 +15,30 @@ class ImportMecCourses extends Command
     protected $signature = 'universities:import-mec
         {file=PDA_Dados_Cursos_Graduacao_Brasil.csv}
         {--state= : Importar apenas uma UF, como CE}
-        {--limit= : Limitar a quantidade de registros para teste}';
+        {--limit= : Limitar a quantidade de registros para teste}
+        {--skip=0 : Pular os N primeiros registros do CSV (retomada)}
+        {--refresh : Atualizar universidades e campi já existentes}';
 
     protected $description =
         'Importa universidades, locais de oferta e cursos do CSV do MEC';
 
+    private const BATCH_SIZE = 500;
+
+    /** Espera (ms) entre as tentativas de cada operação no banco. */
+    private const RETRY_BACKOFF = [2000, 4000, 8000, 16000];
+
+    /** mec_code => university id */
     private array $universityCache = [];
 
+    /** "university_id|ibge_city_code" => campus id */
     private array $campusCache = [];
+
+    /** Último registro do CSV com garantia de estar salvo no banco. */
+    private int $committedRecord = 0;
 
     public function handle(): int
     {
         $fileName = (string) $this->argument('file');
-
         $path = storage_path("app/imports/{$fileName}");
 
         if (! is_file($path)) {
@@ -44,13 +55,13 @@ class ImportMecCourses extends Command
             return self::FAILURE;
         }
 
+        $skip = max(0, (int) $this->option('skip'));
+        $this->committedRecord = $skip;
+
         try {
             $delimiter = $this->detectDelimiter($handle);
 
-            $headers = $this->readCsvRow(
-                $handle,
-                $delimiter
-            );
+            $headers = $this->readCsvRow($handle, $delimiter);
 
             if ($headers === false) {
                 throw new RuntimeException(
@@ -59,9 +70,7 @@ class ImportMecCourses extends Command
             }
 
             $headers = array_map(
-                fn ($header) => $this->normalizeHeader(
-                    (string) $header
-                ),
+                fn ($header) => $this->normalizeHeader((string) $header),
                 $headers
             );
 
@@ -73,37 +82,41 @@ class ImportMecCourses extends Command
             $this->line('Colunas encontradas:');
             $this->line(implode(', ', $headers));
 
-            $stateFilter = $this->option('state');
+            if (! $this->option('refresh')) {
+                $this->warmCaches();
+            }
 
+            $stateFilter = $this->option('state');
             $stateFilter = $stateFilter !== null
                 ? strtoupper(trim((string) $stateFilter))
                 : null;
 
             $limit = $this->option('limit');
+            $limit = $limit !== null ? max(1, (int) $limit) : null;
 
-            $limit = $limit !== null
-                ? max(1, (int) $limit)
-                : null;
+            if ($skip > 0) {
+                $this->warn("Pulando os primeiros {$skip} registros.");
+            }
 
             $batch = [];
-
             $processed = 0;
             $ignored = 0;
-            $lineNumber = 1;
+            $record = 0;
 
             while (
-                ($values = $this->readCsvRow(
-                    $handle,
-                    $delimiter
-                )) !== false
+                ($values = $this->readCsvRow($handle, $delimiter)) !== false
             ) {
-                $lineNumber++;
+                $record++;
+
+                // Retomada: descarta sem fazer nenhuma query.
+                if ($record <= $skip) {
+                    continue;
+                }
 
                 if (count($values) !== count($headers)) {
                     $ignored++;
-
                     $this->warn(
-                        "Linha {$lineNumber} ignorada: número de colunas inválido."
+                        "Registro {$record} ignorado: número de colunas inválido."
                     );
 
                     continue;
@@ -117,19 +130,14 @@ class ImportMecCourses extends Command
                     continue;
                 }
 
-                $state = strtoupper(
-                    $this->value($row, [
-                        'UF',
-                        'SIGLA_UF',
-                        'UF_CURSO',
-                    ]) ?? ''
-                );
+                if ($stateFilter !== null) {
+                    $state = strtoupper(
+                        $this->value($row, ['UF', 'SIGLA_UF', 'UF_CURSO']) ?? ''
+                    );
 
-                if (
-                    $stateFilter !== null &&
-                    $state !== $stateFilter
-                ) {
-                    continue;
+                    if ($state !== $stateFilter) {
+                        continue;
+                    }
                 }
 
                 $data = $this->mapRow($row);
@@ -140,76 +148,50 @@ class ImportMecCourses extends Command
                     continue;
                 }
 
-                $university = $this->getUniversity($data);
-
-                $campus = $this->getCampus(
-                    $university->id,
-                    $data
-                );
-
-                $batchKey =
-                    $campus->id .
-                    '|' .
-                    $data['mec_course_code'];
+                $universityId = $this->getUniversityId($data);
+                $campusId = $this->getCampusId($universityId, $data);
 
                 $now = now();
 
-                $batch[$batchKey] = [
-                    'campus_id' => $campus->id,
-
-                    'mec_course_code' =>
-                        $data['mec_course_code'],
-
+                $batch[$campusId . '|' . $data['mec_course_code']] = [
+                    'campus_id' => $campusId,
+                    'mec_course_code' => $data['mec_course_code'],
                     'name' => $data['course_name'],
-
                     'normalized_name' => $this->normalizeText(
                         $data['course_name']
                     ),
-
                     'degree' => $data['degree'],
                     'area' => $data['area'],
                     'modality' => $data['modality'],
                     'status' => $data['course_status'],
-
-                    'authorized_vacancies' =>
-                        $data['authorized_vacancies'],
-
-                    'workload_hours' =>
-                        $data['workload_hours'],
-
-                    'source_name' =>
-                        'MEC - Cursos de Graduação do Brasil',
-
+                    'authorized_vacancies' => $data['authorized_vacancies'],
+                    'workload_hours' => $data['workload_hours'],
+                    'source_name' => 'MEC - Cursos de Graduação do Brasil',
                     'source_updated_at' => '2022-12-29',
-
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
 
                 $processed++;
 
-                if (count($batch) >= 500) {
+                if (count($batch) >= self::BATCH_SIZE) {
                     $this->saveBatch($batch);
-
                     $batch = [];
+                    $this->committedRecord = $record;
                 }
 
                 if ($processed % 1000 === 0) {
-                    $this->info(
-                        "{$processed} registros processados."
-                    );
+                    $this->info("{$processed} registros processados.");
                 }
 
-                if (
-                    $limit !== null &&
-                    $processed >= $limit
-                ) {
+                if ($limit !== null && $processed >= $limit) {
                     break;
                 }
             }
 
             if ($batch !== []) {
                 $this->saveBatch($batch);
+                $this->committedRecord = $record;
             }
 
             fclose($handle);
@@ -222,20 +204,23 @@ class ImportMecCourses extends Command
                 [
                     ['Registros processados', $processed],
                     ['Registros ignorados', $ignored],
-
                     [
                         'Universidades',
-                        DB::table('universities')->count(),
+                        $this->withRetry(
+                            fn () => DB::table('universities')->count()
+                        ),
                     ],
-
                     [
                         'Locais de oferta',
-                        DB::table('campuses')->count(),
+                        $this->withRetry(
+                            fn () => DB::table('campuses')->count()
+                        ),
                     ],
-
                     [
                         'Cursos',
-                        DB::table('course_offerings')->count(),
+                        $this->withRetry(
+                            fn () => DB::table('course_offerings')->count()
+                        ),
                     ],
                 ]
             );
@@ -248,20 +233,191 @@ class ImportMecCourses extends Command
 
             report($exception);
 
+            $this->newLine();
             $this->error($exception->getMessage());
+            $this->warn(
+                'Importação interrompida. Tudo até o registro ' .
+                $this->committedRecord .
+                ' está salvo. Para continuar de onde parou, rode:'
+            );
+            $this->line(
+                "php artisan universities:import-mec {$fileName} --skip=" .
+                $this->committedRecord
+            );
 
             return self::FAILURE;
         }
     }
 
+    /**
+     * Carrega ids já existentes para evitar uma ida ao banco
+     * por universidade/campus a cada execução.
+     */
+    private function warmCaches(): void
+    {
+        $this->line('Carregando universidades e campi existentes...');
+
+        $this->withRetry(function () {
+            $this->universityCache = [];
+            $this->campusCache = [];
+
+            foreach (
+                University::query()->get(['id', 'mec_code']) as $university
+            ) {
+                $this->universityCache[(int) $university->mec_code] =
+                    (int) $university->id;
+            }
+
+            foreach (
+                Campus::query()->get(['id', 'university_id', 'ibge_city_code'])
+                as $campus
+            ) {
+                $key = $campus->university_id . '|' . $campus->ibge_city_code;
+                $this->campusCache[$key] = (int) $campus->id;
+            }
+        });
+
+        $this->line(
+            count($this->universityCache) . ' universidades e ' .
+            count($this->campusCache) . ' campi em cache.'
+        );
+    }
+
+    private function getUniversityId(array $data): int
+    {
+        $code = $data['mec_university_code'];
+
+        if (isset($this->universityCache[$code])) {
+            return $this->universityCache[$code];
+        }
+
+        $university = $this->withRetry(
+            fn () => University::updateOrCreate(
+                ['mec_code' => $code],
+                [
+                    'name' => $data['university_name'],
+                    'administrative_category' =>
+                        $data['administrative_category'],
+                    'academic_organization' =>
+                        $data['academic_organization'],
+                    'sector' => $this->identifySector(
+                        $data['administrative_category']
+                    ),
+                ]
+            )
+        );
+
+        return $this->universityCache[$code] = (int) $university->id;
+    }
+
+    private function getCampusId(int $universityId, array $data): int
+    {
+        $cacheKey = $universityId . '|' . $data['ibge_city_code'];
+
+        if (isset($this->campusCache[$cacheKey])) {
+            return $this->campusCache[$cacheKey];
+        }
+
+        $campus = $this->withRetry(
+            fn () => Campus::updateOrCreate(
+                [
+                    'university_id' => $universityId,
+                    'ibge_city_code' => $data['ibge_city_code'],
+                ],
+                [
+                    'city' => $data['city'],
+                    'normalized_city' => $this->normalizeText($data['city']),
+                    'state' => $data['state'],
+                    'region' => $data['region'],
+                ]
+            )
+        );
+
+        return $this->campusCache[$cacheKey] = (int) $campus->id;
+    }
+
+    private function saveBatch(array $batch): void
+    {
+        $this->withRetry(
+            fn () => DB::table('course_offerings')->upsert(
+                array_values($batch),
+                ['campus_id', 'mec_course_code'],
+                [
+                    'name',
+                    'normalized_name',
+                    'degree',
+                    'area',
+                    'modality',
+                    'status',
+                    'authorized_vacancies',
+                    'workload_hours',
+                    'source_name',
+                    'source_updated_at',
+                    'updated_at',
+                ]
+            )
+        );
+    }
+
+    /**
+     * Executa uma operação de banco com novas tentativas e
+     * backoff, apenas para falhas transitórias de conexão/DNS.
+     */
+    private function withRetry(callable $callback): mixed
+    {
+        return retry(
+            self::RETRY_BACKOFF,
+            function () use ($callback) {
+                try {
+                    return $callback();
+                } catch (Throwable $exception) {
+                    if ($this->isTransientConnectionError($exception)) {
+                        $this->warn(
+                            'Falha de conexão, tentando novamente: ' .
+                            Str::limit($exception->getMessage(), 120)
+                        );
+
+                        try {
+                            DB::reconnect();
+                        } catch (Throwable) {
+                            // A próxima tentativa reconecta de novo.
+                        }
+                    }
+
+                    throw $exception;
+                }
+            },
+            0,
+            fn (Throwable $exception) => $this->isTransientConnectionError(
+                $exception
+            )
+        );
+    }
+
+    private function isTransientConnectionError(Throwable $exception): bool
+    {
+        $needles = [
+            'could not translate host name',
+            'Name or service not known',
+            'Temporary failure in name resolution',
+            'could not connect',
+            'Connection refused',
+            'Connection timed out',
+            'server closed the connection',
+            'terminating connection',
+            'no connection to the server',
+            'SSL SYSCALL',
+            'SQLSTATE[08',
+            'timeout',
+        ];
+
+        return Str::contains($exception->getMessage(), $needles, true);
+    }
+
     private function mapRow(array $row): ?array
     {
         $mecUniversityCode = $this->toInteger(
-            $this->value($row, [
-                'CODIGO_IES',
-                'CODIGO_DA_IES',
-                'CO_IES',
-            ])
+            $this->value($row, ['CODIGO_IES', 'CODIGO_DA_IES', 'CO_IES'])
         );
 
         $universityName = $this->value($row, [
@@ -285,15 +441,9 @@ class ImportMecCourses extends Command
         ]);
 
         /*
-         * O CSV está trazendo alguns códigos municipais
-         * com zeros adicionais, como:
-         *
-         * 000000002300200
-         *
-         * O método normalizeCityCode mantém somente
-         * os últimos sete dígitos:
-         *
-         * 2300200
+         * O CSV traz alguns códigos municipais com zeros extras
+         * (000000002300200). normalizeCityCode mantém os últimos
+         * sete dígitos: 2300200.
          */
         $cityCode = $this->normalizeCityCode(
             $this->value($row, [
@@ -311,11 +461,7 @@ class ImportMecCourses extends Command
         ]);
 
         $state = strtoupper(
-            $this->value($row, [
-                'UF',
-                'SIGLA_UF',
-                'UF_CURSO',
-            ]) ?? ''
+            $this->value($row, ['UF', 'SIGLA_UF', 'UF_CURSO']) ?? ''
         );
 
         if (
@@ -332,52 +478,33 @@ class ImportMecCourses extends Command
 
         return [
             'mec_university_code' => $mecUniversityCode,
-
             'university_name' => $universityName,
-
-            'administrative_category' => $this->value(
-                $row,
-                [
-                    'CATEGORIA_ADMINISTRATIVA',
-                    'CATEGORIA_IES',
-                    'CATEGORIA_DA_IES',
-                ]
-            ),
-
-            'academic_organization' => $this->value(
-                $row,
-                [
-                    'ORGANIZACAO_ACADEMICA',
-                    'ORGANIZACAO_DA_IES',
-                ]
-            ),
-
-            'mec_course_code' => $mecCourseCode,
-
-            'course_name' => $courseName,
-
-            'degree' => $this->value($row, [
-                'GRAU',
-                'GRAU_ACADEMICO',
+            'administrative_category' => $this->value($row, [
+                'CATEGORIA_ADMINISTRATIVA',
+                'CATEGORIA_IES',
+                'CATEGORIA_DA_IES',
             ]),
-
+            'academic_organization' => $this->value($row, [
+                'ORGANIZACAO_ACADEMICA',
+                'ORGANIZACAO_DA_IES',
+            ]),
+            'mec_course_code' => $mecCourseCode,
+            'course_name' => $courseName,
+            'degree' => $this->value($row, ['GRAU', 'GRAU_ACADEMICO']),
             'area' => $this->value($row, [
                 'AREA_OCDE_CINE',
                 'AREA_OCDE',
                 'AREA',
             ]),
-
             'modality' => $this->value($row, [
                 'MODALIDADE',
                 'MODALIDADE_DE_ENSINO',
             ]),
-
             'course_status' => $this->value($row, [
                 'SITUACAO_CURSO',
                 'SITUACAO_DO_CURSO',
                 'SITUACAO',
             ]),
-
             'authorized_vacancies' => $this->toInteger(
                 $this->value($row, [
                     'QT_VAGAS_AUTORIZADAS',
@@ -386,7 +513,6 @@ class ImportMecCourses extends Command
                     'QUANTIDADE_DE_VAGAS_AUTORIZADAS',
                 ])
             ),
-
             'workload_hours' => $this->toInteger(
                 $this->value($row, [
                     'CARGA_HORARIA',
@@ -394,112 +520,11 @@ class ImportMecCourses extends Command
                     'CARGA_HORARIA_TOTAL',
                 ])
             ),
-
             'ibge_city_code' => $cityCode,
-
             'city' => $city,
-
             'state' => $state,
-
-            'region' => $this->value($row, [
-                'REGIAO',
-                'NOME_REGIAO',
-            ]),
+            'region' => $this->value($row, ['REGIAO', 'NOME_REGIAO']),
         ];
-    }
-
-    private function getUniversity(array $data): University
-    {
-        $code = $data['mec_university_code'];
-
-        if (isset($this->universityCache[$code])) {
-            return $this->universityCache[$code];
-        }
-
-        $university = University::updateOrCreate(
-            [
-                'mec_code' => $code,
-            ],
-            [
-                'name' => $data['university_name'],
-
-                'administrative_category' =>
-                    $data['administrative_category'],
-
-                'academic_organization' =>
-                    $data['academic_organization'],
-
-                'sector' => $this->identifySector(
-                    $data['administrative_category']
-                ),
-            ]
-        );
-
-        $this->universityCache[$code] = $university;
-
-        return $university;
-    }
-
-    private function getCampus(
-        int $universityId,
-        array $data
-    ): Campus {
-        $cacheKey =
-            $universityId .
-            '|' .
-            $data['ibge_city_code'];
-
-        if (isset($this->campusCache[$cacheKey])) {
-            return $this->campusCache[$cacheKey];
-        }
-
-        $campus = Campus::updateOrCreate(
-            [
-                'university_id' => $universityId,
-
-                'ibge_city_code' =>
-                    $data['ibge_city_code'],
-            ],
-            [
-                'city' => $data['city'],
-
-                'normalized_city' => $this->normalizeText(
-                    $data['city']
-                ),
-
-                'state' => $data['state'],
-
-                'region' => $data['region'],
-            ]
-        );
-
-        $this->campusCache[$cacheKey] = $campus;
-
-        return $campus;
-    }
-
-    private function saveBatch(array $batch): void
-    {
-        DB::table('course_offerings')->upsert(
-            array_values($batch),
-            [
-                'campus_id',
-                'mec_course_code',
-            ],
-            [
-                'name',
-                'normalized_name',
-                'degree',
-                'area',
-                'modality',
-                'status',
-                'authorized_vacancies',
-                'workload_hours',
-                'source_name',
-                'source_updated_at',
-                'updated_at',
-            ]
-        );
     }
 
     private function detectDelimiter($handle): string
@@ -507,41 +532,26 @@ class ImportMecCourses extends Command
         $sample = fgets($handle);
 
         if ($sample === false) {
-            throw new RuntimeException(
-                'Não foi possível ler o arquivo.'
-            );
+            throw new RuntimeException('Não foi possível ler o arquivo.');
         }
 
         rewind($handle);
 
-        $semicolonCount = substr_count($sample, ';');
-        $commaCount = substr_count($sample, ',');
-
-        return $semicolonCount >= $commaCount
+        return substr_count($sample, ';') >= substr_count($sample, ',')
             ? ';'
             : ',';
     }
 
-    private function readCsvRow(
-        $handle,
-        string $delimiter
-    ): array|false {
-        $row = fgetcsv(
-            $handle,
-            null,
-            $delimiter,
-            '"',
-            ''
-        );
+    private function readCsvRow($handle, string $delimiter): array|false
+    {
+        $row = fgetcsv($handle, null, $delimiter, '"', '');
 
         if ($row === false) {
             return false;
         }
 
         return array_map(
-            fn ($value) => $this->toUtf8(
-                (string) $value
-            ),
+            fn ($value) => $this->toUtf8((string) $value),
             $row
         );
     }
@@ -555,22 +565,13 @@ class ImportMecCourses extends Command
         }
 
         return trim(
-            mb_convert_encoding(
-                $value,
-                'UTF-8',
-                'Windows-1252'
-            )
+            mb_convert_encoding($value, 'UTF-8', 'Windows-1252')
         );
     }
 
-    private function normalizeHeader(
-        string $header
-    ): string {
-        $header = str_replace(
-            "\xEF\xBB\xBF",
-            '',
-            $header
-        );
+    private function normalizeHeader(string $header): string
+    {
+        $header = str_replace("\xEF\xBB\xBF", '', $header);
 
         return Str::of($header)
             ->ascii()
@@ -580,32 +581,21 @@ class ImportMecCourses extends Command
             ->toString();
     }
 
-    private function normalizeText(
-        string $value
-    ): string {
-        return Str::of($value)
-            ->ascii()
-            ->lower()
-            ->squish()
-            ->toString();
+    private function normalizeText(string $value): string
+    {
+        return Str::of($value)->ascii()->lower()->squish()->toString();
     }
 
-    private function value(
-        array $row,
-        array $possibleColumns
-    ): ?string {
+    private function value(array $row, array $possibleColumns): ?string
+    {
         foreach ($possibleColumns as $column) {
-            $normalizedColumn = $this->normalizeHeader(
-                $column
-            );
+            $normalizedColumn = $this->normalizeHeader($column);
 
             if (! array_key_exists($normalizedColumn, $row)) {
                 continue;
             }
 
-            $value = trim(
-                (string) $row[$normalizedColumn]
-            );
+            $value = trim((string) $row[$normalizedColumn]);
 
             if ($value !== '') {
                 return $value;
@@ -615,47 +605,30 @@ class ImportMecCourses extends Command
         return null;
     }
 
-    private function normalizeCityCode(
-        ?string $value
-    ): ?string {
+    private function normalizeCityCode(?string $value): ?string
+    {
         if ($value === null) {
             return null;
         }
 
-        $numbers = preg_replace(
-            '/[^0-9]/',
-            '',
-            trim($value)
-        );
+        $numbers = preg_replace('/[^0-9]/', '', trim($value));
 
-        if (
-            $numbers === null ||
-            $numbers === ''
-        ) {
+        if ($numbers === null || $numbers === '') {
             return null;
         }
 
-        /*
-         * Código IBGE municipal:
-         * exatamente sete dígitos.
-         */
+        // Código IBGE municipal: exatamente sete dígitos.
         $numbers = substr($numbers, -7);
 
         if (strlen($numbers) < 7) {
-            $numbers = str_pad(
-                $numbers,
-                7,
-                '0',
-                STR_PAD_LEFT
-            );
+            $numbers = str_pad($numbers, 7, '0', STR_PAD_LEFT);
         }
 
         return $numbers;
     }
 
-    private function toInteger(
-        ?string $value
-    ): ?int {
+    private function toInteger(?string $value): ?int
+    {
         if ($value === null) {
             return null;
         }
@@ -666,45 +639,25 @@ class ImportMecCourses extends Command
             return null;
         }
 
-        /*
-         * Remove uma eventual parte decimal contendo
-         * apenas zeros, como:
-         *
-         * 12345.0
-         * 12345,00
-         */
-        $value = preg_replace(
-            '/[.,]0+$/',
-            '',
-            $value
-        );
+        // Remove parte decimal só com zeros: 12345.0 / 12345,00
+        $value = preg_replace('/[.,]0+$/', '', $value);
 
-        $numbers = preg_replace(
-            '/[^0-9]/',
-            '',
-            $value
-        );
+        $numbers = preg_replace('/[^0-9]/', '', (string) $value);
 
-        if (
-            $numbers === null ||
-            $numbers === ''
-        ) {
+        if ($numbers === null || $numbers === '') {
             return null;
         }
 
         return (int) $numbers;
     }
 
-    private function identifySector(
-        ?string $administrativeCategory
-    ): ?string {
+    private function identifySector(?string $administrativeCategory): ?string
+    {
         if ($administrativeCategory === null) {
             return null;
         }
 
-        $normalized = $this->normalizeText(
-            $administrativeCategory
-        );
+        $normalized = $this->normalizeText($administrativeCategory);
 
         if (str_contains($normalized, 'publica')) {
             return 'public';
@@ -714,10 +667,7 @@ class ImportMecCourses extends Command
             return 'private';
         }
 
-        /*
-        * Algumas versões dos dados podem usar nomes
-        * como federal, estadual ou municipal.
-        */
+        // Algumas versões dos dados usam federal, estadual ou municipal.
         if (
             str_contains($normalized, 'federal') ||
             str_contains($normalized, 'estadual') ||
