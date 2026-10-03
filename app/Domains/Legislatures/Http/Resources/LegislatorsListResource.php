@@ -5,7 +5,7 @@ namespace App\Domains\Legislatures\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class LegislatorsResource extends JsonResource
+class LegislatorsListResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
