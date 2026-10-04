@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Explanations\Http\Controllers;
 
-use App\Http\Resources\ExplanationResource;
-use App\Models\Explanation;
+use App\Domains\Explanations\Http\Resources\ExplanationResource;
+use App\Domains\Explanations\Models\Explanation;
+use App\Http\Controllers\Controller;
 
 class ExplanationController extends Controller
 {

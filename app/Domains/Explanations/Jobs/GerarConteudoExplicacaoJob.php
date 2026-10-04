@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Jobs\Explanations;
+namespace App\Domains\Explanations\Jobs;
 
-use App\Models\Explanation;
-use App\Services\Explanations\ExplanationSourceFetcher;
-use App\Services\Explanations\GroqExplanationService;
+use App\Domains\Explanations\Models\Explanation;
+use App\Domains\Explanations\Services\ExplanationSourceFetcher;
+use App\Domains\Explanations\Services\GroqExplanationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

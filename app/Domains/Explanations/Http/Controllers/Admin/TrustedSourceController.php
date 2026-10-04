@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\Explanations\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\TrustedSource;
+use App\Domains\Explanations\Models\TrustedSource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

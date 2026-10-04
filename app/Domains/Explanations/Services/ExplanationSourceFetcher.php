@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Explanations;
+namespace App\Domains\Explanations\Services;
 
-use App\Services\News\Concerns\ExtractsTextFromHtml;
+use App\Domains\News\Services\Concerns\ExtractsTextFromHtml;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 

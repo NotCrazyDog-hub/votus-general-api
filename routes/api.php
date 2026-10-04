@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AiAssistantController,
     CategoryController,
-    ExplanationController,
     ProposalCommentController,
     ProposalController,
     SantinhoController,
@@ -57,11 +56,6 @@ Route::middleware('cache.headers')->group(function () {
     });
 
     Route::get('/categories', [CategoryController::class, 'index']);
-
-    Route::controller(ExplanationController::class)->prefix('explanations')->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{explanation}', 'show');
-    });
 
     Route::get('/universities/{university}', [UniversityController::class, 'show']);
 
@@ -149,26 +143,6 @@ Route::prefix('admin')->group(function () {
             Route::delete('/{suggestionQuestion}', 'destroy');
         });
 
-        // Explanations Management
-        Route::controller(Admin\ExplanationController::class)->prefix('explanations')->group(function () {
-            Route::get('/', 'index');
-            Route::post('/', 'store')->middleware('throttle:6,1');
-            Route::post('/drain', 'drain')->middleware('throttle:20,1');
-            Route::get('/{explanation}', 'show');
-            Route::put('/{explanation}', 'update');
-            Route::post('/{explanation}/publish', 'publish');
-            Route::patch('/{explanation}/unpublish', 'unpublish');
-            Route::delete('/{explanation}', 'destroy');
-        });
-
-        // Trusted Sources Management
-        Route::controller(Admin\TrustedSourceController::class)->prefix('trusted-sources')->group(function () {
-            Route::get('/', 'index');
-            Route::post('/', 'store');
-            Route::put('/{trustedSource}', 'update');
-            Route::delete('/{trustedSource}', 'destroy');
-        });
-
         // Public Opportunities Management
         Route::controller(Admin\PublicOpportunityController::class)->prefix('public-opportunities')->group(function () {
             Route::get('/', 'index');
@@ -185,3 +159,4 @@ require __DIR__.'/api/legislatures.php';
 require __DIR__.'/api/elections.php';
 require __DIR__.'/api/executives.php';
 require __DIR__.'/api/news.php';
+require __DIR__.'/api/explanations.php';

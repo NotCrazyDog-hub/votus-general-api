@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\Explanations\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\Explanations\GerarConteudoExplicacaoJob;
-use App\Models\Explanation;
-use App\Models\TrustedSource;
+use App\Domains\Explanations\Jobs\GerarConteudoExplicacaoJob;
+use App\Domains\Explanations\Models\Explanation;
+use App\Domains\Explanations\Models\TrustedSource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
