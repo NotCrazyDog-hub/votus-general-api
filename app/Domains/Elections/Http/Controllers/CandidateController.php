@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Elections\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\CandidateService;
-use App\Enums\CandidateOffice;
-use App\Http\Resources\CandidateResource;
-use App\Http\Resources\CandidateExpenseResource;
+use App\Domains\Elections\Services\CandidateService;
+use App\Domains\Elections\Enums\CandidateOffice;
+use App\Domains\Elections\Http\Resources\CandidateResource;
+use App\Domains\Elections\Http\Resources\CandidateExpenseResource;
+use App\Http\Controllers\Controller;
 
 class CandidateController extends Controller
 {

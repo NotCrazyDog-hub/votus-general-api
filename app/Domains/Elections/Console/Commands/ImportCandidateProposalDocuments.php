@@ -1,36 +1,35 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Elections\Console\Commands;
 
-use App\Models\Candidate;
+use App\Domains\Elections\Models\Candidate;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
-class ImportCandidatePhotos extends Command
+class ImportCandidateProposalDocuments extends Command
 {
-    //para chamar o command para a pasta:
-    //'php artisan import:candidate-photos storage/app/tse/foto_cand2026_CE_div'
-    
-    protected $signature = 'import:candidate-photos
-        {directory : Caminho da pasta com os JPGs (ex: foto_cand2026_CE_div)}
-        {--disk=supabase : Disco de destino}';
+    protected $signature = 'import:candidate-proposals
+        {directory : Caminho da pasta com os PDFs de propostas}
+        {--disk=supabase : Disco de destino}
+        {--max-size=20480 : Tamanho máximo aceito por arquivo, em KB}';
 
-    protected $description = 'Importa fotos de candidatos a partir de uma pasta local e vincula pelo SQ_CANDIDATO (external_id)';
+    protected $description = 'Importa PDFs de propostas de governo e vincula pelo SQ_CANDIDATO (external_id)';
 
     public function handle()
     {
         $directory = rtrim($this->argument('directory'), '/');
         $disk = $this->option('disk');
+        $maxSizeBytes = (int) $this->option('max-size') * 1024;
 
         if (!is_dir($directory)) {
             $this->error("Pasta não encontrada: {$directory}");
             return self::FAILURE;
         }
 
-        $files = glob("{$directory}/*.{jpg,jpeg,JPG,JPEG}", GLOB_BRACE);
+        $files = glob("{$directory}/*.{pdf,PDF}", GLOB_BRACE);
 
         if (empty($files)) {
-            $this->warn('Nenhum arquivo .jpg encontrado na pasta.');
+            $this->warn('Nenhum arquivo .pdf encontrado na pasta.');
             return self::SUCCESS;
         }
 
@@ -39,12 +38,11 @@ class ImportCandidatePhotos extends Command
 
         $matched = 0;
         $notFound = [];
+        $tooLarge = [];
 
         foreach ($files as $filePath) {
             $filename = pathinfo($filePath, PATHINFO_FILENAME);
 
-            // Extrai apenas os dígitos do nome do arquivo — cobre tanto
-            // "60002542208.jpg" quanto variações com prefixo/sufixo.
             preg_match('/\d{8,}/', $filename, $matches);
             $externalId = $matches[0] ?? null;
 
@@ -62,10 +60,16 @@ class ImportCandidatePhotos extends Command
                 continue;
             }
 
-            $storedPath = "candidates/photos/{$externalId}.jpg";
+            if (filesize($filePath) > $maxSizeBytes) {
+                $tooLarge[] = "{$filename} (" . round(filesize($filePath) / 1024 / 1024, 1) . " MB)";
+                $bar->advance();
+                continue;
+            }
+
+            $storedPath = "candidates/proposals/{$externalId}.pdf";
             Storage::disk($disk)->put($storedPath, file_get_contents($filePath));
 
-            $candidate->update(['photo_path' => $storedPath]);
+            $candidate->update(['proposal_document_path' => $storedPath]);
             $matched++;
 
             $bar->advance();
@@ -74,7 +78,14 @@ class ImportCandidatePhotos extends Command
         $bar->finish();
         $this->newLine();
 
-        $this->info("{$matched} foto(s) vinculada(s) com sucesso.");
+        $this->info("{$matched} documento(s) vinculado(s) com sucesso.");
+
+        if (!empty($tooLarge)) {
+            $this->warn(count($tooLarge) . ' arquivo(s) ignorado(s) por exceder o limite de tamanho:');
+            foreach ($tooLarge as $item) {
+                $this->line("  - {$item}");
+            }
+        }
 
         if (!empty($notFound)) {
             $this->warn(count($notFound) . ' arquivo(s) não vinculado(s):');

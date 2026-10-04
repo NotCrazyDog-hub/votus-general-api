@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Elections\Console\Commands;
 
-use App\Models\Candidate;
-use App\Models\CandidacyHistory;
-use App\Services\TseCandidacyHistoryCsvService;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\Elections\Models\CandidacyHistory;
+use App\Domains\Elections\Services\Tse\TseCandidacyHistoryCsvService;
 use Illuminate\Console\Command;
 
 class ImportCandidacyHistory extends Command

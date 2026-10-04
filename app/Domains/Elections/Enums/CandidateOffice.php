@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Legislatures\Enums;
+namespace App\Domains\Elections\Enums;
 
 enum CandidateOffice: string
 {

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Elections\Console\Commands;
 
-use App\Models\Candidate;
-use App\Models\CandidateExpense;
-use App\Services\TseCandidateExpensesCsvService;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\Elections\Models\CandidateExpense;
+use App\Domains\Elections\Services\Tse\TseCandidateExpensesCsvService;
 use Illuminate\Console\Command;
 
 class ImportCandidateExpenses extends Command

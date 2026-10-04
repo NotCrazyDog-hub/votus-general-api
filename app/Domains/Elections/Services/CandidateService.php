@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Elections\Services;
 
-use App\Enums\CandidateOffice;
-use App\Models\Candidate;
-use App\Models\CandidateExpense;
+use App\Domains\Elections\Enums\CandidateOffice;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\Elections\Models\CandidateExpense;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 

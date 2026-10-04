@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Elections\Services\Tse;
 
 use Generator;
 use Carbon\Carbon;

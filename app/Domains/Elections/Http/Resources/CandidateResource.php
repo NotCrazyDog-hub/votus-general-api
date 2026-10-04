@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Domains\Elections\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Domains\Legislatures\Http\Resources\LegislatorSummaryResource;
 
 class CandidateResource extends JsonResource
 {
