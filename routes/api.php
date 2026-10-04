@@ -21,8 +21,7 @@ use App\Http\Controllers\{
     OpportunityController,
     PublicOpportunityController,
     PublicOpportunityImportController,
-    UniversityController,
-    ExecutiveController
+    UniversityController
 };
 
 // Admin Controllers
@@ -38,13 +37,6 @@ use App\Http\Controllers\Admin as Admin;
 | de bater no banco de novo a cada navegação de volta pra mesma tela.
 */
 Route::middleware('cache.headers')->group(function () {
-    Route::controller(ExecutiveController::class)->group(function () {
-        Route::get('/president', 'indexForPresident');
-        Route::get('/president/{id}', 'showPresident');
-        Route::get('/governors', 'indexForGovernors');
-        Route::get('/governors/{id}', 'showGovernor');
-    });
-
     /*
     |----------------------------------------------------------------------
     | Content & Publications (News, Proposals, Categories, Explanations)
@@ -207,3 +199,4 @@ Route::prefix('admin')->group(function () {
 
 require __DIR__.'/api/legislatures.php';
 require __DIR__.'/api/elections.php';
+require __DIR__.'/api/executives.php';

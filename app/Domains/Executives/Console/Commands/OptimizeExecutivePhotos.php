@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Executives\Console\Commands;
 
-use App\Models\Executive;
-use App\Services\OfficialPhotoOptimizer;
+use App\Domains\Executives\Models\Executive;
+use App\Shared\Media\OfficialPhotoOptimizer;
 use Illuminate\Console\Command;
 
 /**

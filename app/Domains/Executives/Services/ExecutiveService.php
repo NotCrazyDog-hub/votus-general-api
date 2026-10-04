@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Executives\Services;
 
-use App\Models\Executive;
+use App\Domains\Executives\Models\Executive;
 
 class ExecutiveService
 {

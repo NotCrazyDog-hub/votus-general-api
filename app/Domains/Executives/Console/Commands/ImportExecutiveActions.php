@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Executives\Console\Commands;
 
-use App\Models\Executive;
-use App\Models\ExecutiveAction;
-use App\Services\ExecutiveActionImportService;
+use App\Domains\Executives\Models\Executive;
+use App\Domains\Executives\Models\ExecutiveAction;
+use App\Domains\Executives\Services\ExecutiveActionImportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 

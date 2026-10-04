@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Executives\Services;
 
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;

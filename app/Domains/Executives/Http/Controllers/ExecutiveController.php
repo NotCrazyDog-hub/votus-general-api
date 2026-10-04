@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Executives\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\ExecutiveService;
-use App\Http\Resources\ExecutivesResource;
+use App\Domains\Executives\Services\ExecutiveService;
+use App\Domains\Executives\Http\Resources\ExecutivesResource;
+use App\Http\Controllers\Controller;
 
 class ExecutiveController extends Controller
 {
