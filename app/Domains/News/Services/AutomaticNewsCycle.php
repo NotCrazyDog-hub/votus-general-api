@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\News;
+namespace App\Domains\News\Services;
 
-use App\Models\NewsSource;
+use App\Domains\News\Models\NewsSource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;

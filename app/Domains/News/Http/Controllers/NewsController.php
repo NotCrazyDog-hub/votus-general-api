@@ -1,14 +1,15 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\News\Http\Controllers;
 
-use App\Http\Resources\NewsResource;
-use App\Models\News;
-use App\Services\News\AutomaticNewsCycle;
-use App\Services\News\FeaturedNewsSelector;
-use App\Services\News\NewsImageValidator;
+use App\Domains\News\Http\Resources\NewsResource;
+use App\Domains\News\Models\News;
+use App\Domains\News\Services\AutomaticNewsCycle;
+use App\Domains\News\Services\FeaturedNewsSelector;
+use App\Domains\News\Services\NewsImageValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Controller;
 
 class NewsController extends Controller
 {

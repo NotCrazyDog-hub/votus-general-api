@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Jobs\News;
+namespace App\Domains\News\Jobs;
 
-use App\Jobs\News\Concerns\PersistsValidNews;
-use App\Models\NewsSource;
-use App\Services\News\LinkNormalizer;
-use App\Services\News\NewsCategoryPriority;
-use App\Services\News\Poder360Collector;
+use App\Domains\News\Jobs\Concerns\PersistsValidNews;
+use App\Domains\News\Models\NewsSource;
+use App\Domains\News\Services\Collectors\AgenciaBrasilCollector;
+use App\Domains\News\Services\LinkNormalizer;
+use App\Domains\News\Services\NewsCategoryPriority;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,7 +16,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class CollectPoder360NewsJob implements ShouldQueue
+class CollectAgenciaBrasilNewsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, PersistsValidNews;
 
@@ -27,8 +27,12 @@ class CollectPoder360NewsJob implements ShouldQueue
     public int $tries = 1;
 
     /**
-     * Teto de notícias NOVAS e VÁLIDAS gravadas por ciclo quando o Job é
-     * despachado sem limite explícito — ver CollectAgenciaBrasilNewsJob.
+     * Teto de notícias NOVAS e VÁLIDAS (sem duplicata, com imagem) gravadas
+     * por ciclo quando o Job é despachado sem limite explícito. Antes era um
+     * corte de 30 candidatos BRUTOS feito antes da deduplicação — o que fazia
+     * o ciclo gastar o teto com notícias já existentes. O comando
+     * news:collect reparte a meta de 15 por execução entre as fontes.
+     * A publicação continua decidida pelo filtro de conteúdo do resumo.
      */
     private const MAX_NOTICIAS_POR_CICLO = 15;
 
@@ -47,7 +51,7 @@ class CollectPoder360NewsJob implements ShouldQueue
         return [(new WithoutOverlapping("coleta-fonte-{$this->sourceId}"))->dontRelease()->expireAfter($this->timeout)];
     }
 
-    public function handle(Poder360Collector $collector, LinkNormalizer $normalizer): void
+    public function handle(AgenciaBrasilCollector $collector, LinkNormalizer $normalizer): void
     {
         $source = NewsSource::find($this->sourceId);
 
@@ -61,18 +65,19 @@ class CollectPoder360NewsJob implements ShouldQueue
             return;
         }
 
+        $categoriesWithError = 0;
         $collectedItems = [];
 
         foreach ($feeds as $categorySlug => $feedUrl) {
             try {
                 $items = $collector->collect($feedUrl);
             } catch (Throwable $e) {
+                $categoriesWithError++;
                 Log::error("[NEWS] Fonte {$source->slug}/{$categorySlug} falhou: {$e->getMessage()}", [
                     'fonte_id' => $source->id,
                     'exception' => $e,
                 ]);
-                $source->recordFailure($e->getMessage());
-                return;
+                continue;
             }
 
             foreach ($items as $item) {
@@ -81,14 +86,15 @@ class CollectPoder360NewsJob implements ShouldQueue
             }
         }
 
-        // Etapa 1 (filtro por categoria): o Poder360 só tem um feed ("geral"),
-        // mas cada item já vem com sua própria categoria no XML (ex: "Poder
-        // Eleições", "Poder Justiça") — usamos essa, não a chave do feed, pra
-        // priorizar editorias compatíveis com o Votus. A aprovação de fato é
-        // decidida pela Etapa 2 (filtro por conteúdo), no resumo de IA.
+        // Etapa 1 (filtro por categoria): prioriza editorias compatíveis com o
+        // Votus (política, eleições, justiça, educação, saúde, economia...)
+        // sobre editorias-catálogo tipo "geral"/"últimas notícias" — mas não
+        // exclui essas últimas, porque às vezes trazem pauta relevante. A
+        // aprovação de fato é decidida pela Etapa 2 (filtro por conteúdo),
+        // no resumo de IA.
         usort($collectedItems, function (array $a, array $b) {
-            $priorityA = NewsCategoryPriority::isPriority($a['category'] ?? null) ? 0 : 1;
-            $priorityB = NewsCategoryPriority::isPriority($b['category'] ?? null) ? 0 : 1;
+            $priorityA = NewsCategoryPriority::isPriority($a['categoria_slug']) ? 0 : 1;
+            $priorityB = NewsCategoryPriority::isPriority($b['categoria_slug']) ? 0 : 1;
 
             if ($priorityA !== $priorityB) {
                 return $priorityA <=> $priorityB;
@@ -96,6 +102,11 @@ class CollectPoder360NewsJob implements ShouldQueue
 
             return strcmp($b['published_at'] ?? '', $a['published_at'] ?? '');
         });
+
+        if ($categoriesWithError > 0 && $categoriesWithError >= count($feeds)) {
+            $source->recordFailure("Todas as {$categoriesWithError} categorias falharam na última coleta.");
+            return;
+        }
 
         // Deduplica, valida imagem e grava até o limite de notícias novas —
         // ver Concerns\PersistsValidNews.

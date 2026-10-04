@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\News\Console\Commands;
 
-use App\Jobs\News\CollectAgenciaBrasilNewsJob;
-use App\Jobs\News\CollectPoder360NewsJob;
-use App\Models\NewsSource;
+use App\Domains\News\Jobs\CollectAgenciaBrasilNewsJob;
+use App\Domains\News\Jobs\CollectPoder360NewsJob;
+use App\Domains\News\Models\NewsSource;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

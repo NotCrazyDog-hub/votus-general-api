@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\News;
+namespace App\Domains\News\Services\Ai;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;

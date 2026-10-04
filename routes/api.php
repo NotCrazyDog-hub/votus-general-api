@@ -6,10 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AiAssistantController,
     CategoryController,
-    CommitteeTopicMatchController,
     ExplanationController,
-    LegislatorController,
-    NewsController,
     ProposalCommentController,
     ProposalController,
     SantinhoController,
@@ -42,11 +39,6 @@ Route::middleware('cache.headers')->group(function () {
     | Content & Publications (News, Proposals, Categories, Explanations)
     |----------------------------------------------------------------------
     */
-    Route::controller(NewsController::class)->prefix('news')->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{news}', 'show');
-        Route::post('/', 'store')->middleware('internal.token');
-    });
 
     Route::prefix('proposals')->group(function () {
         Route::controller(ProposalController::class)->group(function () {
@@ -132,14 +124,6 @@ Route::prefix('admin')->group(function () {
         Route::get('/me', [Admin\AuthController::class, 'me']);
         Route::get('/dashboard', [Admin\DashboardController::class, 'index']);
 
-        // News Management
-        Route::controller(Admin\NewsController::class)->prefix('news')->group(function () {
-            Route::get('/', 'index');
-            Route::post('/collect', 'collect')->middleware('throttle:6,1');
-            Route::post('/drain', 'drain')->middleware('throttle:20,1');
-            Route::delete('/{id}', 'destroy');
-        });
-
         // Proposals Management
         Route::controller(Admin\ProposalController::class)->prefix('proposals')->group(function () {
             Route::get('/', 'index');
@@ -200,3 +184,4 @@ Route::prefix('admin')->group(function () {
 require __DIR__.'/api/legislatures.php';
 require __DIR__.'/api/elections.php';
 require __DIR__.'/api/executives.php';
+require __DIR__.'/api/news.php';

@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Jobs\News\Concerns;
+namespace App\Domains\News\Jobs\Concerns;
 
-use App\Jobs\News\SummarizeNewsJob;
-use App\Models\News;
-use App\Models\NewsSource;
-use App\Services\News\ArticleImageExtractor;
-use App\Services\News\LinkNormalizer;
-use App\Services\News\NewsImageValidator;
+use App\Domains\News\Jobs\SummarizeNewsJob;
+use App\Domains\News\Models\News;
+use App\Domains\News\Models\NewsSource;
+use App\Domains\News\Services\ArticleImageExtractor;
+use App\Domains\News\Services\LinkNormalizer;
+use App\Domains\News\Services\NewsImageValidator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Throwable;

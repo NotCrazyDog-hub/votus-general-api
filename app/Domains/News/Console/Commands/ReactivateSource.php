@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\News\Console\Commands;
 
-use App\Models\NewsSource;
+use App\Domains\News\Models\NewsSource;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

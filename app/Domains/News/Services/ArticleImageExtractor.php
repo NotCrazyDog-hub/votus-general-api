@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\News;
+namespace App\Domains\News\Services;
 
 use Illuminate\Support\Facades\Http;
 use Throwable;

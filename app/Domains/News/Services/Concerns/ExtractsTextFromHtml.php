@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\News\Concerns;
+namespace App\Domains\News\Services\Concerns;
 
 /**
  * Compartilhado entre os coletores: o corpo de uma notícia vem em HTML

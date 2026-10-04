@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Jobs\News;
+namespace App\Domains\News\Jobs;
 
-use App\Models\News;
-use App\Services\News\GroqSummarizerService;
+use App\Domains\News\Models\News;
+use App\Domains\News\Services\Ai\GroqSummarizerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -38,7 +38,7 @@ class SummarizeNewsJob implements ShouldQueue
      * é atingido, e cada release consome uma tentativa de $tries. Por isso limitamos
      * pelo relógio (retryUntil) em vez de confiar só na contagem de tentativas.
      */
-    public function retryUntil(): \DateTime
+    public function retryUntil(): \DateTimeInterface
     {
         // Era 3h. O prazo é contado a partir do DESPACHO, não do início do
         // processamento — e a fila só andava quando o cron externo de drenagem

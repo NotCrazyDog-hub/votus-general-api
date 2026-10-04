@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace App\Domains\News\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\News\Services\NewsImageValidator;
 
 class News extends Model
 {
@@ -62,7 +63,7 @@ class News extends Model
 
         // lower() + like: funciona igual no Postgres (produção) e no SQLite
         // (testes) — mesmos trechos que o validador usa antes de gravar.
-        foreach (\App\Services\News\NewsImageValidator::TRECHOS_GENERICOS as $snippet) {
+        foreach (NewsImageValidator::TRECHOS_GENERICOS as $snippet) {
             $query->whereRaw('lower(image_url) not like ?', ['%' . $snippet . '%']);
         }
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\News;
+namespace App\Domains\News\Services;
 
-use App\Models\News;
+use App\Domains\News\Models\News;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 

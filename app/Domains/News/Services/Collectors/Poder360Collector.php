@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\News;
+namespace App\Domains\News\Services\Collectors;
 
-use App\Services\News\Concerns\ExtractsTextFromHtml;
+use App\Domains\News\Services\Concerns\ExtractsTextFromHtml;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
