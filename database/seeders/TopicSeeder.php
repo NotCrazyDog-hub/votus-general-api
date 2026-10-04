@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Topic;
+use App\Domains\Legislatures\Models\Topic;
 use Illuminate\Database\Seeder;
 
 class TopicSeeder extends Seeder

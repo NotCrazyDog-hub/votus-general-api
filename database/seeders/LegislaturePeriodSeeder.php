@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\LegislaturePeriod;
+use App\Domains\Legislatures\Models\LegislaturePeriod;
 use Illuminate\Database\Seeder;
 
 class LegislaturePeriodSeeder extends Seeder

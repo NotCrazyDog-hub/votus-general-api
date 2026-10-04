@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Executive;
+use App\Domains\Executives\Models\Executive;
 use Illuminate\Database\Seeder;
 
 class ExecutiveSeeder extends Seeder
