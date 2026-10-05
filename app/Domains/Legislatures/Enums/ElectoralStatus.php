@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Elections\Enums;
+namespace App\Domains\Legislatures\Enums;
 
 enum ElectoralStatus: string
 {
