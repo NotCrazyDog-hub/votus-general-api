@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\CivicParticipation\Services;
 
-use App\Enums\ProposalStatus;
-use App\Enums\ProposalVoteType;
-use App\Models\Category;
-use App\Models\Proposal;
-use App\Models\ProposalVote;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Enums\ProposalVoteType;
+use App\Domains\CivicParticipation\Models\Category;
+use App\Domains\CivicParticipation\Models\Proposal;
+use App\Domains\CivicParticipation\Models\ProposalVote;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;

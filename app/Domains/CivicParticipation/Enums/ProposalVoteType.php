@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Legislatures\Enums;
+namespace App\Domains\CivicParticipation\Enums;
 
 enum ProposalVoteType: string
 {

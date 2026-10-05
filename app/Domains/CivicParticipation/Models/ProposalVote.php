@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Domains\CivicParticipation\Models;
 
-use App\Enums\ProposalVoteType;
+use App\Domains\CivicParticipation\Enums\ProposalVoteType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

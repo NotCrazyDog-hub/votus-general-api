@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Domains\CivicParticipation\Models;
 
-use App\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
