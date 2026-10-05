@@ -6,7 +6,6 @@ use App\Enums\CandidateOffice;
 use App\Models\Candidate;
 use App\Models\CandidateExpense;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class CandidateService
 {
@@ -17,7 +16,6 @@ class CandidateService
         'id',
         'external_id',
         'ballot_number',
-        'round',
         'state',
         'office_name',
         'civil_name',
@@ -53,11 +51,12 @@ class CandidateService
             ->when($party, fn ($q) => $q->where('party_acronym', $party))
             ->when($search, function ($q) use ($search) {
                 $termo = '%'.addcslashes($search, '\\%_').'%';
+                $op = $this->caseInsensitiveOperator($q);
 
                 $q->where(fn ($w) => $w
-                    ->where('ballot_name', 'ilike', $termo)
-                    ->orWhere('civil_name', 'ilike', $termo)
-                    ->orWhere('party_acronym', 'ilike', $termo)
+                    ->where('ballot_name', $op, $termo)
+                    ->orWhere('civil_name', $op, $termo)
+                    ->orWhere('party_acronym', $op, $termo)
                     ->orWhere('ballot_number', 'like', $termo));
             })
             ->orderBy('ballot_name')
@@ -135,12 +134,35 @@ class CandidateService
      */
     public function countPreviouslyElectedByOffice(CandidateOffice $office, ?string $state = null): int
     {
-        return $this->countWithFilter('previously-elected', $office, $state, fn ($q) => $q->whereHas(
-            'candidacyHistory',
-            fn ($h) => $h->where('result_status', 'ilike', '%eleito%')
-                ->where('result_status', 'not ilike', '%não eleito%')
-                ->where('result_status', 'not ilike', '%nao eleito%'),
-        ));
+        return $this->countWithFilter('previously-elected', $office, $state, function ($q) {
+            $op = $this->caseInsensitiveOperator($q);
+
+            return $q->whereHas(
+                'candidacyHistory',
+                fn ($h) => $h->where('result_status', $op, '%eleito%')
+                    ->where('result_status', 'not '.$op, '%não eleito%')
+                    ->where('result_status', 'not '.$op, '%nao eleito%'),
+            );
+        });
+    }
+
+    /**
+     * Operador de comparação "like" sem distinção de maiúsculas/minúsculas.
+     *
+     * `ilike` existe só no Postgres — é o que produção (Supabase) usa e o
+     * comportamento continua idêntico lá. Nos testes o banco é MySQL, onde
+     * `ilike` NÃO é um operador válido e passaria direto para o SQL (o
+     * Laravel o considera legítimo por estar em `Builder::$operators`),
+     * quebrando a consulta com um erro 1064. O `LIKE` do MySQL já ignora
+     * caixa pela collation `_ci`, então o resultado prático é o mesmo.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<*>|\Illuminate\Database\Query\Builder  $query
+     */
+    private function caseInsensitiveOperator($query): string
+    {
+        $driver = $query->toBase()->getConnection()->getDriverName();
+
+        return $driver === 'pgsql' ? 'ilike' : 'like';
     }
 
     /**
@@ -260,7 +282,7 @@ class CandidateService
      * todos opcionais; sem nenhum, mantém o comportamento original (mais
      * recentes primeiro).
      *
-     * @param array{search?: ?string, supplierType?: ?string, dateFrom?: ?string, dateTo?: ?string, sort?: ?string} $filters
+     * @param  array{search?: ?string, supplierType?: ?string, dateFrom?: ?string, dateTo?: ?string, sort?: ?string}  $filters
      */
     public function expensesPaginated(int $candidateId, int $page = 1, array $filters = [])
     {
@@ -268,9 +290,11 @@ class CandidateService
 
         if (! empty($filters['search'])) {
             $termo = '%'.addcslashes($filters['search'], '\\%_').'%';
+            $op = $this->caseInsensitiveOperator($query);
+
             $query->where(fn ($q) => $q
-                ->where('description', 'ilike', $termo)
-                ->orWhere('supplier_name', 'ilike', $termo));
+                ->where('description', $op, $termo)
+                ->orWhere('supplier_name', $op, $termo));
         }
 
         if (! empty($filters['supplierType'])) {
