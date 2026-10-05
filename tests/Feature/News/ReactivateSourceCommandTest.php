@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\News;
 
-use App\Models\NewsSource;
+use App\Domains\News\Models\NewsSource;
 use Tests\TestCase;
 
 class ReactivateSourceCommandTest extends NewsTestCase

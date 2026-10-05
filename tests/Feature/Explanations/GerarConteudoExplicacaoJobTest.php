@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Explanations;
 
-use App\Jobs\Explanations\GerarConteudoExplicacaoJob;
-use App\Models\Explanation;
-use App\Models\TrustedSource;
-use App\Services\Explanations\ExplanationSourceFetcher;
-use App\Services\Explanations\GroqExplanationService;
+use App\Domains\Explanations\Jobs\GerarConteudoExplicacaoJob;
+use App\Domains\Explanations\Models\Explanation;
+use App\Domains\Explanations\Models\TrustedSource;
+use App\Domains\Explanations\Services\ExplanationSourceFetcher;
+use App\Domains\Explanations\Services\GroqExplanationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;

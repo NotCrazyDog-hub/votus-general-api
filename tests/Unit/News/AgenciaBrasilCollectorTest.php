@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\News;
 
-use App\Services\News\AgenciaBrasilCollector;
+use App\Domains\News\Services\AgenciaBrasilCollector;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\TestCase;

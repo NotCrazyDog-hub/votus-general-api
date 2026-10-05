@@ -2,16 +2,16 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\CollectAgenciaBrasilNewsJob;
-use App\Jobs\News\CollectPoder360NewsJob;
-use App\Jobs\News\SummarizeNewsJob;
-use App\Models\NewsSource;
-use App\Models\News;
+use App\Domains\News\Jobs\CollectAgenciaBrasilNewsJob;
+use App\Domains\News\Jobs\CollectPoder360NewsJob;
+use App\Domains\News\Jobs\SummarizeNewsJob;
+use App\Domains\News\Models\NewsSource;
+use App\Domains\News\Models\News;
 use App\Models\User;
-use App\Services\News\AgenciaBrasilCollector;
-use App\Services\News\LinkNormalizer;
-use App\Services\News\Poder360Collector;
-use App\Services\News\FeaturedNewsSelector;
+use App\Domains\News\Services\AgenciaBrasilCollector;
+use App\Domains\News\Services\LinkNormalizer;
+use App\Domains\News\Services\Poder360Collector;
+use App\Domains\News\Services\FeaturedNewsSelector;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\News;
 
-use App\Services\News\Poder360Collector;
+use App\Domains\News\Services\Poder360Collector;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\TestCase;

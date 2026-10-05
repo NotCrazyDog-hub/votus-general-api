@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Explanations;
 
-use App\Models\TrustedSource;
+use App\Domains\Explanations\Models\TrustedSource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

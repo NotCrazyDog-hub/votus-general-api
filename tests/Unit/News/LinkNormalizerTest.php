@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\News;
 
-use App\Services\News\LinkNormalizer;
+use App\Domains\News\Services\LinkNormalizer;
 use Tests\TestCase;
 
 class LinkNormalizerTest extends TestCase

@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use Tests\Feature\News\NewsTestCase;
 
-use App\Models\News;
+use App\Domains\News\Models\News;
 
 class NewsControllerTest extends NewsTestCase
 {

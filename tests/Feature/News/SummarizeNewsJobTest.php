@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\SummarizeNewsJob;
-use App\Models\News;
-use App\Services\News\GroqSummarizerService;
+use App\Domains\News\Jobs\SummarizeNewsJob;
+use App\Domains\News\Models\News;
+use App\Domains\News\Services\GroqSummarizerService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 

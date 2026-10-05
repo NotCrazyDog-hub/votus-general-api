@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\News;
 
-use App\Jobs\News\CollectAgenciaBrasilNewsJob;
-use App\Jobs\News\SummarizeNewsJob;
-use App\Models\NewsSource;
-use App\Models\News;
+use App\Domains\News\Jobs\CollectAgenciaBrasilNewsJob;
+use App\Domains\News\Jobs\SummarizeNewsJob;
+use App\Domains\News\Models\NewsSource;
+use App\Domains\News\Models\News;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;

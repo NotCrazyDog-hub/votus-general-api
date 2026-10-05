@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Explanations;
 
-use App\Models\Explanation;
-use App\Models\TrustedSource;
+use App\Domains\Explanations\Models\Explanation;
+use App\Domains\Explanations\Models\TrustedSource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
