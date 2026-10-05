@@ -38,3 +38,10 @@ if [ "${QUEUE_WORKER:-1}" = "1" ]; then
 fi
 
 php artisan serve --host=0.0.0.0 --port=${PORT:-10000} --no-reload
+
+
+echo "=== TESTE PLAYWRIGHT TSE ==="
+
+xvfb-run --auto-servernum node scripts/test-tse-playwright.js
+
+echo "=== TESTE FINALIZADO ==="
