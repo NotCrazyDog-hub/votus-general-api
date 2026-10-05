@@ -9,6 +9,12 @@ php artisan config:cache
 php artisan route:cache || echo "route:cache falhou, seguindo sem cache de rotas"
 php artisan event:cache || echo "event:cache falhou, seguindo sem cache de eventos"
 
+echo "=== TESTE PLAYWRIGHT TSE ==="
+
+xvfb-run --auto-servernum node scripts/test-tse-playwright.js
+
+echo "=== TESTE FINALIZADO ==="
+
 # O servidor embutido do PHP (usado pelo `artisan serve`) atende UMA
 # requisição por vez quando PHP_CLI_SERVER_WORKERS não está definido. Medido
 # em produção: 6 chamadas paralelas (o que qualquer página do front dispara)
