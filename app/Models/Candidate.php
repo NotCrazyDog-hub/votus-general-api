@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use App\Enums\CandidateOffice;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
-use App\Models\Legislator;
 
 class Candidate extends Model
 {
@@ -18,7 +15,6 @@ class Candidate extends Model
         'running_mate_of_id',
         'external_id',
         'ballot_number',
-        'round',
         'coverage_scope',
         'state',
         'office_code',
@@ -35,16 +31,11 @@ class Candidate extends Model
         'raw_data',
         'photo_path',
         'proposal_document_path',
-        'judgment_status_code',
         'judgment_status',
-        'source',
-        'source_slug',
-        'source_url',
     ];
 
     protected $casts = [
         'raw_data' => 'array',
-        'round' => 'integer',
         'election_year' => 'integer',
     ];
 
@@ -56,17 +47,17 @@ class Candidate extends Model
     public function getPhotoUrlAttribute(): ?string
     {
         return $this->photo_path
-            ? config('filesystems.disks.supabase.public_url') . '/' . $this->photo_path
+            ? config('filesystems.disks.supabase.public_url').'/'.$this->photo_path
             : null;
     }
 
     public function getProposalDocumentUrlAttribute(): ?string
     {
         return $this->proposal_document_path
-            ? config('filesystems.disks.supabase.public_url') . '/' . $this->proposal_document_path
+            ? config('filesystems.disks.supabase.public_url').'/'.$this->proposal_document_path
             : null;
     }
-    
+
     public function mainCandidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class, 'running_mate_of_id');
