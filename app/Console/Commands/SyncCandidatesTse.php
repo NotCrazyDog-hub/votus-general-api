@@ -2,144 +2,101 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Candidate;
-use App\Services\TseCandidatesCsvService;
+use App\Enums\CandidateOffice;
+use App\Services\Tse\CandidateSyncService;
 use Illuminate\Console\Command;
+use Throwable;
 
+/**
+ * Sincroniza candidatos a partir da API DivulgaCandContas do TSE.
+ *
+ * Substitui o fluxo dos CSVs de Dados Abertos (era
+ * `sync:candidates-tse arquivo.csv arquivo_complementar.csv`). O nome do
+ * comando foi mantido de propósito — a rotina operacional continua a mesma,
+ * mudou só a fonte dos dados.
+ */
 class SyncCandidatesTse extends Command
 {
     // Comando:
-    // php artisan sync:candidates-tse storage/app/tse/consulta_cand_2026_CE.csv storage/app/tse/consulta_cand_complementar_2026_CE.csv --uf=CE --year=2026
+    // php artisan sync:candidates-tse --uf=CE --year=2026 --office=state-deputy
 
     protected $signature = 'sync:candidates-tse
-        {file : Caminho do arquivo CSV de candidatos}
-        {complementary_file : Caminho do CSV de informações complementares}
-        {--uf=CE : Sigla da UF a importar}
-        {--year=2026 : Ano da eleição}';
+        {--uf=CE : Sigla da UF a sincronizar}
+        {--year=2026 : Ano da eleição}
+        {--office=governor : Cargo (president|governor|senator|federal_deputy|state_deputy)}
+        {--election-id= : ID da eleição. Padrão: derivado do ano (2026 => 20322002026)}
+        {--disk=supabase : Disco de armazenamento de fotos e documentos}
+        {--without-files : Não baixa fotos nem planos de governo}';
 
-    protected $description = 'Importa candidatos a partir dos CSVs de candidaturas e informações complementares do TSE';
+    protected $description = 'Sincroniza candidatos do TSE via API DivulgaCandContas (substitui os CSVs de Dados Abertos)';
 
-    protected array $offices = [
-        'PRESIDENTE',
-        'VICE-PRESIDENTE',
-        'GOVERNADOR',
-        'VICE-GOVERNADOR',
-        'SENADOR',
-        '1º SUPLENTE',
-        '2º SUPLENTE',
-        'DEPUTADO FEDERAL',
-        'DEPUTADO ESTADUAL',
+    /**
+     * IDs de eleição do TSE — 2026 é 20322002026.
+     *
+     * @var array<int, string>
+     */
+    protected array $electionIds = [
+        2026 => '20322002026',
     ];
 
-    public function handle(TseCandidatesCsvService $csv)
+    public function handle(CandidateSyncService $sync): int
     {
-        $filePath = $this->argument('file');
-        $complementaryFilePath = $this->argument('complementary_file');
-
-        $uf = $this->option('uf');
         $year = (int) $this->option('year');
+        $uf = strtoupper((string) $this->option('uf'));
+        $office = CandidateOffice::tryFrom((string) $this->option('office'));
 
-        // Verifica arquivo principal
-        if (!file_exists($filePath)) {
-            $this->error("Arquivo não encontrado: {$filePath}");
+        if ($office === null) {
+            $this->error('Cargo inválido. Use: '.implode('|', array_column(CandidateOffice::cases(), 'value')));
+
             return self::FAILURE;
         }
 
-        // Verifica arquivo complementar
-        if (!file_exists($complementaryFilePath)) {
-            $this->error(
-                "Arquivo complementar não encontrado: {$complementaryFilePath}"
+        $electionId = (string) ($this->option('election-id') ?: ($this->electionIds[$year] ?? ''));
+
+        if ($electionId === '') {
+            $this->error("Não há electionId conhecido para {$year}. Use --election-id.");
+
+            return self::FAILURE;
+        }
+
+        $this->info("Sincronizando candidatos de {$uf}/{$year} — {$office->value} (electionId {$electionId})...");
+
+        try {
+            $summary = $sync->syncOffice(
+                year: $year,
+                uf: $uf,
+                electionId: $electionId,
+                office: $office,
+                disk: (string) $this->option('disk'),
+                withFiles: ! $this->option('without-files'),
+                onProgress: function () {
+                    $this->output->write('.');
+                },
             );
+        } catch (Throwable $e) {
+            // Falha de rede ou 5xx na listagem não tem candidato individual
+            // para reportar — é a chamada inteira que caiu.
+            $this->newLine(2);
+            $this->error("Falha ao sincronizar candidatos: {$e->getMessage()}");
 
             return self::FAILURE;
         }
-
-        $this->info("Importando candidatos de {$uf} ({$year})...");
-
-        // Conta as linhas do arquivo principal, ignorando o cabeçalho
-        $totalLines = max(0, count(file($filePath)) - 1);
-
-        $bar = $this->output->createProgressBar($totalLines);
-        $bar->start();
-
-        $count = 0;
-        $failed = [];
-
-        foreach (
-            $csv->readCandidates(
-                $filePath,
-                $complementaryFilePath,
-                $uf,
-                $this->offices
-            ) as $row
-        ) {
-            try {
-                Candidate::updateOrCreate(
-                    [
-                        'external_id' => (int) $row['SQ_CANDIDATO'],
-                        'round' => (int) $row['NR_TURNO'],
-                    ],
-                    [
-                        'ballot_number' => $row['NR_CANDIDATO'] ?? null,
-                        'coverage_scope' => $row['TP_ABRANGENCIA'] ?? null,
-                        'state' => $row['SG_UF'] ?? null,
-                        'office_code' => 
-                            isset($row['CD_CARGO'])
-                                ? (int) $row['CD_CARGO']
-                                : null,
-                        'office_name' => $row['DS_CARGO'] ?? null,
-                        'civil_name' => $row['NM_CANDIDATO'] ?? null,
-                        'ballot_name' => $row['NM_URNA_CANDIDATO'] ?? null,
-                        'cpf' => $row['NR_CPF_CANDIDATO'] ?? null,
-                        'party_acronym' => $row['SG_PARTIDO'] ?? null,
-                        'party_name' => $row['NM_PARTIDO'] ?? null,
-                        'education_level' => $row['DS_GRAU_INSTRUCAO'] ?? null,
-                        'occupation' => $row['DS_OCUPACAO'] ?? null,
-                        'race_color' => $row['DS_COR_RACA'] ?? null,
-                        'judgment_status_code' =>
-                            isset($row['CD_SITUACAO_JULGAMENTO'])
-                                ? (int) $row['CD_SITUACAO_JULGAMENTO']
-                                : null,
-                        'judgment_status' =>$row['DS_SITUACAO_JULGAMENTO'] ?? null,
-                        'election_year' => $year,
-                        'raw_data' => $row,
-                    ]
-                );
-
-                $count++;
-            } catch (\Throwable $e) {
-                $failed[] =
-                    $row['SQ_CANDIDATO'] ?? 'desconhecido';
-
-                // Limpa a barra temporariamente para exibir o erro
-                $bar->clear();
-
-                $this->error(
-                    "Falha ao importar candidato " .
-                    ($row['SQ_CANDIDATO'] ?? '') .
-                    ": {$e->getMessage()}"
-                );
-
-                $bar->display();
-            }
-
-            $bar->advance();
-        }
-
-        $bar->finish();
 
         $this->newLine(2);
 
-        $this->info(
-            "Importação concluída: {$count} candidato(s) processado(s)."
-        );
+        $this->info("Sincronização concluída: {$summary['persisted']} candidato(s), {$summary['histories']} histórico(s).");
+        $this->line("Fotos: {$summary['photos']} | Planos de governo: {$summary['documents']} | Vínculos de vice: {$summary['running_mates']}");
 
-        if (!empty($failed)) {
-            $this->warn(
-                count($failed) .
-                ' falharam: ' .
-                implode(', ', $failed)
-            );
+        if ($summary['failed'] !== []) {
+            $this->warn(count($summary['failed']).' candidato(s) falharam:');
+
+            foreach (array_slice($summary['failed'], 0, 20) as $item) {
+                $this->line("  - {$item}");
+            }
+
+            if (count($summary['failed']) > 20) {
+                $this->line('  ... e mais '.(count($summary['failed']) - 20).' candidato(s)');
+            }
         }
 
         return self::SUCCESS;
