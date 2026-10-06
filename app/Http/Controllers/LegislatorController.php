@@ -6,6 +6,19 @@ use Illuminate\Http\Request;
 use App\Services\LegislatorService;
 use App\Models\Legislator;
 use App\Http\Resources\LegislatorsResource;
+use OpenApi\Attributes as OA;
+
+#[OA\Get(
+    path: '/legislators',
+    summary: 'Lista os legisladores',
+    tags: ['Legislators'],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Lista de legisladores'
+        ),
+    ]
+)]
 
 class LegislatorController extends Controller
 {
