@@ -4,6 +4,7 @@ namespace Tests\Feature\Tse;
 
 use App\Models\Candidate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 
 class SyncCandidatesTseCommandTest extends CandidateSyncTestCase
 {
@@ -47,17 +48,11 @@ class SyncCandidatesTseCommandTest extends CandidateSyncTestCase
             '--office' => 'governor',
         ])->assertExitCode(0);
 
-        Http::assertSent(function ($request) {
-            return str_contains($request->url(), '/candidatura/listar/2026/CE/20322002026/3/candidatos')
-                // UA de navegador: o TSE recusa cliente genérico de biblioteca.
-                && str_contains($request->header('User-Agent')[0] ?? '', 'Mozilla/5.0');
-        });
-
+        // Listagem + detalhes saem num ÚNICO processo Node: o input carrega a
+        // listUrl montada (ano/UF/electionId/cargo) e o template do detalhe.
         // A listagem só descobre IDs; a persistência vem SEMPRE do detalhe.
-        Http::assertSent(fn ($request) => str_contains(
-            $request->url(),
-            '/candidatura/buscar/2026/CE/20322002026/candidato/60002543969',
-        ));
+        Process::assertRan(fn ($process) => str_contains((string) $process->input, '/candidatura/listar/2026/CE/20322002026/3/candidatos')
+            && str_contains((string) $process->input, '/candidatura/buscar/2026/CE/20322002026/candidato/{id}'));
     }
 
     public function test_it_maps_the_office_to_its_tse_cargo_code(): void
@@ -71,7 +66,7 @@ class SyncCandidatesTseCommandTest extends CandidateSyncTestCase
         ])->assertExitCode(0);
 
         // 7 = Deputado Estadual; o cargo errado devolveria lista vazia.
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/2026/CE/20322002026/7/candidatos'));
+        Process::assertRan(fn ($process) => str_contains((string) $process->input, '/2026/CE/20322002026/7/candidatos'));
     }
 
     public function test_it_downloads_files_by_default(): void
@@ -131,7 +126,7 @@ class SyncCandidatesTseCommandTest extends CandidateSyncTestCase
 
         // Rejeitado antes de qualquer chamada de rede.
         $this->assertSame(0, Candidate::count());
-        $this->assertCount(0, Http::recorded());
+        Process::assertNothingRan();
     }
 
     public function test_it_fails_when_the_year_has_no_known_election_id(): void
@@ -160,12 +155,14 @@ class SyncCandidatesTseCommandTest extends CandidateSyncTestCase
             '--election-id' => '20322002020',
         ])->assertExitCode(0);
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/candidatura/listar/2020/CE/20322002020/'));
+        Process::assertRan(fn ($process) => str_contains((string) $process->input, '/candidatura/listar/2020/CE/20322002020/'));
     }
 
     public function test_it_fails_when_the_listing_endpoint_is_unreachable(): void
     {
-        Http::fake(['*/candidatura/listar/*' => Http::response([], 500)]);
+        // O script reportou o 500 do TSE, mas conseguiu responder: o comando
+        // recebe TseGatewayException com status e sai com erro.
+        $this->fakeTseFailure('TSE_HTTP_500', 500, 'erro interno');
 
         $this->artisan('sync:candidates-tse', [
             '--uf' => 'CE',

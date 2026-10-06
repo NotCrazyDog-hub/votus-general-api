@@ -125,7 +125,10 @@ class CandidateFilesTest extends CandidateSyncTestCase
         $this->assertNull($candidate->photo_path);
         $this->assertNull($candidate->proposal_document_path);
 
-        Http::assertSentCount(2); // listar + buscar
+        // Com withFiles:false, a listagem/detalhe sai pelo processo Node e os
+        // arquivos nem são tocados: nenhuma requisição Http acontece.
+        Http::assertNothingSent();
+        Process::assertRanCount(1);
     }
 
     private function sync(bool $withFiles): array

@@ -5,7 +5,7 @@ namespace Tests\Feature\Tse;
 use App\Enums\CandidateOffice;
 use App\Models\Candidate;
 use App\Services\Tse\CandidateSyncService;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 
 class SyncCandidatesTseTest extends CandidateSyncTestCase
@@ -37,8 +37,10 @@ class SyncCandidatesTseTest extends CandidateSyncTestCase
         $this->assertSame(3, $candidate->office_code);
         $this->assertSame(2026, $candidate->election_year);
 
-        Http::assertSent(fn ($r) => str_contains($r->url(), '/candidatura/listar/2026/CE/20322002026/7/candidatos'));
-        Http::assertSent(fn ($r) => str_contains($r->url(), '/candidatura/buscar/2026/CE/20322002026/candidato/60002543969'));
+        // Listagem + detalhe saem de UM processo Node só: o input carrega a
+        // listUrl montada (ano/UF/electionId/cargo) e o template do detalhe.
+        Process::assertRan(fn ($process) => str_contains((string) $process->input, '/candidatura/listar/2026/CE/20322002026/7/candidatos')
+            && str_contains((string) $process->input, '/candidatura/buscar/2026/CE/20322002026/candidato/{id}'));
     }
 
     public function test_it_does_not_duplicate_the_candidate_on_a_second_sync(): void

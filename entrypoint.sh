@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# A listagem/detalhe de candidatos sai por um Chromium headful
+# (scripts/tse/fetch-candidates.js): o TSE/Akamai bloqueia cURL/PHP. Sem
+# display o Chromium não sobe, então no contêiner o processo passa por
+# xvfb-run. Definido ANTES do config:cache para a variável entrar na config;
+# pode ser sobrescrito pelo painel (env group) se a imagem mudar.
+if [ -z "${TSE_DIVULGACANDCONTAS_WRAPPER:-}" ] && command -v xvfb-run >/dev/null 2>&1; then
+  export TSE_DIVULGACANDCONTAS_WRAPPER="xvfb-run --auto-servernum"
+fi
+
 php artisan config:cache
 
 # Rotas e eventos em cache: evita reler/compilar routes/*.php e varrer os
@@ -8,12 +17,6 @@ php artisan config:cache
 # o app sobe normalmente sem esse cache em vez de derrubar o deploy.
 php artisan route:cache || echo "route:cache falhou, seguindo sem cache de rotas"
 php artisan event:cache || echo "event:cache falhou, seguindo sem cache de eventos"
-
-echo "=== TESTE PLAYWRIGHT TSE ==="
-
-xvfb-run --auto-servernum node scripts/test-tse-playwright.js
-
-echo "=== TESTE FINALIZADO ==="
 
 # O servidor embutido do PHP (usado pelo `artisan serve`) atende UMA
 # requisição por vez quando PHP_CLI_SERVER_WORKERS não está definido. Medido

@@ -3,47 +3,49 @@
 namespace Tests\Feature\Tse;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 
 /**
  * Payloads de exemplo com o formato real da API DivulgaCandContas.
  *
  * Evitar "arrays mágicos" repetidos nos testes deixa explícito o que cada
  * cenário exercita (foto, plano de governo, vices, histórico).
+ *
+ * ONDE CADA FAKE MORA AGORA
+ *
+ *  - listagem e detalhe: `Process::fake()` — essas consultas saem pelo
+ *    `scripts/tse/fetch-candidates.js`, nunca mais por Http::get(). O stub
+ *    devolve o MESMO JSON que o script emite no stdout;
+ *  - foto e documento: `Http::fake()` — continuam em Http, então os testes de
+ *    arquivo seguem exatamente como antes.
  */
 trait FakeTseApi
 {
     /**
-     * Detalhe devolvido pelo stub do endpoint de busca.
+     * Detalhe devolvido pelo stub da listagem (campo `details`).
      *
-     * Precisa ser estado mutável: `Http::fake()` ACUMULA os stubs registrados
-     * (merge), então um segundo `fake()` não substitui o anterior — o
-     * callback mais antigo continuaria respondendo. Trocar o conteúdo desta
-     * variável é a forma de simular "a API mudou" entre duas sincronizações.
+     * Precisa ser estado mutável: o closure do `Process::fake()` lê `$this`
+     * a cada invocação, então trocar o conteúdo desta variável é a forma de
+     * simular "a API mudou" entre duas sincronizações.
      *
      * @var array<string, mixed>
      */
     protected array $fakeDetail = [];
 
     /**
-     * Payload por SQ_CANDIDATO, lido a cada requisição do stub.
+     * Payload por SQ_CANDIDATO, lido a cada execução do stub.
      *
      * `fakeCandidates()` capturava um `use ($byId)` por VALOR no closure, então
      * `setDetail()` não tinha efeito na 2ª sincronização — o stub continuava
      * devolvendo o payload antigo. Mantendo o mapa aqui (mutável), a troca de
-     * detalhe chega na rede de verdade.
+     * detalhe chega ao serviço de verdade.
      *
      * @var array<string, array<string, mixed>>
      */
     protected array $fakeDetails = [];
 
     /**
-     * IDs cujo endpoint de detalhe deve responder 404.
-     *
-     * Também precisa ser estado mutável: registrar um `Http::fake()` depois do
-     * `fakeCandidates()` não sobrescreve nada — `Factory::fake()` faz MERGE dos
-     * stubs e o callback mais antigo (o catch-all de `/buscar/`) responde
-     * primeiro. Para o stub importar, a decisão tem que acontecer DENTRO daquele
-     * callback.
+     * IDs cujo detalhe deve responder `status: 404`.
      *
      * @var array<int, string>
      */
@@ -210,31 +212,83 @@ trait FakeTseApi
             $this->fakeDetails[(string) $detail['id']] = $detail;
         }
 
-        $listing = [];
-        foreach ($details as $detail) {
-            $listing[] = ['id' => $detail['id'], 'nomeUrna' => $detail['nomeUrna']];
-        }
+        // Listagem + detalhe agora saem de UM processo Node só. `Process::fake`
+        // sobrescreve o handler anterior (mesma chave '*'), então rechamar
+        // `fakeCandidates()` troca o retorno sem acumular stubs — e o closure
+        // relê `$this` a cada invocação, que é o que faz `setDetail()` entre
+        // duas sincronizações chegar ao serviço.
+        Process::fake([
+            '*' => fn () => Process::result(output: $this->tseBatchOutput()),
+        ]);
 
+        // Só arquivos batem em Http hoje; o catch-all 404 é a garantia de que
+        // nenhuma listagem/detalhe voltou a usar Http::get() por engano.
         Http::fake([
-            '*/candidatura/listar/*' => fn () => Http::response(
-                $this->candidateList($listing),
-            ),
-            '*/candidatura/buscar/*' => function ($request) {
-                $segments = explode('/', (string) parse_url($request->url(), PHP_URL_PATH));
-                $id = (string) end($segments);
-
-                if (in_array($id, $this->fake404Ids, true)) {
-                    return Http::response([], 404);
-                }
-
-                // Estado MUTÁVEL: setDetail() tem que surtir efeito aqui.
-                return Http::response(
-                    $this->fakeDetails[$id] ?? $this->fakeDetail,
-                );
-            },
             '*/arquivo/img/*' => Http::response($photoBody, $fileStatus),
             '*/arquivo/doc/*' => Http::response($docBody, $fileStatus),
             '*' => Http::response([], 404),
+        ]);
+    }
+
+    /**
+     * Monta o stdout que o `fetch-candidates.js` emitiria para o lote corrente.
+     *
+     * É o mesmo formato do contrato: `{"success":true,"status":200,"data":{...}}`
+     * com `list` e `details`. Os `fake404Ids` entram como entrada de detalhe
+     * com `status` 404, que é como o script reporta um HTTP != 200.
+     */
+    private function tseBatchOutput(): string
+    {
+        $listing = [];
+        $details = [];
+
+        foreach ($this->fakeDetails as $id => $detail) {
+            $listing[] = ['id' => $detail['id'], 'nomeUrna' => $detail['nomeUrna'] ?? null];
+
+            $details[$id] = in_array($id, $this->fake404Ids, true)
+                ? ['status' => 404, 'error' => 'TSE_HTTP_404']
+                : ['status' => 200, 'data' => $detail];
+        }
+
+        return (string) json_encode([
+            'success' => true,
+            'status' => 200,
+            'data' => [
+                'list' => $this->candidateList($listing),
+                'details' => $details,
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Faz o processo Node devolver uma saída bruta (para testar o parsing).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function fakeTseJson(array $payload, int $exitCode = 0, string $errorOutput = ''): void
+    {
+        Process::fake([
+            '*' => Process::result(
+                output: (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                errorOutput: $errorOutput,
+                exitCode: $exitCode,
+            ),
+        ]);
+    }
+
+    /**
+     * Faz o processo Node devolver `{"success":false,...}` — o caso em que o
+     * script detectou a falha mas conseguiu reportá-la.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function fakeTseFailure(string $error, int $status = 0, string $message = ''): void
+    {
+        $this->fakeTseJson([
+            'success' => false,
+            'status' => $status,
+            'error' => $error,
+            'message' => $message,
         ]);
     }
 }
