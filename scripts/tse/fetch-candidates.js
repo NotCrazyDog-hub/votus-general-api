@@ -122,6 +122,22 @@ function asPositiveInt(input, fallback) {
     return Number.isFinite(number) && number > 0 ? Math.trunc(number) : fallback;
 }
 
+/**
+ * O gateway PHP envia timeouts em SEGUNDOS (convenção do Laravel); o Playwright
+ * espera MILISSEGUNDOS. Sem a conversão, 60s viravam 60ms e o page.goto()
+ * morria antes de carregar a página.
+ */
+function secondsToMs(value, fallbackMs) {
+    const seconds = asPositiveInt(value, 0);
+
+    if (seconds > 0) {
+        return seconds * 1000;
+    }
+
+    const direct = Number(value);
+    return Number.isFinite(direct) && direct > 0 ? Math.round(direct) : fallbackMs;
+}
+
 function normalize(raw) {
     if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
         throw new Error('A entrada deve ser um objeto JSON.');
@@ -130,8 +146,8 @@ function normalize(raw) {
     return {
         startUrl: typeof raw.startUrl === 'string' && raw.startUrl !== '' ? raw.startUrl : DEFAULT_START_URL,
         headless: raw.headless === true || raw.headless === 'true',
-        navigationTimeout: asPositiveInt(raw.navigationTimeout, DEFAULT_NAVIGATION_TIMEOUT),
-        fetchTimeout: asPositiveInt(raw.fetchTimeout, DEFAULT_FETCH_TIMEOUT),
+        navigationTimeout: secondsToMs(raw.navigationTimeout, DEFAULT_NAVIGATION_TIMEOUT),
+        fetchTimeout: secondsToMs(raw.fetchTimeout, DEFAULT_FETCH_TIMEOUT),
         listUrl: typeof raw.listUrl === 'string' && raw.listUrl !== '' ? raw.listUrl : null,
         detailUrlTemplate:
             typeof raw.detailUrlTemplate === 'string' && raw.detailUrlTemplate !== ''
