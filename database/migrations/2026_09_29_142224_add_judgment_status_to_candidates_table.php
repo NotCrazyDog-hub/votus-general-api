@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('candidates', function (Blueprint $table) {
-            $table->smallInteger('judgment_status_code')->nullable()->after('candidacy_status'); // CD_SITUACAO_JULGAMENTO
+            $table->smallInteger('judgment_status_code')->nullable(); // CD_SITUACAO_JULGAMENTO
             $table->string('judgment_status')->nullable()->after('judgment_status_code'); // DS_SITUACAO_JULGAMENTO
         });
     }

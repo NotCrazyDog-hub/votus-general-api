@@ -30,7 +30,7 @@ return new class extends Migration
             // Fonte
             $table->string('source_name');
             $table->string('source_type')->nullable();
-            $table->text('source_url');
+            $table->string('source_url')->nullable();
 
             // Informações extraídas pela IA
             $table->json('entities')->nullable();

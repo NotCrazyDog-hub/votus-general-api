@@ -161,8 +161,6 @@ class CandidateSyncService
                 continue;
             }
 
-            // A candidatura do ano sincronizado não vira histórico: ela já
-            // está em `candidates`.
             if ($year >= $currentYear) {
                 continue;
             }
@@ -175,10 +173,9 @@ class CandidateSyncService
                 [
                     'election_year' => $year,
                     'round' => null,
-                    'state' => $this->stringOrNull($item['sgUe'] ?? null),
+                    'state' => $candidate->state,
                     'office_name' => $this->stringOrNull($item['cargo'] ?? null),
                     'ballot_number' => $this->stringOrNull($item['nrCandidato'] ?? null),
-                    // O histórico da API traz só a sigla do partido.
                     'party_acronym' => $this->upperOrNull($item['partido'] ?? null),
                     'party_name' => null,
                     'candidacy_status' => null,
