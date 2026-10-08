@@ -6,6 +6,7 @@ use App\Enums\CandidateOffice;
 use App\Models\Candidate;
 use App\Services\Tse\CandidateSyncService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
 class CandidateFilesTest extends CandidateSyncTestCase
@@ -127,8 +128,9 @@ class CandidateFilesTest extends CandidateSyncTestCase
 
         // Com withFiles:false, a listagem/detalhe sai pelo processo Node e os
         // arquivos nem são tocados: nenhuma requisição Http acontece.
+        // assertRanCount é protegido na facade — conta via assertRanTimes.
         Http::assertNothingSent();
-        Process::assertRanCount(1);
+        Process::assertRanTimes(fn () => true, 1);
     }
 
     private function sync(bool $withFiles): array

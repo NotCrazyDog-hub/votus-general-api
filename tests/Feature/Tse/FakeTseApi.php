@@ -245,7 +245,9 @@ trait FakeTseApi
         foreach ($this->fakeDetails as $id => $detail) {
             $listing[] = ['id' => $detail['id'], 'nomeUrna' => $detail['nomeUrna'] ?? null];
 
-            $details[$id] = in_array($id, $this->fake404Ids, true)
+            // As chaves do mapa viram int para IDs numéricos, mas
+            // `failDetails()` guarda strings: compara como string.
+            $details[$id] = in_array((string) $id, $this->fake404Ids, true)
                 ? ['status' => 404, 'error' => 'TSE_HTTP_404']
                 : ['status' => 200, 'data' => $detail];
         }
