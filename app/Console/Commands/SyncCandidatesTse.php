@@ -18,7 +18,7 @@ use Throwable;
 class SyncCandidatesTse extends Command
 {
     // Comando:
-    // php artisan sync:candidates-tse --uf=CE --year=2026 --office=state-deputy
+    // php artisan sync:candidates-tse --uf=CE --year=2026 --office=state_deputy
 
     protected $signature = 'sync:candidates-tse
         {--uf=CE : Sigla da UF a sincronizar}

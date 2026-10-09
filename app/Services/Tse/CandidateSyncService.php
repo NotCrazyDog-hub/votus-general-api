@@ -47,6 +47,11 @@ class CandidateSyncService
             'failed' => [],
         ];
 
+        // Vices já tratados nesta execução (external_id => true) e pendências
+        // coletadas dos detalhes dos titulares — processadas na fase 2.
+        $processed = [];
+        $pendingVices = [];
+
         $listed = $this->api->listCandidates($year, $uf, $electionId, DivulgaCandContasService::CARGO_CODES[$office->value]);
 
         foreach ($listed as $row) {
@@ -63,6 +68,16 @@ class CandidateSyncService
                 $candidate = $this->persistCandidate($detail, $year, $office);
 
                 $summary['persisted']++;
+                $processed[(string) $externalId] = true;
+
+                // O detalhe do titular traz os vices (`vices[].sq_CANDIDATO`),
+                // mas o vice NÃO aparece na listagem do cargo: ele precisa de
+                // uma consulta própria ao detalhe. Coleta aqui e processa na
+                // segunda fase, depois que todos os titulares estão gravados.
+                foreach ($this->viceExternalIds($detail) as $viceExternalId) {
+                    $pendingVices[] = ['id' => $viceExternalId, 'titular' => $candidate];
+                }
+
                 $summary['histories'] += $this->syncHistory($candidate, $detail, $year);
 
                 if ($withFiles) {
@@ -78,18 +93,47 @@ class CandidateSyncService
             }
         }
 
-        // Segundo passo, depois de todos os candidatos gravados: o vice pode
-        // não existir no banco quando o titular é processado. Assim o vínculo
-        // funciona em qualquer ordem e reexecutar o sync recria o que faltou.
-        $summary['running_mates'] = $this->linkRunningMatesFor($year, $uf);
+        // Segunda fase: cada vice encontrado nos detalhes é consultado pelo SEU
+        // SQ_CANDIDATO e persistido como registro próprio, já ligado ao titular.
+        // `processed` garante que um vice não seja tratado duas vezes na mesma
+        // execução (ex.: vice que também apareceu na listagem).
+        $vices = $this->syncPendingVices(
+            $pendingVices,
+            $processed,
+            $year,
+            $uf,
+            $electionId,
+            $office,
+            $disk,
+            $withFiles,
+            $onProgress,
+        );
+
+        foreach (['persisted', 'histories', 'photos', 'documents', 'running_mates'] as $key) {
+            $summary[$key] += $vices[$key];
+        }
+
+        $summary['failed'] = [...$summary['failed'], ...$vices['failed']];
+
+        // Terceiro passo, depois de todos os candidatos gravados: religa vices
+        // que ficaram órfãos (ex.: os vindos da listagem, gravados com null).
+        // O vínculo criado na fase 2 já está valendo e não é recontado — esta
+        // fase só pega quem ainda está com `running_mate_of_id` null.
+        $summary['running_mates'] += $this->linkRunningMatesFor($year, $uf);
 
         return $summary;
     }
 
     /**
      * Mapeia o detalhe do candidato e grava com updateOrCreate.
+     *
+     * `$runningMateOfId` só é preenchido quando o registro é um vice e o
+     * vínculo com o titular é conhecido no momento da gravação: assim a
+     * atualização nunca zera um relacionamento válido com `null` durante uma
+     * nova sincronização. Titulares (e vices vindos da listagem, religados no
+     * passo final) usam o padrão `null`.
      */
-    public function persistCandidate(array $detail, int $year, CandidateOffice $office): Candidate
+    public function persistCandidate(array $detail, int $year, CandidateOffice $office, ?int $runningMateOfId = null): Candidate
     {
         $externalId = $detail['id'] ?? null;
 
@@ -123,8 +167,10 @@ class CandidateSyncService
                 // Guardar o JSON preserva essa informação sem criar coluna
                 // nova para cada propriedade.
                 'raw_data' => $detail,
-                // Candidato titular nunca é vice de ninguém.
-                'running_mate_of_id' => null,
+                // Titular é null; o vice recebe o id interno do titular aqui
+                // mesmo, sem passar por um update posterior que pudesse deixar
+                // o vínculo zerado no meio da sincronização.
+                'running_mate_of_id' => $runningMateOfId,
             ],
         );
     }
@@ -167,12 +213,12 @@ class CandidateSyncService
 
             CandidacyHistory::updateOrCreate(
                 [
-                    'candidate_id' => $candidate->id,
                     'candidacy_external_id' => (int) $externalId,
+                    'election_year' => (int) ($item['nrAno'] ?? $year),
+                    'round' => (int) ($item['nrTurno'] ?? 1),
                 ],
                 [
-                    'election_year' => $year,
-                    'round' => null,
+                    'candidate_id' => $candidate->id,
                     'state' => $candidate->state,
                     'office_name' => $this->stringOrNull($item['cargo'] ?? null),
                     'ballot_number' => $this->stringOrNull($item['nrCandidato'] ?? null),
@@ -289,6 +335,131 @@ class CandidateSyncService
         $candidate->update(['proposal_document_path' => $path]);
 
         return 1;
+    }
+
+    /**
+     * Extrai os SQ_CANDIDATO dos vices listados no detalhe do titular.
+     *
+     * O campo vem como array (ou null/ausente quando o cargo não tem vice).
+     * Só o identificador interessa aqui: o restante do payload do vice é
+     * obtido da consulta de detalhe, que é a fonte completa.
+     *
+     * @return array<int, int|string>
+     */
+    private function viceExternalIds(array $detail): array
+    {
+        $vices = $detail['vices'] ?? null;
+
+        if (! is_array($vices)) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($vices as $vice) {
+            if (! is_array($vice)) {
+                continue;
+            }
+
+            $id = $vice['sq_CANDIDATO'] ?? null;
+
+            if ($id === null || $id === '') {
+                continue;
+            }
+
+            $ids[] = $id;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Segunda fase do sync: registra os vices como candidatos próprios.
+     *
+     * Para cada pendência coletada na fase 1:
+     *
+     *  1. pula se o vice já foi tratado nesta execução (apareceu na listagem,
+     *     ou outro titular apontou o mesmo SQ) — evita consulta e download
+     *     repetidos;
+     *  2. consulta o detalhe pelo SQ_CANDIDATO do vice, pelo mesmo caminho de
+     *     rede dos demais candidatos (`DivulgaCandContasService::getCandidate`);
+     *  3. persiste com a MESMA lógica de cadastro/atualização (updateOrCreate
+     *     por external_id + ano, raw_data preservado), já apontando
+     *     `running_mate_of_id` para o id interno do titular;
+     *  4. histórico, foto e plano de governo seguem a rotina usual — falha de
+     *     download nunca derruba o cadastro.
+     *
+     * Falha na consulta do detalhe entra em `failed` e o sync segue: um vice
+     * inacessível não pode impedir o resto da UF.
+     *
+     * @param  array<int, array{id: int|string, titular: Candidate}>  $pending
+     * @param  array<string, true>  $processed
+     * @return array{persisted: int, histories: int, photos: int, documents: int, running_mates: int, failed: array<int, string>}
+     */
+    private function syncPendingVices(
+        array $pending,
+        array $processed,
+        int $year,
+        string $uf,
+        string $electionId,
+        CandidateOffice $office,
+        string $disk,
+        bool $withFiles,
+        ?callable $onProgress,
+    ): array {
+        $summary = [
+            'persisted' => 0,
+            'histories' => 0,
+            'photos' => 0,
+            'documents' => 0,
+            'running_mates' => 0,
+            'failed' => [],
+        ];
+
+        foreach ($pending as $item) {
+            $viceExternalId = (string) $item['id'];
+            $titular = $item['titular'];
+
+            // Dedup: já persistido na fase 1, ou já tratado aqui.
+            if (isset($processed[$viceExternalId])) {
+                continue;
+            }
+
+            // Dado degenerado (titular listado como próprio vice): gravar
+            // sobrescreveria o titular com o vínculo apontando para si.
+            if ($viceExternalId === (string) $titular->external_id) {
+                continue;
+            }
+
+            $processed[$viceExternalId] = true;
+
+            try {
+                $detail = $this->api->getCandidate($year, $uf, $electionId, $item['id']);
+
+                // O vínculo vai na MESMA gravação do updateOrCreate: nunca há
+                // um instante com o vice registrado porém isolado, e um
+                // vínculo anterior inválido é corrigido aqui mesmo.
+                $vice = $this->persistCandidate($detail, $year, $office, $titular->id);
+
+                $summary['persisted']++;
+                $summary['histories'] += $this->syncHistory($vice, $detail, $year);
+
+                if ($withFiles) {
+                    $summary['photos'] += $this->syncPhoto($vice, $detail, $disk);
+                    $summary['documents'] += $this->syncProposalDocument($vice, $detail, $disk);
+                }
+
+                $summary['running_mates']++;
+
+                if ($onProgress !== null) {
+                    $onProgress($vice);
+                }
+            } catch (\Throwable $e) {
+                $summary['failed'][] = "{$viceExternalId}: {$e->getMessage()}";
+            }
+        }
+
+        return $summary;
     }
 
     /**
