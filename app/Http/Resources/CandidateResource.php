@@ -11,7 +11,6 @@ class CandidateResource extends JsonResource
         return [
             'id' => $this->external_id,
             'ballot_number' => $this->ballot_number,
-            'round' => $this->round,
             'state' => $this->state,
             'office' => $this->office_name,
             'civil_name' => $this->civil_name,
