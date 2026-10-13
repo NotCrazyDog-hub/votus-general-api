@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Domains\Legislatures\Console\Commands\Chamber;
+namespace App\Domains\Legislatures\Console\Commands\LowerHouseHouse;
 
 use App\Domains\Legislatures\Models\Legislator;
-use App\Domains\Legislatures\Services\Chamber\LowerHouseApiService;
+use App\Domains\Legislatures\Services\LowerHouse\LowerHouseApiService;
 use App\Shared\Media\OfficialPhotoOptimizer;
 use Illuminate\Console\Command;
 use App\Domains\Legislatures\Enums\ElectoralStatus;

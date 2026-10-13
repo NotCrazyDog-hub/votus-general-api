@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Legislatures\Services\Chamber;
+namespace App\Domains\Legislatures\Services\LowerHouse;
 
 use Illuminate\Support\Facades\Http;
 use App\Domains\Legislatures\Support\NormalizesProfessionNames;

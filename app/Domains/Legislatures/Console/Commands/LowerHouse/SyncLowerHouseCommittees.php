@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Domains\Legislatures\Console\Commands\Chamber;
+namespace App\Domains\Legislatures\Console\Commands\LowerHouse;
 
 use App\Domains\Legislatures\Models\Committee;
 use App\Domains\Legislatures\Models\Legislator;
-use App\Domains\Legislatures\Services\Chamber\LowerHouseApiService;
+use App\Domains\Legislatures\Services\LowerHouse\LowerHouseApiService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
