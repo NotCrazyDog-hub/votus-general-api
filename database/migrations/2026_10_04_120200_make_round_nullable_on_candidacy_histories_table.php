@@ -30,34 +30,33 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('candidacy_histories', function (Blueprint $table) {
-            $table->dropUnique(['candidacy_external_id', 'round']);
+            $table->dropUnique(
+                'candidacy_histories_candidacy_external_id_round_unique'
+            );
         });
 
         Schema::table('candidacy_histories', function (Blueprint $table) {
             $table->unsignedTinyInteger('round')->nullable()->change();
         });
-
-        Schema::table('candidacy_histories', function (Blueprint $table) {
-            $table->unique(['candidate_id', 'candidacy_external_id'], 'candidacy_histories_candidate_candidacy_unique');
-        });
     }
 
     public function down(): void
     {
-        Schema::table('candidacy_histories', function (Blueprint $table) {
-            $table->dropUnique('candidacy_histories_candidate_candidacy_unique');
-        });
-
-        // Linhas com round null não podem voltar a ser NOT NULL; só
-        // restaura a restrição quando não existe nenhuma.
-        if (! DB::table('candidacy_histories')->whereNull('round')->exists()) {
-            Schema::table('candidacy_histories', function (Blueprint $table) {
-                $table->unsignedTinyInteger('round')->nullable(false)->change();
-            });
+        if (DB::table('candidacy_histories')->whereNull('round')->exists()) {
+            throw new RuntimeException(
+                'Não é possível reverter: existem históricos com round NULL.'
+            );
         }
 
         Schema::table('candidacy_histories', function (Blueprint $table) {
-            $table->unique(['candidacy_external_id', 'round']);
+            $table->unsignedTinyInteger('round')->nullable(false)->change();
+        });
+
+        Schema::table('candidacy_histories', function (Blueprint $table) {
+            $table->unique(
+                ['candidacy_external_id', 'round'],
+                'candidacy_histories_candidacy_external_id_round_unique'
+            );
         });
     }
 };
