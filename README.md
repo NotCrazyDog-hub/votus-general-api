@@ -1,5 +1,5 @@
 <p align="center">
-    <img width="400" alt="Votus Logo" src="https://github.com/user-attachments/assets/391c325b-9cb0-4998-a657-c7f587cbefa9" />
+    <img width="400" alt="Votus Logo" src="./public/images/votus-logo.png" />
 </p>
 
 <p align="center">

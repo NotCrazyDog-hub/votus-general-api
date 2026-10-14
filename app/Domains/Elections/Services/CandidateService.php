@@ -17,7 +17,6 @@ class CandidateService
         'id',
         'external_id',
         'ballot_number',
-        'round',
         'state',
         'office_name',
         'civil_name',

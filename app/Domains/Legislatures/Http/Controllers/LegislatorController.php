@@ -7,6 +7,19 @@ use App\Domains\Legislatures\Services\LegislatorCatalogService;
 use App\Domains\Legislatures\Models\Legislator;
 use App\Domains\Legislatures\Http\Resources\LegislatorsListResource;
 use App\Http\Controllers\Controller;
+use OpenApi\Attributes as OA;
+
+#[OA\Get(
+    path: '/legislators',
+    summary: 'Lista os legisladores',
+    tags: ['Legislators'],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Lista de legisladores'
+        ),
+    ]
+)]
 
 class LegislatorController extends Controller
 {
