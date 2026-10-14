@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "50f4545faa72b893fdcc2a350cbfa20c",
+    "content-hash": "2e5f8e94402ba6440236519a241722d5",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -292,16 +292,16 @@
         },
         {
             "name": "darkaonline/l5-swagger",
-            "version": "11.1.0",
+            "version": "11.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DarkaOnLine/L5-Swagger.git",
-                "reference": "110b59478c9417c13794cef62a82b019433d642a"
+                "reference": "bdccf2687c3778fd73d1e39075e838ffc8cc650d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DarkaOnLine/L5-Swagger/zipball/110b59478c9417c13794cef62a82b019433d642a",
-                "reference": "110b59478c9417c13794cef62a82b019433d642a",
+                "url": "https://api.github.com/repos/DarkaOnLine/L5-Swagger/zipball/bdccf2687c3778fd73d1e39075e838ffc8cc650d",
+                "reference": "bdccf2687c3778fd73d1e39075e838ffc8cc650d",
                 "shasum": ""
             },
             "require": {
@@ -310,7 +310,7 @@
                 "php": "^8.2",
                 "swagger-api/swagger-ui": ">=5.18.3",
                 "symfony/yaml": "^5.0 || ^6.0 || ^7.0 || ^8.0",
-                "zircote/swagger-php": "^6.0"
+                "zircote/swagger-php": "^6.3.1"
             },
             "require-dev": {
                 "mockery/mockery": "1.*",
@@ -360,7 +360,7 @@
             ],
             "support": {
                 "issues": "https://github.com/DarkaOnLine/L5-Swagger/issues",
-                "source": "https://github.com/DarkaOnLine/L5-Swagger/tree/11.1.0"
+                "source": "https://github.com/DarkaOnLine/L5-Swagger/tree/11.2.0"
             },
             "funding": [
                 {
@@ -368,7 +368,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-06-12T10:04:41+00:00"
+            "time": "2026-10-13T12:54:57+00:00"
         },
         {
             "name": "dflydev/dot-access-data",
