@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Elections\Console\Commands;
 
-use App\Models\Candidate;
-use App\Services\TseCandidatesCsvService;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\Elections\Services\Tse\TseCandidatesCsvService;
 use Illuminate\Console\Command;
 
 class SyncCandidatesTse extends Command

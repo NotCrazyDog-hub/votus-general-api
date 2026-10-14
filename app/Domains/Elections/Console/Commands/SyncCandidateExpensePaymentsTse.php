@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Elections\Console\Commands;
 
-use App\Models\CandidateExpense;
-use App\Models\CandidateExpensePayment;
-use App\Services\TseCandidateExpensePaymentsCsvService;
+use App\Domains\Elections\Models\CandidateExpense;
+use App\Domains\Elections\Models\CandidateExpensePayment;
+use App\Domains\Elections\Services\Tse\TseCandidateExpensePaymentsCsvService;
 use Illuminate\Console\Command;
 
 class SyncCandidateExpensePaymentsTse extends Command
