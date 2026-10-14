@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\CivicParticipation\Http\Controllers;
 
-use App\Models\SuggestionQuestion;
+use App\Domains\CivicParticipation\Models\SuggestionQuestion;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 
 class SuggestionQuestionController extends Controller

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\CivicParticipation\Http\Controllers;
 
-use App\Models\SantinhoGeneration;
+use App\Domains\CivicParticipation\Models\SantinhoGeneration;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 
 class SantinhoController extends Controller

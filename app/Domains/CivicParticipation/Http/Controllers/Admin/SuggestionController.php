@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\CivicParticipation\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Suggestion;
+use App\Domains\CivicParticipation\Models\Suggestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

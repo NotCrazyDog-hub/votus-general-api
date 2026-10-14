@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\CivicParticipation\Http\Controllers;
 
-use App\Enums\ProposalStatus;
-use App\Http\Resources\ProposalCommentResource;
-use App\Models\Proposal;
-use App\Models\ProposalComment;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Http\Resources\ProposalCommentResource;
+use App\Domains\CivicParticipation\Models\Proposal;
+use App\Domains\CivicParticipation\Models\ProposalComment;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class ProposalCommentController extends Controller

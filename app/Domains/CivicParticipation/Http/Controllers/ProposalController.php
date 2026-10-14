@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\CivicParticipation\Http\Controllers;
 
-use App\Enums\ProposalStatus;
-use App\Enums\ProposalVoteType;
-use App\Http\Resources\ProposalResource;
-use App\Models\Proposal;
-use App\Services\ProposalService;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Enums\ProposalVoteType;
+use App\Domains\CivicParticipation\Http\Resources\ProposalResource;
+use App\Domains\CivicParticipation\Models\Proposal;
+use App\Domains\CivicParticipation\Services\ProposalService;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 

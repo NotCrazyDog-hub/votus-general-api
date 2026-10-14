@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\CivicParticipation\Http\Controllers\Admin;
 
-use App\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\ProposalCommentResource;
-use App\Models\Proposal;
-use App\Models\ProposalComment;
+use App\Domains\CivicParticipation\Http\Resources\ProposalCommentResource;
+use App\Domains\CivicParticipation\Models\Proposal;
+use App\Domains\CivicParticipation\Models\ProposalComment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

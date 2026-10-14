@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\CivicParticipation\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\SuggestionAnswer;
-use App\Models\SuggestionQuestion;
+use App\Domains\CivicParticipation\Models\SuggestionAnswer;
+use App\Domains\CivicParticipation\Models\SuggestionQuestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
