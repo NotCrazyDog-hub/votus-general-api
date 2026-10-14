@@ -6,7 +6,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="{{ asset('images/ivy.png') }}">
+    <link rel="icon" type="image/png" href="https://github.com/user-attachments/assets/95645813-6de4-40c2-8964-f796a92bd235">
 
     <title>Votus | API</title>
     <style>
