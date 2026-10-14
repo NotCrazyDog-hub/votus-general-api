@@ -1,11 +1,9 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
 
 // Public Controllers
 use App\Http\Controllers\{
-    AiAssistantController,
     SchedulerController,
     SiteVisitController
 };
@@ -15,13 +13,9 @@ use App\Http\Controllers\Admin as Admin;
 
 /*
 |--------------------------------------------------------------------------
-| Interactive Features, Telemetry & AI
+| Telemetry
 |--------------------------------------------------------------------------
 */
-
-Route::post('/ai-assistant/ask', [AiAssistantController::class, 'ask'])
-    ->middleware('throttle:10,1')
-    ->name('ai-assistant.ask');
 
 Route::post('/site-visits', [SiteVisitController::class, 'store'])
     ->middleware('throttle:30,1');
@@ -58,6 +52,7 @@ Route::prefix('admin')->group(function () {
 |--------------------------------------------------------------------------
 */
 
+require __DIR__.'/api/ai-assistant.php';
 require __DIR__.'/api/civic-participation.php';
 require __DIR__.'/api/education.php';
 require __DIR__.'/api/elections.php';
