@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Education\Http\Controllers;
 
-use App\Http\Resources\UniversityResource;
-use App\Models\University;
+use App\Http\Controllers\Controller;
+use App\Domains\Education\Http\Resources\UniversityResource;
+use App\Domains\Education\Models\University;
 
 class UniversityController extends Controller
 {

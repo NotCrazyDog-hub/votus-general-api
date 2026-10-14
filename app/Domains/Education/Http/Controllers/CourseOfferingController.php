@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Education\Http\Controllers;
 
-use App\Http\Resources\CourseOfferingResource;
-use App\Models\CourseOffering;
-use App\Services\Opportunities\UniversityCatalogService;
+use App\Http\Controllers\Controller;
+use App\Domains\Education\Http\Resources\CourseOfferingResource;
+use App\Domains\Education\Models\CourseOffering;
+use App\Domains\Education\Services\UniversityCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;

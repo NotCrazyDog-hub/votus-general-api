@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Opportunities;
+namespace App\Domains\Education\Services;
 
-use App\Models\Campus;
-use App\Models\CourseOffering;
+use App\Domains\Education\Models\Campus;
+use App\Domains\Education\Models\CourseOffering;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;

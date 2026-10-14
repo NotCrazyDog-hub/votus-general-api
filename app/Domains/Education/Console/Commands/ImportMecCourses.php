@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Education\Console\Commands;
 
-use App\Models\Campus;
-use App\Models\University;
+use App\Domains\Education\Models\Campus;
+use App\Domains\Education\Models\University;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

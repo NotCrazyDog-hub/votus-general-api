@@ -7,32 +7,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AiAssistantController,
     SchedulerController,
-    SiteVisitController,
-    CourseOfferingController,
-    UniversityController
+    SiteVisitController
 };
 
 // Admin Controllers
 use App\Http\Controllers\Admin as Admin;
-
-/*
-|--------------------------------------------------------------------------
-| Universities, Courses & Public Opportunities
-|--------------------------------------------------------------------------
-*/
-
-Route::middleware('cache.headers')->group(function () {
-    Route::get('/universities/{university}', [UniversityController::class, 'show']);
-
-    Route::controller(CourseOfferingController::class)
-        ->prefix('course-offerings')
-        ->group(function () {
-            Route::get('/options/municipalities', 'municipalities');
-            Route::get('/options/courses', 'courses');
-            Route::get('/', 'index');
-            Route::get('/{courseOffering}', 'show');
-        });
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -89,6 +68,7 @@ Route::prefix('admin')->group(function () {
 */
 
 require __DIR__.'/api/civic-participation.php';
+require __DIR__.'/api/education.php';
 require __DIR__.'/api/elections.php';
 require __DIR__.'/api/executives.php';
 require __DIR__.'/api/explanations.php';
