@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Opportunities\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\OpportunityResource;
-use App\Models\Opportunity;
+use App\Domains\Opportunities\Http\Resources\OpportunityResource;
+use App\Domains\Opportunities\Models\Opportunity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 

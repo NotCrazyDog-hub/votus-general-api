@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\Opportunities\Console\Commands;
 
-use App\Models\Opportunity;
-use App\Services\Jobs\AdzunaProvider;
+use App\Domains\Opportunities\Models\Opportunity;
+use App\Domains\Opportunities\Services\AdzunaProvider;
 use Illuminate\Console\Command;
 
 class ImportAdzunaJobs extends Command

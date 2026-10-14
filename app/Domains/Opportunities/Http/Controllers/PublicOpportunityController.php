@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Opportunities\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\PublicOpportunityResource;
-use App\Models\PublicOpportunity;
+use App\Domains\Opportunities\Http\Resources\PublicOpportunityResource;
+use App\Domains\Opportunities\Models\PublicOpportunity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Domains\Opportunities\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\PublicOpportunity;
+use App\Domains\Opportunities\Models\PublicOpportunity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

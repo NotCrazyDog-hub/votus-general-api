@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Domains\Opportunities\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\OpportunityPublication;
-use App\Models\PublicOpportunity;
+use App\Domains\Opportunities\Models\OpportunityPublication;
+use App\Domains\Opportunities\Models\PublicOpportunity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

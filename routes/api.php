@@ -9,9 +9,6 @@ use App\Http\Controllers\{
     SchedulerController,
     SiteVisitController,
     CourseOfferingController,
-    OpportunityController,
-    PublicOpportunityController,
-    PublicOpportunityImportController,
     UniversityController
 };
 
@@ -35,15 +32,6 @@ Route::middleware('cache.headers')->group(function () {
             Route::get('/', 'index');
             Route::get('/{courseOffering}', 'show');
         });
-
-    Route::controller(PublicOpportunityController::class)
-        ->prefix('public-opportunities')
-        ->group(function () {
-            Route::get('/', 'index');
-            Route::get('/{publicOpportunity}', 'show');
-        });
-
-    Route::get('/opportunities', [OpportunityController::class, 'index']);
 });
 
 /*
@@ -76,11 +64,6 @@ Route::controller(SchedulerController::class)
         });
     });
 
-Route::post(
-    '/public-opportunities/import',
-    [PublicOpportunityImportController::class, 'store']
-)->middleware('internal.token');
-
 /*
 |--------------------------------------------------------------------------
 | Admin Panel Routes
@@ -96,21 +79,6 @@ Route::prefix('admin')->group(function () {
         Route::post('/logout', [Admin\AuthController::class, 'logout']);
         Route::get('/me', [Admin\AuthController::class, 'me']);
         Route::get('/dashboard', [Admin\DashboardController::class, 'index']);
-
-        // Public Opportunities Management
-        Route::controller(Admin\PublicOpportunityController::class)
-            ->prefix('public-opportunities')
-            ->group(function () {
-                Route::get('/', 'index');
-                Route::get('/{publicOpportunity}', 'show');
-                Route::put('/{publicOpportunity}', 'update');
-                Route::post('/{publicOpportunity}/approve', 'approve');
-                Route::post('/{publicOpportunity}/reject', 'reject');
-                Route::patch(
-                    '/{publicOpportunity}/toggle-published',
-                    'togglePublished'
-                );
-            });
     });
 });
 
@@ -126,3 +94,4 @@ require __DIR__.'/api/executives.php';
 require __DIR__.'/api/explanations.php';
 require __DIR__.'/api/legislatures.php';
 require __DIR__.'/api/news.php';
+require __DIR__.'/api/opportunities.php';

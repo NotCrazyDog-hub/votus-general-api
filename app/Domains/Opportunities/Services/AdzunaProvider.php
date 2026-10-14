@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Jobs;
+namespace App\Domains\Opportunities\Services;
 
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
