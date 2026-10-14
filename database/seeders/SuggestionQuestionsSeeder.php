@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\SuggestionQuestion;
+use App\Domains\CivicParticipation\Models\SuggestionQuestion;
 use Illuminate\Database\Seeder;
 
 /**

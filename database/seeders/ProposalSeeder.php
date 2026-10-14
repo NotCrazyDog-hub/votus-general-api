@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Enums\ProposalStatus;
-use App\Models\Category;
-use App\Models\Proposal;
+use App\Domains\CivicParticipation\Enums\ProposalStatus;
+use App\Domains\CivicParticipation\Models\Category;
+use App\Domains\CivicParticipation\Models\Proposal;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;

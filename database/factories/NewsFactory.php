@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\News;
+use App\Domains\News\Models\News;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
