@@ -52,12 +52,16 @@ Route::prefix('admin')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-require __DIR__.'/api/ai-assistant.php';
-require __DIR__.'/api/civic-participation.php';
-require __DIR__.'/api/education.php';
-require __DIR__.'/api/elections.php';
-require __DIR__.'/api/executives.php';
-require __DIR__.'/api/explanations.php';
-require __DIR__.'/api/legislatures.php';
-require __DIR__.'/api/news.php';
-require __DIR__.'/api/opportunities.php';
+foreach ([
+    'ai-assistant',
+    'civic-participation',
+    'education',
+    'elections',
+    'executives',
+    'explanations',
+    'legislatures',
+    'news',
+    'opportunities',
+] as $domain) {
+    require __DIR__."/api/{$domain}.php";
+}
