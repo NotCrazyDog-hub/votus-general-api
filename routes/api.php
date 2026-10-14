@@ -28,20 +28,11 @@ Route::post('/site-visits', [SiteVisitController::class, 'store'])
 
 /*
 |--------------------------------------------------------------------------
-| Internal Tools & Scheduler Pipeline
+| System Status
 |--------------------------------------------------------------------------
 */
 
-Route::controller(SchedulerController::class)
-    ->prefix('schedule')
-    ->group(function () {
-        Route::get('/status', 'status');
-
-        Route::middleware('throttle:6,1')->group(function () {
-            Route::post('/coletar-noticias', 'runNewsPipeline');
-            Route::post('/processar-fila-noticias', 'processNewsQueue');
-        });
-    });
+Route::get('/schedule/status', [SchedulerController::class, 'status']);
 
 /*
 |--------------------------------------------------------------------------
