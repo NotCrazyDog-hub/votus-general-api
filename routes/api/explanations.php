@@ -1,8 +1,12 @@
 <?php
 
-use App\Domains\Explanations\Http\Controllers\Admin\ExplanationController as AdminExplanationController;
-use App\Domains\Explanations\Http\Controllers\Admin\TrustedSourceController;
 use App\Domains\Explanations\Http\Controllers\ExplanationController;
+
+use App\Domains\Explanations\Http\Controllers\Admin\{
+    ExplanationController as AdminExplanationController,
+    TrustedSourceController
+};
+
 use Illuminate\Support\Facades\Route;
 
 /*
