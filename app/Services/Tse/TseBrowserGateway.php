@@ -34,10 +34,10 @@ class TseBrowserGateway
      *
      * @throws TseGatewayException
      */
-    public function request(array $input): array
+    public function request(array $input, ?string $script = null): array
     {
         $config = config('services.tse.divulgacandcontas');
-        $command = $this->command($config);
+        $command = $this->command($config, $script);
 
         $retries = max(1, (int) ($config['retries'] ?? 1));
         $delay = max(0, (int) ($config['retry_delay'] ?? 0));
@@ -166,7 +166,7 @@ class TseBrowserGateway
      * @param  array<string, mixed>  $config
      * @return array<int, string>
      */
-    private function command(array $config): array
+    private function command(array $config, ?string $script = null): array
     {
         $command = [];
 
@@ -181,7 +181,7 @@ class TseBrowserGateway
         $command[] = (string) ($config['node'] ?? 'node');
         // `script` é caminho relativo à raiz do projeto: path absoluto em
         // config faria o arquivo valer só na máquina que o gerou.
-        $command[] = base_path((string) ($config['script'] ?? 'scripts/tse/fetch-candidates.js'));
+        $command[] = base_path($script ?? (string) ($config['script'] ?? 'scripts/tse/fetch-candidates.js'));
 
         return $command;
     }

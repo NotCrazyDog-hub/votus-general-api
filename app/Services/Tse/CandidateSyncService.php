@@ -54,8 +54,12 @@ class CandidateSyncService
 
         $listed = $this->api->listCandidates($year, $uf, $electionId, DivulgaCandContasService::CARGO_CODES[$office->value]);
 
-        foreach ($listed as $row) {
-            $externalId = $row['id'] ?? null;
+        foreach ($listed as $i => $row) {
+        if ($withFiles && $i % 40 === 0) {
+            $this->prefetchChunk(array_slice($listed, $i, 40), $year, $uf, $electionId);
+        }
+
+        $externalId = $row['id'] ?? null;
 
             // A listagem é só descoberta; sem ID não há detalhe possível.
             if ($externalId === null || $externalId === '') {
@@ -244,20 +248,46 @@ class CandidateSyncService
      */
     public function syncPhoto(Candidate $candidate, array $detail, string $disk = 'supabase'): int
     {
-        // fotoUrlPublicavel é a variante liberada para divulgação; cai para a
-        // outra só quando ela não vier.
-        $url = $detail['fotoUrlPublicavel'] ?? $detail['fotoUrl'] ?? null;
-
-        $contents = $this->api->downloadPhoto($this->stringOrNull($url));
-
-        if ($contents === null) {
+        // Não sobrescreve foto já cadastrada (remova este bloco para forçar a atualização).
+        if (filled($candidate->photo_path)) {
             return 0;
         }
 
-        $path = "candidates/photos/{$candidate->external_id}.jpg";
+        // fotoUrlPublicavel é um flag (bool), não a URL.
+        if (($detail['fotoUrlPublicavel'] ?? true) === false) {
+            return 0;
+        }
+
+        $url = $this->stringOrNull($detail['fotoUrl'] ?? null);
+        $contents = $this->api->downloadPhoto($url);
+
+        if ($contents === null) {
+            Log::warning("CandidateSyncService: sem foto para o candidato {$candidate->external_id} ({$url}).");
+
+            return 0;
+        }
+
+        $extension = match ((new \finfo(FILEINFO_MIME_TYPE))->buffer($contents)) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => null,
+        };
+
+        if ($extension === null) {
+            Log::warning("CandidateSyncService: o conteúdo da foto do candidato {$candidate->external_id} não é imagem.");
+
+            return 0;
+        }
+
+        $path = "candidates/photos/{$candidate->external_id}.{$extension}";
 
         try {
-            Storage::disk($disk)->put($path, $contents);
+            if (! Storage::disk($disk)->put($path, $contents)) {
+                Log::warning("CandidateSyncService: o disco {$disk} não confirmou a gravação de {$path}.");
+
+                return 0;
+            }
         } catch (\Throwable $e) {
             Log::warning("CandidateSyncService: falha ao gravar a foto do candidato {$candidate->external_id}: {$e->getMessage()}");
 
@@ -308,6 +338,11 @@ class CandidateSyncService
      */
     public function syncProposalDocument(Candidate $candidate, array $detail, string $disk = 'supabase'): int
     {
+        // Não sobrescreve documento já cadastrado (remova este bloco para forçar a atualização).
+        if (filled($candidate->proposal_document_path)) {
+            return 0;
+        }
+
         $file = $this->findProposalDocument($detail);
 
         if ($file === null) {
@@ -322,10 +357,21 @@ class CandidateSyncService
             return 0;
         }
 
+        // Evita gravar página de erro/HTML como se fosse PDF.
+        if (! str_starts_with($contents, '%PDF')) {
+            Log::warning("CandidateSyncService: o plano de governo do candidato {$candidate->external_id} não é um PDF (idArquivo {$file}).");
+
+            return 0;
+        }
+
         $path = "candidates/proposals/{$candidate->external_id}.pdf";
 
         try {
-            Storage::disk($disk)->put($path, $contents);
+            if (! Storage::disk($disk)->put($path, $contents)) {
+                Log::warning("CandidateSyncService: o disco {$disk} não confirmou a gravação de {$path}.");
+
+                return 0;
+            }
         } catch (\Throwable $e) {
             Log::warning("CandidateSyncService: falha ao gravar o plano de governo do candidato {$candidate->external_id}: {$e->getMessage()}");
 
@@ -614,5 +660,38 @@ class CandidateSyncService
         $digits = preg_replace('/\D/', '', $value);
 
         return ($digits === '' || $digits === null) ? null : $digits;
+    }
+
+    private function prefetchChunk(array $rows, int $year, string $uf, string $electionId): void
+    {
+        $urls = [];
+
+        foreach ($rows as $row) {
+            if (blank($row['id'] ?? null)) {
+                continue;
+            }
+
+            try {
+                $detail = $this->api->getCandidate($year, $uf, $electionId, $row['id']);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $existing = Candidate::where('external_id', (int) $row['id'])
+                ->where('election_year', $year)
+                ->first(['photo_path', 'proposal_document_path']);
+
+            if (($detail['fotoUrlPublicavel'] ?? true) !== false && blank($existing?->photo_path)) {
+                $urls[] = $this->stringOrNull($detail['fotoUrl'] ?? null);
+            }
+
+            $doc = $this->findProposalDocument($detail);
+
+            if ($doc !== null && blank($existing?->proposal_document_path)) {
+                $urls[] = $this->api->documentUrl($doc);
+            }
+        }
+
+        $this->api->prefetchFiles($urls);
     }
 }
