@@ -133,6 +133,28 @@ return [
             // no mesmo navegador — por isso a folga generosa.
             'process_timeout' => (int) env('TSE_DIVULGACANDCONTAS_PROCESS_TIMEOUT', 1800),
         ],
+
+        /*
+        |--------------------------------------------------------------------
+        | Resultados eleitorais (JSONs estáticos em resultados.tse.jus.br)
+        |--------------------------------------------------------------------
+        |
+        | Fonte DOS RESULTADOS (apuração), separada da API DivulgaCandContas
+        | (que é fonte CADASTRAL). Arquivos EA20 (`-u.json`) servidos como
+        | estático — consultados por Http::get(), sem Playwright. Os códigos
+        | de eleição vêm do EA11 (`config/ele-c.json`), nunca hardcoded.
+        |
+        */
+        'resultados' => [
+            'base_url' => env('TSE_RESULTADOS_URL', 'https://resultados.tse.jus.br'),
+            'config_path' => env('TSE_RESULTADOS_CONFIG_PATH', '/oficial/comum/config/ele-c.json'),
+            'timeout' => (int) env('TSE_RESULTADOS_TIMEOUT', 60),
+            'retries' => (int) env('TSE_RESULTADOS_RETRIES', 3),
+            'retry_delay' => (int) env('TSE_RESULTADOS_RETRY_DELAY', 1000),
+            // TTL curto de propósito: a apuração muda o arquivo o tempo todo
+            // e cache eterno serviria resultado velho como se fosse atual.
+            'cache_ttl' => (int) env('TSE_RESULTADOS_CACHE_TTL', 120),
+        ],
     ],
 
 ];

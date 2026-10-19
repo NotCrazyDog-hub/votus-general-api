@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CandidateOffice;
+use App\Models\CandidacyHistory;
 use App\Models\Candidate;
 use App\Models\CandidateExpense;
 use Illuminate\Support\Facades\Cache;
@@ -43,7 +44,7 @@ class CandidateService
         // páginas — ver o mesmo comentário em LegislatorService::listByChamber.
         // Sem isso, o botão "próxima" nunca desabilitava de verdade e o
         // número de páginas exibido crescia a cada clique.
-        return Candidate::mainCandidates()
+        $candidates = Candidate::mainCandidates()
             ->select(self::LIST_COLUMNS)
             ->where('office_name', $office->toTseDescription())
             ->approved()
@@ -63,6 +64,52 @@ class CandidateService
             ->paginate(50)
             // Mantém party/search nos links "next"/"prev" da paginação.
             ->withQueryString();
+
+        $pageCandidates = $candidates->getCollection();
+
+        if ($pageCandidates->isEmpty()) {
+            return $candidates;
+        }
+
+        // Busca os resultados eleitorais de todos os candidatos da página
+        // em uma única consulta, sem carregar o histórico completo.
+        $candidateIds = $pageCandidates->pluck('id')->all();
+
+        $histories = CandidacyHistory::query()
+            ->select([
+                'candidate_id',
+                'election_year',
+                'round',
+                'result_status',
+            ])
+            ->whereIn('candidate_id', $candidateIds)
+            ->whereIn(
+                'election_year',
+                $pageCandidates->pluck('election_year')->unique()->values()->all()
+            )
+            ->whereNotNull('result_status')
+            ->where('result_status', '<>', '')
+            ->orderByDesc('round')
+            ->get()
+            ->groupBy('candidate_id');
+
+        foreach ($pageCandidates as $candidate) {
+            $candidateHistories = $histories->get($candidate->id, collect());
+
+            // Considera somente o histórico do ano eleitoral do candidato.
+            // Se o resultado do segundo turno ainda estiver vazio, utiliza
+            // o resultado válido do primeiro turno.
+            $history = $candidateHistories
+                ->where('election_year', $candidate->election_year)
+                ->first();
+
+            $candidate->setAttribute(
+                'election_status',
+                $history?->result_status
+            );
+        }
+
+        return $candidates;
     }
 
     /**

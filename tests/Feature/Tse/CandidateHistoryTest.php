@@ -38,7 +38,7 @@ class CandidateHistoryTest extends CandidateSyncTestCase
         $this->assertSame([2018, 2022], $years);
     }
 
-    public function test_it_keeps_round_null_because_the_api_does_not_expose_it(): void
+    public function test_it_defaults_round_to_one_when_the_api_does_not_expose_it(): void
     {
         $this->fakeCandidateApi($this->candidateDetail([
             'eleicoesAnteriores' => [$this->previousElection()],
@@ -48,10 +48,13 @@ class CandidateHistoryTest extends CandidateSyncTestCase
 
         $history = CandidacyHistory::firstOrFail();
 
-        // NR_TURNO não existe na API; inventar 1/2 aqui mudaria o resultado do
-        // histórico. A coluna fica null até a etapa de resultados preenchê-la.
-        $this->assertNull($history->round);
-        $this->assertNull($history->getAttributes()['round'] ?? null);
+        // NR_TURNO não existe na API; o histórico nasce no turno 1 porque a
+        // unique (election_year, candidacy_external_id, round) precisa de um
+        // valor para colidir — sem ele, reexecutar o sync criaria linha
+        // repetida. A etapa de resultados (`tse:import-results`) grava o
+        // segundo turno numa linha própria, sem reescrever esta.
+        $this->assertSame(1, $history->round);
+        $this->assertSame(1, $history->getAttributes()['round']);
     }
 
     public function test_it_maps_the_history_fields_from_the_api_payload(): void
@@ -124,7 +127,7 @@ class CandidateHistoryTest extends CandidateSyncTestCase
         $this->assertSame(1, $summary['persisted']);
     }
 
-    public function test_the_unique_key_ignores_round_so_a_resync_never_duplicates(): void
+    public function test_the_unique_key_allows_each_round_but_blocks_the_same_round_twice(): void
     {
         $this->fakeCandidateApi($this->candidateDetail([
             'eleicoesAnteriores' => [$this->previousElection()],
@@ -134,18 +137,24 @@ class CandidateHistoryTest extends CandidateSyncTestCase
 
         $this->assertTrue(Schema::hasColumn('candidacy_histories', 'round'));
 
-        // A migration nova tirou `round` do unique e passou a chavear por
-        // [candidate_id, candidacy_external_id] — com `round` sempre null, o
-        // índice antigo `(candidacy_external_id, round)` não colidia (NULL nunca
-        // é igual a NULL), e reexecutar o sync criaria linha repetida.
-        //
-        // Prova comportamental em vez de `SHOW INDEX`, que é SQL só do MySQL —
-        // o repo também roda em SQLite. Se `round` entrasse na chave, duas linhas
-        // da MESMA candidatura com `round` diferente coexistiriam; como não
-        // entra, o insert é barrado.
+        // A unique vigente (migration 2026_10_13_152814) é
+        // (election_year, candidacy_external_id, round): uma linha POR TURNO
+        // coexiste — é assim que o resultado do segundo turno entra sem
+        // destruir o histórico do primeiro.
         $original = CandidacyHistory::firstOrFail();
+
+        $this->assertSame(1, $original->round);
+
+        $secondRound = $original->replicate();
+        $secondRound->round = 2;
+        $secondRound->save();
+
+        $this->assertSame(2, CandidacyHistory::count());
+
+        // Mas repetir a MESMA candidatura no MESMO turno é barrada: é o que
+        // garante a idempotência da sincronização e do importador de
+        // resultados.
         $duplicate = $original->replicate();
-        $duplicate->round = $original->round === null ? 2 : $original->round + 1;
 
         $this->expectException(UniqueConstraintViolationException::class);
 
