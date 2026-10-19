@@ -2,10 +2,7 @@
 
 namespace App\Services\Tse;
 
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Cliente da API REST do DivulgaCandContas (TSE).
@@ -28,9 +25,10 @@ use Illuminate\Support\Facades\Http;
  *    bloqueio é por cliente — então essas duas consultas precisam sair de um
  *    Chromium de verdade. É a única forma conhecida de voltar a ler o portal.
  *
- *  - fotos e documentos continuam em `Http::get()`: ficam em `/rest/arquivo`,
- *    fora do bloqueio, e a tolerância a falha de download (que nunca pode
- *    derrubar a sincronização) é exatamente a lógica de antes, byte a byte.
+ *  - fotos e documentos também saem pelo Chromium, em lote
+ *    (`scripts/tse/fetch-files.js`): `/rest/arquivo` responde 403 ao
+ *    cURL/PHP, igual à listagem e ao detalhe. Os binários voltam em base64
+ *    e ficam em `$fileCache` até serem consumidos por `download()`.
  *
  * A listagem dispara o navegador UMA vez para o lote inteiro (lista + todos os
  * detalhes no mesmo contexto) — `CandidateSyncService` continua chamando
@@ -209,18 +207,68 @@ class DivulgaCandContasService
         return $this->download($photoUrl);
     }
 
+    /** @var array<string, string|null> */
+    private array $fileCache = [];
+
+    public function documentUrl(int|string $idArquivo): string
+    {
+        return sprintf('%s/doc/%s', $this->arquivoUrl(), $idArquivo);
+    }
+
     /**
      * Baixa um documento pelo idArquivo (padrão /rest/arquivo/doc/{id}).
      */
     public function downloadDocument(int|string $idArquivo): ?string
     {
-        $url = sprintf(
-            '%s/doc/%s',
-            rtrim($this->arquivoUrl(), '/'),
-            $idArquivo,
-        );
+        return $this->download($this->documentUrl($idArquivo));
+    }
 
-        return $this->download($url);
+    /** @param array<int, ?string> $urls */
+    public function prefetchFiles(array $urls): void
+    {
+        $pending = array_values(array_unique(array_filter(
+            $urls,
+            fn ($u) => is_string($u) && $u !== '' && ! array_key_exists($u, $this->fileCache),
+        )));
+
+        if ($pending === []) {
+            return;
+        }
+
+        $files = [];
+        foreach ($pending as $i => $url) {
+            $files[] = ['key' => (string) $i, 'url' => $url];
+        }
+
+        try {
+            $data = $this->browser->request(
+                array_merge($this->browser->browserOptions(), ['files' => $files]),
+                'scripts/tse/fetch-files.js',
+            );
+        } catch (TseGatewayException $e) {
+            Log::warning("DivulgaCandContas: falha no lote de arquivos: {$e->getMessage()}");
+            foreach ($pending as $url) {
+                $this->fileCache[$url] = null;
+            }
+
+            return;
+        }
+
+        foreach ($pending as $i => $url) {
+            $entry = $data['files'][(string) $i] ?? null;
+            $bin = is_array($entry) && ($entry['status'] ?? null) === 200 && ! empty($entry['base64'])
+                ? base64_decode($entry['base64'], true)
+                : false;
+
+            if ($bin === false || $bin === '') {
+                Log::warning('DivulgaCandContas: arquivo indisponível (status '.($entry['status'] ?? 'n/d')."): {$url}");
+                $this->fileCache[$url] = null;
+
+                continue;
+            }
+
+            $this->fileCache[$url] = $bin;
+        }
     }
 
     /**
@@ -229,19 +277,12 @@ class DivulgaCandContasService
      */
     private function download(string $url): ?string
     {
-        try {
-            $response = $this->request()->get($url);
+        $this->prefetchFiles([$url]);          // no-op se já veio no lote
 
-            if (! $response->successful()) {
-                return null;
-            }
+        $content = $this->fileCache[$url] ?? null;
+        unset($this->fileCache[$url]);         // libera memória
 
-            $body = $response->body();
-
-            return $body === '' ? null : $body;
-        } catch (\Throwable) {
-            return null;
-        }
+        return $content;
     }
 
     /**
@@ -256,42 +297,6 @@ class DivulgaCandContasService
     private function browserRequest(array $extra): array
     {
         return $this->browser->request(array_merge($this->browser->browserOptions(), $extra));
-    }
-
-    /**
-     * Requisição HTTP com o comportamento comum aos arquivos (foto/documento).
-     *
-     * O retry só vale para 5xx e erro de conexão: um 4xx (candidato inexistente,
-     * UF inválida) é definitivo e repetir só gastaria tempo — mas um 429
-     * (rate limit) precisa de nova tentativa, então entra no grupo.
-     */
-    private function request(): PendingRequest
-    {
-        $config = config('services.tse.divulgacandcontas');
-
-        return Http::withHeaders([
-            'Accept' => 'application/json',
-            'User-Agent' => $config['user_agent'],
-        ])
-            ->timeout($config['timeout'])
-            ->connectTimeout(min(10, $config['timeout']))
-            ->retry(
-                $config['retries'],
-                $config['retry_delay'],
-                function ($response, $exception) {
-                    if ($exception instanceof ConnectionException) {
-                        return true;
-                    }
-
-                    if ($response instanceof Response) {
-                        return $response->status() >= 500
-                            || $response->status() === 429;
-                    }
-
-                    return false;
-                },
-                throw: false,
-            );
     }
 
     private function baseUrl(): string
