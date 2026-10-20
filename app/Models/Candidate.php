@@ -18,6 +18,7 @@ class Candidate extends Model
         'running_mate_of_id',
         'external_id',
         'ballot_number',
+        'round',
         'coverage_scope',
         'state',
         'office_code',
