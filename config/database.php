@@ -58,7 +58,11 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // Permite ao ambiente definir o engine das tabelas (ex.: InnoDB no
+            // .env.testing quando o servidor MySQL local tem default MyISAM —
+            // MyISAM limita chaves a 1000 bytes e o unique de email em utf8mb4
+            // precisa de 1020). Fora isso, permanece o padrão do servidor.
+            'engine' => env('DB_ENGINE'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

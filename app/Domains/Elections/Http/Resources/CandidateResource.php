@@ -34,6 +34,10 @@ class CandidateResource extends JsonResource
             'expenses_summary' => $this->when(isset($this->expenses_summary), fn () => $this->expenses_summary),
             'running_mates' => CandidateResource::collection($this->whenLoaded('runningMates')),
             'previous_mandates' => LegislatorSummaryResource::collection($this->whenLoaded('previousMandates')),
+            'election_status' => $this->when(
+                array_key_exists('election_status', $this->resource->getAttributes()),
+                $this->election_status
+            ),
             'candidacy_history' => $this->whenLoaded('candidacyHistory', function () {
                 return $this->candidacyHistory->map(function ($history) {
                     return [
