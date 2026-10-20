@@ -25,6 +25,7 @@ use App\Http\Controllers\{
     UniversityController,
     ExecutiveController
 };
+use App\Http\Controllers\PresidentialProposalComparisonController;
 
 // Admin Controllers
 use App\Http\Controllers\Admin as Admin;
@@ -72,6 +73,13 @@ Route::middleware('cache.headers')->group(function () {
         Route::get('/state-deputy-candidates/{external_id}', 'showStateDeputyCandidate');
         Route::get('/state-deputy-candidates/{external_id}/expenses', 'stateDeputyExpenses');
     });
+
+    Route::controller(PresidentialProposalComparisonController::class)
+        ->prefix('presidential-proposal-comparison')
+        ->group(function () {
+            Route::get('/themes', 'themes');
+            Route::get('/themes/{theme}', 'show');
+        });
 
     /*
     |----------------------------------------------------------------------

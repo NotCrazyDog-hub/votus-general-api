@@ -51,6 +51,23 @@ return [
         ],
     ],
 
+    'government_plans' => [
+        'sites' => [
+            '280002542548' => [
+                'url' => env('LULA_PROPOSALS_URL', 'https://lula.com.br/propostas/'),
+                'allowed_hosts' => ['lula.com.br', 'www.lula.com.br'],
+                'allowed_path_prefixes' => ['/propostas'],
+                'max_pages' => 10,
+            ],
+            '280002551544' => [
+                'url' => env('FLAVIO_GOVERNMENT_PLAN_URL', 'https://www.flaviobolsonaro.com.br/plano-de-governo'),
+                'allowed_hosts' => ['flaviobolsonaro.com.br', 'www.flaviobolsonaro.com.br'],
+                'allowed_path_prefixes' => ['/plano-de-governo'],
+                'max_pages' => 20,
+            ],
+        ],
+    ],
+
     'scheduler' => [
         'token' => env('SCHEDULER_TOKEN'),
     ],
