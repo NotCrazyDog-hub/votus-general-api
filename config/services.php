@@ -51,6 +51,19 @@ return [
         ],
     ],
 
+    'votus_classification' => [
+        'base_url' => env('VOTUS_CLASSIFICATION_GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+        'model' => env('VOTUS_CLASSIFICATION_GROQ_MODEL', 'openai/gpt-oss-20b'),
+        'api_keys' => [
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY'),
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY_1'),
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY_2'),
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY_3'),
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY_4'),
+            env('VOTUS_CLASSIFICATION_GROQ_API_KEY_5'),
+        ],
+    ],
+
     'scheduler' => [
         'token' => env('SCHEDULER_TOKEN'),
     ],

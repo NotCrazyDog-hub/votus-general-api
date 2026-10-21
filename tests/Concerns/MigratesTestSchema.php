@@ -57,6 +57,17 @@ trait MigratesTestSchema
 
                 // candidatos (CandidateSyncTestCase)
                 'database/migrations/2026_07_16_173107_create_legislators_table.php',
+
+                // legislaturas (LegislatureTestCase)
+                'database/migrations/2026_07_21_040731_create_bills_table.php',
+                'database/migrations/2026_07_21_043152_create_bill_legislator_table.php',
+                'database/migrations/2026_07_21_043230_remove_legislator_id_from_bills_table.php',
+                'database/migrations/2026_08_28_132838_create_topics_table.php',
+                'database/migrations/2026_10_01_195232_allow_votus_chamber_in_topics_table.php',
+                'database/migrations/2026_09_29_233505_update_bills_chamber_check_constraint.php',
+                'database/migrations/2026_09_02_131218_add_status_fields_to_bills_table.php',
+
+                // candidatos (CandidateSyncTestCase)
                 'database/migrations/2026_09_17_140519_create_candidates_table.php',
                 'database/migrations/2026_09_17_142127_change_coverage_scope_column_in_candidates_table.php',
                 'database/migrations/2026_09_17_145723_add_cpf_to_candidates_table.php',
