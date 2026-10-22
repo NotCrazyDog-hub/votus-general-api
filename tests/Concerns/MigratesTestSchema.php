@@ -70,6 +70,9 @@ trait MigratesTestSchema
                 'database/migrations/2026_10_04_120100_remove_judgment_status_code_from_candidates_table.php',
                 'database/migrations/2026_10_04_120200_make_round_nullable_on_candidacy_histories_table.php',
                 'database/migrations/2026_10_13_152814_fix_candidacy_histories_unique_constraint.php',
+
+                // planos de governo (PresidentialProposalComparisonEndpointsTest)
+                'database/migrations/2026_10_13_000000_create_government_plan_comparison_tables.php',
             ],
         ];
     }
