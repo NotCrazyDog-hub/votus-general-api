@@ -62,6 +62,7 @@ foreach ([
     'legislatures',
     'news',
     'opportunities',
+    'radar',
 ] as $domain) {
     require __DIR__."/api/{$domain}.php";
 }

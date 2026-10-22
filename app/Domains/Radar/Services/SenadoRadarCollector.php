@@ -1,0 +1,168 @@
+<?php
+
+namespace App\Domains\Radar\Services;
+
+use App\Domains\Legislatures\Services\Senate\SenateApiService;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
+
+/**
+ * Temas das proposições dos senadores EM EXERCÍCIO de uma UF, usando só os
+ * métodos já existentes do SenateApiService (sem alterá-los):
+ *  - listParliamentarians($uf): os senadores em exercício da UF;
+ *  - getBillsByLegislator($id): PL e PEC em que o senador é autor;
+ *  - getTopics($id): a classificação oficial do Senado (1 chamada por
+ *    proposição — a classificação só vem no detalhe).
+ *
+ * Regra: proposições apresentadas desde o início da 57ª legislatura; cada
+ * proposição conta uma vez na UF, mesmo com vários senadores da UF entre os
+ * autores. No Senado todos os signatários de uma PEC constam como autores
+ * (não há distinção proponente/apoio como na Câmara). As classificações do
+ * Senado são outra taxonomia: nunca somadas às da Câmara.
+ */
+class SenadoRadarCollector
+{
+    public function __construct(private SenateApiService $api)
+    {
+    }
+
+    public function collect(string $uf): array
+    {
+        $uf = strtoupper($uf);
+        $since = config('radar.legislature.start');
+        $types = array_flip(config('radar.bill_types'));
+        $sleepUs = (int) config('radar.senado.sleep_ms', 300) * 1000;
+
+        // Falha aqui lança exceção: sem a lista não dá para saber o universo.
+        $senators = $this->api->listParliamentarians($uf);
+
+        if ($senators === []) {
+            throw new RuntimeException("Senado não retornou senadores em exercício para {$uf}");
+        }
+
+        $bills = [];
+        $senatorList = [];
+
+        foreach ($senators as $senator) {
+            $id = (string) ($senator['IdentificacaoParlamentar']['CodigoParlamentar'] ?? '');
+
+            if ($id === '') {
+                throw new RuntimeException("Senador sem código na lista do Senado ({$uf})");
+            }
+
+            $senatorList[] = [
+                'code' => $id,
+                'name' => $senator['IdentificacaoParlamentar']['NomeParlamentar'] ?? null,
+                'participation' => $senator['Mandato']['DescricaoParticipacao'] ?? null,
+            ];
+
+            foreach ($this->api->getBillsByLegislator($id) as $bill) {
+                $date = (string) ($bill['dataApresentacao'] ?? '');
+                $type = strtok((string) ($bill['identificacao'] ?? ''), ' ');
+
+                if ($date === '' || $date < $since || ! isset($types[$type]) || empty($bill['id'])) {
+                    continue;
+                }
+
+                $bills[(string) $bill['id']] = [
+                    'year' => (int) substr($date, 0, 4),
+                    'identification' => $bill['identificacao'],
+                ];
+            }
+
+            usleep($sleepUs);
+        }
+
+        $failed = [];
+        $billTopics = [];
+
+        foreach ($bills as $billId => $info) {
+            $topics = $this->topicsWithRetry($billId, $sleepUs);
+
+            if ($topics === null) {
+                $failed[] = $info['identification'];
+            } else {
+                $billTopics[$billId] = $topics;
+            }
+
+            usleep($sleepUs);
+        }
+
+        $years = [];
+        foreach ($billTopics as $billId => $topics) {
+            $years[$bills[$billId]['year']][$billId] = $topics;
+        }
+        ksort($years);
+
+        return [
+            'uf' => $uf,
+            'since' => $since,
+            'senators' => $senatorList,
+            'checks' => [
+                'bills_found' => count($bills),
+                'bills_classified_fetch_ok' => count($billTopics),
+                'details_failed' => count($failed),
+                'details_failed_bills' => array_slice($failed, 0, 20),
+            ],
+            'years' => array_map(fn ($yearBills) => $this->summarize($yearBills), $years),
+            'legislature' => $this->summarize($billTopics),
+        ];
+    }
+
+    /**
+     * @param  array<string, array>  $billTopics  id => temas (getTopics)
+     */
+    private function summarize(array $billTopics): array
+    {
+        $counts = [];
+        $withoutTopic = 0;
+
+        foreach ($billTopics as $topics) {
+            if ($topics === []) {
+                $withoutTopic++;
+            }
+
+            foreach ($topics as $topic) {
+                $counts[$topic['name']] = ($counts[$topic['name']] ?? 0) + 1;
+            }
+        }
+
+        $list = [];
+        foreach ($counts as $name => $count) {
+            $list[] = ['name' => (string) $name, 'count' => $count];
+        }
+
+        usort($list, fn ($a, $b) => [$b['count'], $a['name']] <=> [$a['count'], $b['name']]);
+
+        return [
+            'propositions' => count($billTopics),
+            'without_topic' => $withoutTopic,
+            'topics' => $list,
+        ];
+    }
+
+    /**
+     * As falhas medidas (503, TLS, conexão recusada) foram transitórias: a
+     * mesma proposição respondia normalmente segundos depois. Por isso até 3
+     * tentativas, com espera crescente.
+     */
+    private function topicsWithRetry(string $billId, int $sleepUs): ?array
+    {
+        $attempts = 3;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                return $this->api->getTopics($billId);
+            } catch (Throwable $e) {
+                Log::info("[RADAR] Senado: falha ao ler classificação de {$billId} ({$attempt}/{$attempts}): {$e->getMessage()}");
+
+                if ($attempt < $attempts) {
+                    usleep($sleepUs * 5 * $attempt);
+                }
+            }
+        }
+
+        return null;
+    }
+}

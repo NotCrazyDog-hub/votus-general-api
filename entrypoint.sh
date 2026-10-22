@@ -37,10 +37,12 @@ export PHP_CLI_SERVER_WORKERS=${PHP_CLI_SERVER_WORKERS:-4}
 # ou pelo botão do admin — é processado logo. Loop pra se reerguer sozinho se
 # o worker cair; --max-time recicla o processo a cada hora. QUEUE_WORKER=0
 # desliga (os endpoints de drenagem continuam funcionando como antes).
+# 'radar' (Radar do Brasil) vem por último: o worker só pega um Job do Radar
+# quando não há nada pendente em 'coleta' nem em 'resumo'.
 if [ "${QUEUE_WORKER:-1}" = "1" ]; then
   (
     while true; do
-      php artisan queue:work --queue=coleta,resumo --sleep=5 --max-time=3600 --memory=128 || true
+      php artisan queue:work --queue=coleta,resumo,radar --sleep=5 --max-time=3600 --memory=128 || true
       sleep 5
     done
   ) &
