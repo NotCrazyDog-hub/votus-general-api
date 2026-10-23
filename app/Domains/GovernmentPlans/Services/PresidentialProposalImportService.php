@@ -14,6 +14,9 @@ class PresidentialProposalImportService
 {
     private const CHUNK_LENGTH = 11000;
 
+    /** @var string[] */
+    private array $knownThemes = [];
+
     public function __construct(
         private readonly GovernmentPlanSiteService $sites,
         private readonly GroqGovernmentPlanService $groq,
@@ -40,6 +43,11 @@ class PresidentialProposalImportService
         if ($missing !== []) {
             throw new RuntimeException('Candidato(s) não encontrado(s): ' . implode(', ', $missing));
         }
+
+        // Os temas já existentes e os que forem surgindo seguem para a IA,
+        // para os candidatos caírem nos mesmos temas (ver
+        // GroqGovernmentPlanService::extract).
+        $this->knownThemes = GovernmentPlanTheme::query()->orderBy('name')->pluck('name')->all();
 
         $analysis = [];
         foreach ($externalIds as $externalId) {
@@ -71,7 +79,7 @@ class PresidentialProposalImportService
     {
         $found = [];
         foreach ($this->splitText($text) as $part) {
-            foreach (($this->groq->extract($candidateName, $part)['proposals'] ?? []) as $proposal) {
+            foreach (($this->groq->extract($candidateName, $part, $this->knownThemes)['proposals'] ?? []) as $proposal) {
                 if (!is_array($proposal) || !is_string($proposal['theme'] ?? null)
                     || !is_string($proposal['title'] ?? null) || !is_string($proposal['description'] ?? null)) {
                     continue;
@@ -82,6 +90,10 @@ class PresidentialProposalImportService
                 $description = trim($proposal['description']);
                 if ($theme === '' || $title === '' || $description === '') {
                     continue;
+                }
+
+                if (!in_array($theme, $this->knownThemes, true)) {
+                    $this->knownThemes[] = $theme;
                 }
 
                 $fingerprint = hash('sha256', Str::lower($theme . '|' . $title . '|' . $description));

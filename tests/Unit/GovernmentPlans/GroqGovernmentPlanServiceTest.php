@@ -34,6 +34,18 @@ class GroqGovernmentPlanServiceTest extends TestCase
             && $request['reasoning_effort'] === 'low');
     }
 
+    public function test_it_asks_the_model_to_reuse_the_known_themes(): void
+    {
+        config(['services.groq.api_keys' => ['test-key']]);
+        Http::fake(['api.groq.com/*' => Http::response([
+            'choices' => [['message' => ['content' => json_encode(['proposals' => []])]]],
+        ])]);
+
+        app(GroqGovernmentPlanService::class)->extract('Candidata', 'Trecho.', ['Saúde', 'Segurança']);
+
+        Http::assertSent(fn ($request) => str_contains($request['messages'][0]['content'], 'Saúde; Segurança'));
+    }
+
     public function test_it_waits_and_retries_when_every_key_is_rate_limited(): void
     {
         config(['services.groq.api_keys' => ['key-1', 'key-2']]);

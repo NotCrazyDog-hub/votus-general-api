@@ -10,8 +10,19 @@ class GroqGovernmentPlanService
 {
     private const RATE_LIMIT_ROUNDS = 6;
 
-    public function extract(string $candidateName, string $documentPart): array
+    /**
+     * @param  string[]  $knownThemes  temas já usados (inclusive por outros
+     *         candidatos): sem isso cada importação batizava os temas de um
+     *         jeito ("Segurança" x "Segurança Pública") e os candidatos nunca
+     *         caíam no mesmo tema para serem comparados.
+     */
+    public function extract(string $candidateName, string $documentPart, array $knownThemes = []): array
     {
+        $themeRule = $knownThemes === []
+            ? ''
+            : ' Temas já usados na comparação: ' . implode('; ', $knownThemes) . '. Quando a proposta couber em '
+                . 'um deles, use EXATAMENTE esse nome; só crie um tema novo se nenhum servir.';
+
         return $this->request([
             [
                 'role' => 'system',
@@ -22,7 +33,7 @@ class GroqGovernmentPlanService
                     . '"source_reference": string|null}]}. Use temas curtos e consistentes em português; '
                     . 'a descrição deve resumir a proposta em até duas frases e source_excerpt deve ser um trecho '
                     . 'literal curto que a sustente. source_reference deve ser null, pois a fonte é uma página web. '
-                    . 'Se não houver proposta, retorne {"proposals":[]}.',
+                    . 'Se não houver proposta, retorne {"proposals":[]}.' . $themeRule,
             ],
             [
                 'role' => 'user',
