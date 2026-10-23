@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Legislatures\Console\Commands\LowerHouseHouse;
+namespace App\Domains\Legislatures\Console\Commands\LowerHouse;
 
 use App\Domains\Legislatures\Models\Legislator;
 use App\Domains\Legislatures\Services\LowerHouse\LowerHouseApiService;
