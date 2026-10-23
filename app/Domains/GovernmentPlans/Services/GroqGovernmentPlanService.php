@@ -33,7 +33,7 @@ class GroqGovernmentPlanService
                     . '"source_reference": string|null}]}. Use temas curtos e consistentes em português; '
                     . 'a descrição deve resumir a proposta em até duas frases e source_excerpt deve ser um trecho '
                     . 'literal curto que a sustente. source_reference deve ser null, pois a fonte é uma página web. '
-                    . 'Se não houver proposta, retorne {"proposals":[]}.' . $themeRule,
+                    . 'Se não houver proposta, retorne {"proposals":[]}. Escreva em português do Brasil.' . $themeRule,
             ],
             [
                 'role' => 'user',
@@ -51,7 +51,9 @@ class GroqGovernmentPlanService
                     . 'Use apenas as propostas fornecidas. Não diga que uma proposta é melhor/pior, não complete '
                     . 'lacunas e deixe claro quando um plano não apresenta proposta sobre o tema. Responda JSON '
                     . 'válido: {"summary": string, "similarities": [string], "differences": [string], '
-                    . '"candidate_summaries": {"nome do candidato": string}}. Cada item deve ser conciso.',
+                    . '"candidate_summaries": {"nome do candidato": string}}. Cada item deve ser conciso. '
+                    // Sem esta frase, 13 de 34 comparações vieram em inglês.
+                    . 'Escreva todos os textos em português do Brasil.',
             ],
             [
                 'role' => 'user',

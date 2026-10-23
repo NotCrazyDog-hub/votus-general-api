@@ -46,6 +46,18 @@ class GroqGovernmentPlanServiceTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request['messages'][0]['content'], 'Saúde; Segurança'));
     }
 
+    public function test_the_comparison_must_be_written_in_portuguese(): void
+    {
+        config(['services.groq.api_keys' => ['test-key']]);
+        Http::fake(['api.groq.com/*' => Http::response([
+            'choices' => [['message' => ['content' => json_encode(['summary' => 'Resumo.'])]]],
+        ])]);
+
+        app(GroqGovernmentPlanService::class)->compare('Saúde', ['A' => [], 'B' => []]);
+
+        Http::assertSent(fn ($request) => str_contains($request['messages'][0]['content'], 'português do Brasil'));
+    }
+
     public function test_it_waits_and_retries_when_every_key_is_rate_limited(): void
     {
         config(['services.groq.api_keys' => ['key-1', 'key-2']]);
