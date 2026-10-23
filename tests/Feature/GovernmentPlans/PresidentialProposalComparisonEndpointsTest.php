@@ -66,6 +66,37 @@ class PresidentialProposalComparisonEndpointsTest extends TestCase
             ->assertJsonPath('data.candidates.0.proposals.0.source_reference', 'p. 12');
     }
 
+    public function test_it_lists_every_proposal_and_keeps_configured_candidates_without_proposals(): void
+    {
+        $lula = $this->candidate('Lula', 280002542548, 'PT');
+        $flavio = $this->candidate('Flávio Bolsonaro', 280002551544, 'PL');
+        $this->candidate('Outro', 999, 'XX'); // sem fonte configurada e sem propostas: fica de fora
+        $theme = GovernmentPlanTheme::create(['slug' => 'saude', 'name' => 'Saúde']);
+
+        GovernmentPlanProposal::create([
+            'candidate_id' => $lula->id,
+            'government_plan_theme_id' => $theme->id,
+            'title' => 'Ampliar o SUS',
+            'description' => 'Propõe ampliar a rede.',
+            'source_excerpt' => 'ampliar a rede',
+            'source_url' => 'https://example.test/lula',
+            'fingerprint' => str_repeat('c', 64),
+        ]);
+
+        $this->getJson('/api/presidential-proposal-comparison/proposals')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.candidates')
+            ->assertJsonPath('data.candidates.0.name', 'Flávio Bolsonaro')
+            ->assertJsonPath('data.candidates.1.name', 'Lula')
+            ->assertJsonPath('data.themes.0.slug', 'saude')
+            ->assertJsonCount(1, 'data.proposals')
+            ->assertJsonPath('data.proposals.0.candidate_id', $lula->id)
+            ->assertJsonPath('data.proposals.0.theme_slug', 'saude')
+            ->assertJsonPath('data.proposals.0.source_excerpt', 'ampliar a rede');
+
+        $this->assertNotNull($flavio->id);
+    }
+
     private function candidate(string $name, int $externalId, string $party): Candidate
     {
         return Candidate::create([

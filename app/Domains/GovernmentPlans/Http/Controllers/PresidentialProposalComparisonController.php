@@ -13,6 +13,42 @@ class PresidentialProposalComparisonController extends Controller
     {
     }
 
+    /**
+     * Tudo de uma vez (candidatos, temas e propostas, ~160 itens) para a
+     * busca por palavra-chave e a visão geral do front, sem uma requisição
+     * por tema. As comparações por tema continuam em show().
+     */
+    public function proposals()
+    {
+        $proposals = $this->service->allProposals();
+
+        return response()->json([
+            'data' => [
+                'candidates' => $this->service->candidates()->map(fn ($candidate) => [
+                    'id' => $candidate->id,
+                    'external_id' => $candidate->external_id,
+                    'name' => $candidate->ballot_name,
+                    'party' => $candidate->party_acronym,
+                    'plan_document_url' => $candidate->proposal_document_url,
+                ])->values(),
+                'themes' => $proposals->pluck('theme')->unique('id')->sortBy('name')->map(fn ($theme) => [
+                    'slug' => $theme->slug,
+                    'name' => $theme->name,
+                ])->values(),
+                'proposals' => $proposals->map(fn ($proposal) => [
+                    'id' => $proposal->id,
+                    'candidate_id' => $proposal->candidate_id,
+                    'theme_slug' => $proposal->theme->slug,
+                    'title' => $proposal->title,
+                    'description' => $proposal->description,
+                    'source_excerpt' => $proposal->source_excerpt,
+                    'source_reference' => $proposal->source_reference,
+                    'source_url' => $proposal->source_url,
+                ])->values(),
+            ],
+        ]);
+    }
+
     public function themes()
     {
         return response()->json([

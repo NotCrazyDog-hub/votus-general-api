@@ -21,8 +21,12 @@ class IbgeIndicatorsCollector
         foreach (config('radar.ibge.indicators') as $key => $def) {
             $url = "{$base}/{$def['aggregate']}/periodos/{$def['period']}/variaveis/{$def['variable']}";
 
-            $response = Http::timeout(90)
-                ->retry(2, 3000, throw: false)
+            // Do Render, a conexão com servicodados.ibge.gov.br às vezes passa
+            // dos 10s padrão (visto em produção: "Connection timed out after
+            // 10002 milliseconds"). Mais tempo para conectar e mais tentativas.
+            $response = Http::connectTimeout(30)
+                ->timeout(90)
+                ->retry([5000, 15000, 30000], throw: false)
                 ->acceptJson()
                 ->get($url, ['localidades' => 'N3[all]']);
 
