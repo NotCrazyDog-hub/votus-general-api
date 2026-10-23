@@ -60,10 +60,14 @@ return [
                 'max_pages' => 10,
             ],
             '280002551544' => [
-                'url' => env('FLAVIO_GOVERNMENT_PLAN_URL', 'https://www.flaviobolsonaro.com.br/plano-de-governo'),
+                // /plano-de-governo é só um índice com frases de chamada (os
+                // capítulos ficam em /temas/...). /plano-de-governo/leitura
+                // traz o documento completo em HTML (76 páginas, 11
+                // capítulos), então basta essa página.
+                'url' => env('FLAVIO_GOVERNMENT_PLAN_URL', 'https://www.flaviobolsonaro.com.br/plano-de-governo/leitura'),
                 'allowed_hosts' => ['flaviobolsonaro.com.br', 'www.flaviobolsonaro.com.br'],
-                'allowed_path_prefixes' => ['/plano-de-governo'],
-                'max_pages' => 20,
+                'allowed_path_prefixes' => ['/plano-de-governo/leitura'],
+                'max_pages' => 1,
             ],
         ],
     ],
