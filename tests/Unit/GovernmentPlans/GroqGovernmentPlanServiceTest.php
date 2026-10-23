@@ -30,6 +30,31 @@ class GroqGovernmentPlanServiceTest extends TestCase
         $result = app(GroqGovernmentPlanService::class)->extract('Candidata', 'Trecho do plano.');
 
         $this->assertSame('Educação', $result['proposals'][0]['theme']);
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/chat/completions'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/chat/completions')
+            && $request['reasoning_effort'] === 'low');
+    }
+
+    public function test_it_waits_and_retries_when_every_key_is_rate_limited(): void
+    {
+        config(['services.groq.api_keys' => ['key-1', 'key-2']]);
+        Http::fake([
+            'api.groq.com/*' => Http::sequence()
+                ->push(['error' => ['code' => 'rate_limit_exceeded']], 429, ['Retry-After' => '7'])
+                ->push(['error' => ['code' => 'rate_limit_exceeded']], 429, ['Retry-After' => '7'])
+                ->push(['choices' => [['message' => ['content' => json_encode(['proposals' => []])]]]]),
+        ]);
+
+        $service = new class extends GroqGovernmentPlanService {
+            public array $pauses = [];
+
+            protected function pause(int $seconds): void
+            {
+                $this->pauses[] = $seconds;
+            }
+        };
+
+        $this->assertSame(['proposals' => []], $service->extract('Candidata', 'Trecho.'));
+        $this->assertSame([7], $service->pauses);
+        Http::assertSentCount(3);
     }
 }

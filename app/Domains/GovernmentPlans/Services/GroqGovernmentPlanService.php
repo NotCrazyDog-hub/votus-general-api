@@ -8,6 +8,8 @@ use Throwable;
 
 class GroqGovernmentPlanService
 {
+    private const RATE_LIMIT_ROUNDS = 6;
+
     public function extract(string $candidateName, string $documentPart): array
     {
         return $this->request([
@@ -58,37 +60,65 @@ class GroqGovernmentPlanService
 
         $lastError = null;
 
-        foreach ($keys as $key) {
-            try {
-                $response = Http::withToken($key)
-                    ->baseUrl(config('services.groq.base_url'))
-                    ->timeout(120)
-                    ->acceptJson()
-                    ->post('/chat/completions', [
-                        'model' => config('services.groq.model'),
-                        'response_format' => ['type' => 'json_object'],
-                        'temperature' => 0.1,
-                        'max_tokens' => 3000,
-                        'messages' => $messages,
-                    ]);
+        // Uma importação faz dezenas de chamadas seguidas e esbarra no limite
+        // por minuto da Groq (HTTP 429) mesmo alternando as chaves. Quando
+        // TODAS as chaves estão limitadas, espera o Retry-After e tenta de
+        // novo, em vez de abortar a importação inteira.
+        for ($round = 1; $round <= self::RATE_LIMIT_ROUNDS; $round++) {
+            $waitSeconds = 0;
 
-                if ($response->failed()) {
-                    throw new RuntimeException("Groq respondeu HTTP {$response->status()}: {$response->body()}");
+            foreach ($keys as $key) {
+                try {
+                    $response = Http::withToken($key)
+                        ->baseUrl(config('services.groq.base_url'))
+                        ->timeout(120)
+                        ->acceptJson()
+                        ->post('/chat/completions', [
+                            'model' => config('services.groq.model'),
+                            'response_format' => ['type' => 'json_object'],
+                            'temperature' => 0.1,
+                            'max_tokens' => 3000,
+                            // Sem isso o gpt-oss gasta o limite de tokens
+                            // raciocinando e devolve JSON vazio
+                            // (json_validate_failed) — medido com um trecho
+                            // real de plano de governo.
+                            'reasoning_effort' => 'low',
+                            'messages' => $messages,
+                        ]);
+
+                    if ($response->status() === 429) {
+                        $waitSeconds = max($waitSeconds, min((int) ($response->header('Retry-After') ?: 20), 60));
+                    }
+
+                    if ($response->failed()) {
+                        throw new RuntimeException("Groq respondeu HTTP {$response->status()}: {$response->body()}");
+                    }
+
+                    $content = $response->json('choices.0.message.content');
+                    $data = is_string($content) ? json_decode($content, true) : null;
+
+                    if (!is_array($data)) {
+                        throw new RuntimeException('A Groq retornou JSON inválido.');
+                    }
+
+                    return $data;
+                } catch (Throwable $error) {
+                    $lastError = $error;
                 }
-
-                $content = $response->json('choices.0.message.content');
-                $data = is_string($content) ? json_decode($content, true) : null;
-
-                if (!is_array($data)) {
-                    throw new RuntimeException('A Groq retornou JSON inválido.');
-                }
-
-                return $data;
-            } catch (Throwable $error) {
-                $lastError = $error;
             }
+
+            if ($waitSeconds === 0 || $round === self::RATE_LIMIT_ROUNDS) {
+                break;
+            }
+
+            $this->pause($waitSeconds);
         }
 
         throw new RuntimeException('Todas as chaves da Groq falharam: ' . $lastError?->getMessage(), previous: $lastError);
+    }
+
+    protected function pause(int $seconds): void
+    {
+        sleep($seconds);
     }
 }
