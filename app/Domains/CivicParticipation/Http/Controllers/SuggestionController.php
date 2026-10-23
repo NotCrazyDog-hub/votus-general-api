@@ -26,16 +26,12 @@ class SuggestionController extends Controller
             'answers.*.answer' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $questions = SuggestionQuestion::whereIn(
-            'id',
-            collect($data['answers'])->pluck('suggestion_question_id')
-        )->get()->keyBy('id');
+        // Todas as obrigatórias, não só as que vieram no envio: antes, omitir
+        // uma pergunta obrigatória do array pulava a verificação (o form do
+        // site já exige, mas a API aceitava envios diretos sem ela).
+        $requiredQuestions = SuggestionQuestion::where('required', true)->get();
 
-        foreach ($questions as $question) {
-            if (!$question->required) {
-                continue;
-            }
-
+        foreach ($requiredQuestions as $question) {
             $resposta = collect($data['answers'])
                 ->firstWhere('suggestion_question_id', $question->id);
 

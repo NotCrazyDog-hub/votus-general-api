@@ -7,11 +7,19 @@ use App\Domains\Explanations\Models\TrustedSource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Concerns\MigratesTestSchema;
 use Tests\TestCase;
 
 class ExplanationEndpointsTest extends TestCase
 {
-    use RefreshDatabase;
+    // Subconjunto de migrations compartilhado (o migrate:fresh completo não
+    // roda no SQLite dos testes — ver Tests\Concerns\MigratesTestSchema).
+    use MigratesTestSchema, RefreshDatabase;
+
+    protected function migrateFreshUsing()
+    {
+        return $this->testSchemaMigrateFreshUsing();
+    }
 
     private function criarExplicacaoCompleta(string $status): Explanation
     {
@@ -113,7 +121,7 @@ class ExplanationEndpointsTest extends TestCase
         $this->assertDatabaseHas('explanations', ['title' => 'Câmara dos Deputados', 'status' => 'generating']);
         $this->assertDatabaseHas('explanation_sources', ['source_url' => 'https://fontex.com/materia-sobre-camara']);
 
-        Queue::assertPushed(\App\Jobs\Explanations\GerarConteudoExplicacaoJob::class);
+        Queue::assertPushed(\App\Domains\Explanations\Jobs\GerarConteudoExplicacaoJob::class);
     }
 
     public function test_admin_cannot_create_an_explanation_with_a_url_outside_trusted_domains(): void

@@ -37,10 +37,12 @@ Route::middleware('cache.headers')->group(function () {
 | Revisão autenticada dos vínculos entre comissões e temas.
 */
 
+// Um único prefix(): encadear ->prefix('internal')->prefix('...') faz o
+// segundo SUBSTITUIR o primeiro, e a rota tinha perdido o "/internal" que
+// sempre teve (/api/internal/committee-topic-matches/...).
 Route::middleware('auth:sanctum')
-    ->prefix('internal')
+    ->prefix('internal/committee-topic-matches')
     ->controller(CommitteeTopicMatchController::class)
-    ->prefix('committee-topic-matches')
     ->group(function () {
         Route::get('/pending', 'pending');
         Route::post('/{committeeTopic}/review', 'review');

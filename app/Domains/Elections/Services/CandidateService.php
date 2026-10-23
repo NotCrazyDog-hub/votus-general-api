@@ -6,6 +6,7 @@ use App\Domains\Elections\Enums\CandidateOffice;
 use App\Domains\Elections\Models\Candidate;
 use App\Domains\Elections\Models\CandidateExpense;
 use App\Domains\Elections\Models\CandidacyHistory;
+use App\Domains\Elections\Support\ElectionResultStatus;
 use Illuminate\Support\Facades\Cache;
 
 class CandidateService
@@ -87,8 +88,9 @@ class CandidateService
                 'election_year',
                 $pageCandidates->pluck('election_year')->unique()->values()->all()
             )
-            ->whereNotNull('result_status')
-            ->where('result_status', '<>', '')
+            // Inclui as linhas sem resultado: distinguem "aguardando
+            // resultado" (candidatura no ano, sem resultado) de "não
+            // verificada" (nenhum registro) — ver ElectionResultStatus.
             ->orderByDesc('round')
             ->get()
             ->groupBy('candidate_id');
@@ -101,11 +103,16 @@ class CandidateService
             // o resultado válido do primeiro turno.
             $history = $candidateHistories
                 ->where('election_year', $candidate->election_year)
+                ->filter(fn ($h) => trim((string) $h->result_status) !== '')
                 ->first();
 
             $candidate->setAttribute(
                 'election_status',
                 $history?->result_status
+            );
+            $candidate->setAttribute(
+                'election_result',
+                ElectionResultStatus::fromHistories($candidateHistories, $candidate->election_year)
             );
         }
 
@@ -252,6 +259,10 @@ class CandidateService
         // pros candidatos do Ceará — ver countPreviouslyElectedByOffice pro
         // mesmo tipo de limitação de cobertura).
         $candidate->expenses_summary = $this->expensesSummary($candidate->id);
+        $candidate->setAttribute(
+            'election_result',
+            ElectionResultStatus::fromHistories($candidate->candidacyHistory, $candidate->election_year)
+        );
 
         return $candidate;
     }

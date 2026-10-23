@@ -57,6 +57,8 @@ trait MigratesTestSchema
 
                 // candidatos (CandidateSyncTestCase)
                 'database/migrations/2026_07_16_173107_create_legislators_table.php',
+                // Perfil do candidato (previousMandates casa por legislators.cpf).
+                'database/migrations/2026_09_17_152549_add_cpf_to_legislators_table.php',
                 'database/migrations/2026_09_17_140519_create_candidates_table.php',
                 'database/migrations/2026_09_17_142127_change_coverage_scope_column_in_candidates_table.php',
                 'database/migrations/2026_09_17_145723_add_cpf_to_candidates_table.php',
@@ -70,6 +72,31 @@ trait MigratesTestSchema
                 'database/migrations/2026_10_04_120100_remove_judgment_status_code_from_candidates_table.php',
                 'database/migrations/2026_10_04_120200_make_round_nullable_on_candidacy_histories_table.php',
                 'database/migrations/2026_10_13_152814_fix_candidacy_histories_unique_constraint.php',
+
+                // auditoria de rotas de escrita (tests/Feature/RouteAudit):
+                // propostas, sugestões, explicações, oportunidades, telemetria
+                'database/migrations/2026_07_20_011007_create_trusted_sources_table.php',
+                'database/migrations/2026_07_20_011018_create_explanations_table.php',
+                'database/migrations/2026_07_20_011024_create_explanation_sources_table.php',
+                'database/migrations/2026_07_20_011039_create_quiz_questions_table.php',
+                'database/migrations/2026_07_20_011047_create_quiz_options_table.php',
+                'database/migrations/2026_07_26_172838_create_opportunities_table.php',
+                'database/migrations/2026_07_27_154717_create_public_opportunities_table.php',
+                'database/migrations/2026_07_27_154733_create_opportunity_publications_table.php',
+                'database/migrations/2026_07_27_170152_add_published_to_opportunities_table.php',
+                'database/migrations/2026_09_23_222306_make_external_url_nullable_on_opportunities_table.php',
+                'database/migrations/2026_09_11_120000_create_proposals_table.php',
+                'database/migrations/2026_09_11_120100_create_proposal_votes_table.php',
+                'database/migrations/2026_09_11_130000_create_proposal_comments_table.php',
+                'database/migrations/2026_09_11_140000_create_categories_table.php',
+                'database/migrations/2026_09_11_140100_create_category_proposal_table.php',
+                'database/migrations/2026_09_11_140200_remove_category_from_proposals_table.php',
+                'database/migrations/2026_09_16_134152_create_santinho_generations_table.php',
+                'database/migrations/2026_09_16_134153_create_site_visits_table.php',
+                'database/migrations/2026_09_16_140000_create_suggestions_table.php',
+                'database/migrations/2026_09_16_144717_create_suggestion_questions_table.php',
+                'database/migrations/2026_09_16_144718_create_suggestion_answers_table.php',
+                'database/migrations/2026_09_16_144719_make_message_nullable_in_suggestions_table.php',
 
                 // planos de governo (PresidentialProposalComparisonEndpointsTest)
                 'database/migrations/2026_10_13_000000_create_government_plan_comparison_tables.php',

@@ -9,11 +9,19 @@ use App\Domains\Explanations\Services\ExplanationSourceFetcher;
 use App\Domains\Explanations\Services\GroqExplanationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Tests\Concerns\MigratesTestSchema;
 use Tests\TestCase;
 
 class GerarConteudoExplicacaoJobTest extends TestCase
 {
-    use RefreshDatabase;
+    // Subconjunto de migrations compartilhado (o migrate:fresh completo não
+    // roda no SQLite dos testes — ver Tests\Concerns\MigratesTestSchema).
+    use MigratesTestSchema, RefreshDatabase;
+
+    protected function migrateFreshUsing()
+    {
+        return $this->testSchemaMigrateFreshUsing();
+    }
 
     protected function setUp(): void
     {

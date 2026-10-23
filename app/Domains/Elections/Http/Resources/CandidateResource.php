@@ -38,6 +38,12 @@ class CandidateResource extends JsonResource
                 array_key_exists('election_status', $this->resource->getAttributes()),
                 $this->election_status
             ),
+            // Situação eleitoral já classificada (eleito, não eleito, 2º
+            // turno, aguardando, não verificada) — ver ElectionResultStatus.
+            'election_result' => $this->when(
+                array_key_exists('election_result', $this->resource->getAttributes()),
+                fn () => $this->election_result
+            ),
             'candidacy_history' => $this->whenLoaded('candidacyHistory', function () {
                 return $this->candidacyHistory->map(function ($history) {
                     return [

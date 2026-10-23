@@ -5,11 +5,19 @@ namespace Tests\Feature\Explanations;
 use App\Domains\Explanations\Models\TrustedSource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\MigratesTestSchema;
 use Tests\TestCase;
 
 class TrustedSourceEndpointsTest extends TestCase
 {
-    use RefreshDatabase;
+    // Subconjunto de migrations compartilhado (o migrate:fresh completo não
+    // roda no SQLite dos testes — ver Tests\Concerns\MigratesTestSchema).
+    use MigratesTestSchema, RefreshDatabase;
+
+    protected function migrateFreshUsing()
+    {
+        return $this->testSchemaMigrateFreshUsing();
+    }
 
     public function test_admin_cannot_register_a_domain_that_already_exists(): void
     {
