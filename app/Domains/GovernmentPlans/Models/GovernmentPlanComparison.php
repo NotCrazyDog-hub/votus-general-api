@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace App\Domains\GovernmentPlans\Models;
 
+use App\Domains\Elections\Models\Candidate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\GovernmentPlans;
 
-use App\Models\Candidate;
-use App\Models\GovernmentPlanComparison;
-use App\Models\GovernmentPlanProposal;
-use App\Models\GovernmentPlanTheme;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\GovernmentPlans\Models\{
+    GovernmentPlanComparison,
+    GovernmentPlanProposal,
+    GovernmentPlanTheme
+};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

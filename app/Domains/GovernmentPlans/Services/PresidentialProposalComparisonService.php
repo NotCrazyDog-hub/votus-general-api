@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Services\GovernmentPlans;
+namespace App\Domains\GovernmentPlans\Services;
 
-use App\Models\GovernmentPlanComparison;
-use App\Models\GovernmentPlanTheme;
+use App\Domains\GovernmentPlans\Models\{
+    GovernmentPlanComparison,
+    GovernmentPlanTheme
+};
 
 class PresidentialProposalComparisonService
 {

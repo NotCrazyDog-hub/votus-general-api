@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\GovernmentPlans;
 
-use App\Services\GovernmentPlans\GroqGovernmentPlanService;
+use App\Domains\GovernmentPlans\Services\GroqGovernmentPlanService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 

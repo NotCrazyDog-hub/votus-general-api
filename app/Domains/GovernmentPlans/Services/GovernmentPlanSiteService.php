@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\GovernmentPlans;
+namespace App\Domains\GovernmentPlans\Services;
 
-use App\Services\News\Concerns\ExtractsTextFromHtml;
+use App\Domains\News\Services\Concerns\ExtractsTextFromHtml;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Symfony\Component\DomCrawler\Crawler;

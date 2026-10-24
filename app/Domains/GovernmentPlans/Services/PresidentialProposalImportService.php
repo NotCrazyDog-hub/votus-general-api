@@ -1,18 +1,20 @@
 <?php
 
-namespace App\Services\GovernmentPlans;
+namespace App\Domains\GovernmentPlans\Services;
 
-use App\Models\Candidate;
-use App\Models\GovernmentPlanComparison;
-use App\Models\GovernmentPlanProposal;
-use App\Models\GovernmentPlanTheme;
+use App\Domains\Elections\Models\Candidate;
+use App\Domains\GovernmentPlans\Models\GovernmentPlanComparison;
+use App\Domains\GovernmentPlans\Models\GovernmentPlanProposal;
+use App\Domains\GovernmentPlans\Models\GovernmentPlanTheme;
+use App\Domains\GovernmentPlans\Services\GovernmentPlanSiteService;
+use App\Domains\GovernmentPlans\Services\GroqGovernmentPlanService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class PresidentialProposalImportService
 {
-    private const CHUNK_LENGTH = 11000;
+    private const CHUNK_LENGTH = 7000;
 
     public function __construct(
         private readonly GovernmentPlanSiteService $sites,

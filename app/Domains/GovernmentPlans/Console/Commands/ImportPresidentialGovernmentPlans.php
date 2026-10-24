@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Domains\GovernmentPlans\Console\Commands;
 
-use App\Services\GovernmentPlans\PresidentialProposalImportService;
+use App\Domains\GovernmentPlans\Services\PresidentialProposalImportService;
 use Illuminate\Console\Command;
 use RuntimeException;
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\GovernmentPlans;
 
-use App\Services\GovernmentPlans\GovernmentPlanSiteService;
+use App\Domains\GovernmentPlans\Services\GovernmentPlanSiteService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 

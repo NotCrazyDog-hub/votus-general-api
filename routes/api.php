@@ -59,6 +59,7 @@ foreach ([
     'elections',
     'executives',
     'explanations',
+    'government-plans',
     'legislatures',
     'news',
     'opportunities',
