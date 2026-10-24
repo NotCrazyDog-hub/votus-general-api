@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class GovernmentPlanComparison extends Model
+{
+    protected $fillable = [
+        'government_plan_theme_id',
+        'candidate_one_id',
+        'candidate_two_id',
+        'summary',
+        'similarities',
+        'differences',
+        'candidate_summaries',
+    ];
+
+    protected $casts = [
+        'similarities' => 'array',
+        'differences' => 'array',
+        'candidate_summaries' => 'array',
+    ];
+
+    public function theme(): BelongsTo
+    {
+        return $this->belongsTo(GovernmentPlanTheme::class, 'government_plan_theme_id');
+    }
+
+    public function candidateOne(): BelongsTo
+    {
+        return $this->belongsTo(Candidate::class, 'candidate_one_id');
+    }
+
+    public function candidateTwo(): BelongsTo
+    {
+        return $this->belongsTo(Candidate::class, 'candidate_two_id');
+    }
+}
