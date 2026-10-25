@@ -61,9 +61,14 @@ class CandidateService
                     ->orWhere('party_acronym', $op, $termo)
                     ->orWhere('ballot_number', 'like', $termo));
             })
+            ->approved()
+            ->when($state, fn ($q) => $q->where('state', $state))
+            ->when($party, fn ($q) => $q->where('party_acronym', $party))
+            ->when($search, function ($q) use ($search) { /* ...igual... */ })
+            ->tap(fn ($q) => $this->orderElectedFirst($q))
             ->orderBy('ballot_name')
+            ->orderBy('id') // desempate estável entre páginas
             ->paginate(50)
-            // Mantém party/search nos links "next"/"prev" da paginação.
             ->withQueryString();
 
         $pageCandidates = $candidates->getCollection();
@@ -375,5 +380,53 @@ class CandidateService
         };
 
         return $query->paginate(20, ['*'], 'page', $page);
+    }
+
+    /**
+     * Eleitos (Eleito, Eleito por QP, Eleito por média) e quem está no
+     * 2º turno vêm primeiro; Suplente, Não eleito e sem resultado depois.
+     * Considera só o resultado mais recente (maior round com status
+     * preenchido) do ano eleitoral do candidato.
+     */
+    private function orderElectedFirst($query): void
+    {
+        $op = $this->caseInsensitiveOperator($query);
+        $cand = (new Candidate)->getTable();
+        $hist = (new CandidacyHistory)->getTable();
+
+        $query->orderByRaw("
+            CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM {$hist} ch
+                    WHERE ch.candidate_id = {$cand}.id
+                    AND ch.election_year = {$cand}.election_year
+                    AND ch.round = (
+                        SELECT MAX(ch2.round) FROM {$hist} ch2
+                        WHERE ch2.candidate_id = ch.candidate_id
+                            AND ch2.election_year = ch.election_year
+                            AND TRIM(COALESCE(ch2.result_status, '')) <> ''
+                    )
+                    AND (
+                        (ch.result_status {$op} '%eleito%'
+                        AND ch.result_status NOT {$op} '%não eleito%'
+                        AND ch.result_status NOT {$op} '%nao eleito%')
+                        OR ch.result_status {$op} '%turno%'
+                    )
+                ) THEN 0
+                WHEN EXISTS (
+                    SELECT 1 FROM {$hist} ch
+                    WHERE ch.candidate_id = {$cand}.id
+                    AND ch.election_year = {$cand}.election_year
+                    AND ch.round = (
+                        SELECT MAX(ch2.round) FROM {$hist} ch2
+                        WHERE ch2.candidate_id = ch.candidate_id
+                            AND ch2.election_year = ch.election_year
+                            AND TRIM(COALESCE(ch2.result_status, '')) <> ''
+                    )
+                    AND ch.result_status {$op} '%suplente%'
+                ) THEN 1
+                ELSE 2
+            END
+        ");
     }
 }
