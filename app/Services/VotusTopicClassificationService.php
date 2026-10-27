@@ -137,15 +137,21 @@ class VotusTopicClassificationService
 
         $storedHash = $rawData[self::RAW_DATA_HASH_KEY] ?? null;
 
+        // If content hasn't changed, check classification status
         if ($storedHash !== null && $storedHash === $currentHash) {
-            $votusTopicIds = Topic::where('chamber', 'votus')->pluck('id');
-            $hasVotusLinks = $bill->topics()
-                ->whereIn('topics.id', $votusTopicIds)
-                ->exists();
+            $classificationStatus = $rawData['classification_status'] ?? null;
 
-            return $hasVotusLinks;
+            // If classification was with topics or empty topics, consider already classified
+            if ($classificationStatus === 'with_topics' || $classificationStatus === 'empty_topics') {
+                return true;
+            }
+
+            // If classification failed or never completed, allow re-classification
+            // (content hash matches but status is 'failed' or unknown)
+            return false;
         }
 
+        // No hash match means content changed, must re-classify
         return false;
     }
 
@@ -520,6 +526,15 @@ PROMPT;
                 $rawData = [];
             }
             $rawData[self::RAW_DATA_HASH_KEY] = md5($content);
+
+            // Store classification status for idempotence tracking
+            // Values: 'with_topics', 'empty_topics', 'failed'
+            if (empty($newTopicIds)) {
+                $rawData['classification_status'] = 'empty_topics';
+            } else {
+                $rawData['classification_status'] = 'with_topics';
+            }
+
             $bill->update(['raw_data' => $rawData]);
         });
     }

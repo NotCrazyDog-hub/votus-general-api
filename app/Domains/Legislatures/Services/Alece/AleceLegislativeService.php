@@ -10,6 +10,8 @@ class AleceLegislativeService
 {
     protected string $baseUrl = 'https://www2.al.ce.gov.br/legislativo/proposicoes';
 
+    protected string $legislature = '31_legislatura';
+
     protected array $descricaoTypes = [
         1 => 'PL',
         5 => 'PEC',
@@ -55,7 +57,7 @@ class AleceLegislativeService
             $response = Http::withOptions(['verify' => false])
                 ->get("{$this->baseUrl}/busca_nova.php", [
                     'descricao' => $descricao,
-                    'nome' => 'atual_legislatura', // não parece restringir o resultado, mas mantém o padrão da URL
+                    'nome' => $this->legislature,
                     'opcao' => $opcao,
                     'escolha' => 'autor',
                     'pesquisa' => $searchToken,
@@ -74,7 +76,17 @@ class AleceLegislativeService
                 $totalPages = (int) $matches[1];
             }
 
-            foreach ($this->parseRows($crawler) as $row) {
+            $parsed = $this->parseRows($crawler);
+
+            if ($page === 1 && empty($parsed)) {
+                \Log::warning('Alece: nenhuma linha parseada', [
+                    'descricao' => $descricao,
+                    'opcao' => $opcao,
+                    'html_snippet' => mb_substr($html, 0, 500),
+                ]);
+            }
+
+            foreach ($parsed as $row) {
                 yield $row;
             }
 
@@ -94,14 +106,18 @@ class AleceLegislativeService
     {
         $rows = [];
 
-        $crawler->filter('tbody tr')->each(function (Crawler $row) use (&$rows) {
-            $detailLink = $row->filter('td.col-editar a[href*="ver_nova.php"]');
-
+        $crawler->filter('tr')->each(function (Crawler $row) use (&$rows) {
+            $detailLink = $row->filter('a[href*="ver_nova.php"]');
             if ($detailLink->count() === 0) {
                 return;
             }
 
-            $href = $detailLink->attr('href');
+            $cells = $row->filter('td');
+            if ($cells->count() < 6) {
+                return;
+            }
+
+            $href = $detailLink->first()->attr('href');
             parse_str((string) parse_url($href, PHP_URL_QUERY), $params);
 
             if (!isset($params['codigo'])) {
@@ -113,14 +129,14 @@ class AleceLegislativeService
                 : null;
 
             $rows[] = [
-                'codigo' => $params['codigo'],
-                'legislature' => $legislature,
-                'bill_number' => trim($row->filter('td.col-proj')->text('')),
-                'year' => trim($row->filter('td.col-ano')->text('')),
-                'law_number' => trim($row->filter('td.col-lei')->text('')),
-                'summary_short' => trim($row->filter('td.col-ementa')->text('')),
-                'status_short' => trim($row->filter('td.col-status')->first()->text('')),
-                'detail_url' => $this->resolveUrl($href),
+                'codigo'        => $params['codigo'],
+                'legislature'   => $legislature,
+                'bill_number'   => trim($cells->eq(0)->text('')),
+                'year'          => trim($cells->eq(1)->text('')),
+                'law_number'    => trim($cells->eq(3)->text('')),
+                'summary_short' => trim($cells->eq(4)->text('')),
+                'status_short'  => trim($cells->eq(5)->text('')),
+                'detail_url'    => $this->resolveUrl($href),
             ];
         });
 
