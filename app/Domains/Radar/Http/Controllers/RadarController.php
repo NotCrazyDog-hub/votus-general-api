@@ -4,6 +4,7 @@ namespace App\Domains\Radar\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 
+use App\Domains\Radar\Services\IbgeSnapshot;
 use App\Domains\Radar\Services\RadarRefresher;
 use App\Domains\Radar\Services\RadarStore;
 use App\Domains\Radar\Services\RadarUfs;
@@ -63,7 +64,7 @@ class RadarController extends Controller
             array_map(fn ($year) => ['camara', $year], $years),
         ));
 
-        $ibge = $results['ibge:' . RadarStore::IBGE_SCOPE];
+        $ibge = $this->ibgeResult($results);
         $camaraByYear = $this->camaraYears($results, $years);
         $camara = $this->combineCamara($camaraByYear);
 
@@ -112,7 +113,7 @@ class RadarController extends Controller
             array_map(fn ($year) => ['camara', $year], $years),
         ));
 
-        $ibge = $results['ibge:' . RadarStore::IBGE_SCOPE];
+        $ibge = $this->ibgeResult($results);
         $senado = $results["senado:{$uf}"];
         $camaraByYear = $this->camaraYears($results, $years);
         $camara = $this->combineCamara($camaraByYear);
@@ -200,7 +201,7 @@ class RadarController extends Controller
      */
     private function camaraYears(array $results, array $years): array
     {
-        $this->refresher->dispatchIfStale('ibge', RadarStore::IBGE_SCOPE, $results['ibge:' . RadarStore::IBGE_SCOPE]);
+        $this->refresher->dispatchIfStale('ibge', RadarStore::IBGE_SCOPE, $this->ibgeResult($results));
 
         $byYear = [];
         foreach ($years as $year) {
@@ -280,11 +281,24 @@ class RadarController extends Controller
         ];
     }
 
+    /**
+     * Resultado publicado do IBGE; sem ele, a cópia dos valores oficiais do
+     * repositório — a página nunca fica esperando uma consulta que pode não
+     * funcionar do servidor.
+     */
+    private function ibgeResult(array $results): ?array
+    {
+        return $results['ibge:' . RadarStore::IBGE_SCOPE] ?? IbgeSnapshot::load();
+    }
+
     private function ibgeMeta(?array $ibge): array
     {
         return [
             'status' => $ibge === null ? 'pending' : 'ok',
             'generated_at' => $ibge['generated_at'] ?? null,
+            // true = valores oficiais guardados no repositório (ver IbgeSnapshot),
+            // usados enquanto a atualização semanal não consegue consultar o IBGE.
+            'from_snapshot' => (bool) ($ibge['snapshot'] ?? false),
             'last_failed_at' => $this->lastFailure('ibge', [RadarStore::IBGE_SCOPE], $ibge === null ? [] : [RadarStore::IBGE_SCOPE => $ibge]),
             'indicators' => $ibge === null ? null : array_map(fn ($i) => [
                 'label' => $i['label'],

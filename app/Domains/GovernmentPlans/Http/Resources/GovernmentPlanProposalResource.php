@@ -18,6 +18,8 @@ class GovernmentPlanProposalResource extends JsonResource
             'source_excerpt' => $this->source_excerpt,
             'source_reference' => $this->source_reference,
             'source_url' => $this->source_url,
+            // 'literal' (texto copiado da fonte) ou 'ai' (resumo da IA).
+            'extraction' => $this->extractionMethod(),
         ];
     }
 }

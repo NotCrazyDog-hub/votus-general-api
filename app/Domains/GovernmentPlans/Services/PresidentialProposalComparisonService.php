@@ -23,7 +23,7 @@ class PresidentialProposalComparisonService
             ->whereNull('running_mate_of_id')
             ->where(fn ($query) => $query
                 ->whereIn('external_id', $configured)
-                ->orWhereIn('id', GovernmentPlanProposal::query()->select('candidate_id')))
+                ->orWhereIn('id', GovernmentPlanProposal::query()->active()->select('candidate_id')))
             ->orderBy('ballot_name')
             ->get();
     }
@@ -31,6 +31,7 @@ class PresidentialProposalComparisonService
     public function allProposals(): Collection
     {
         return GovernmentPlanProposal::query()
+            ->active()
             ->with('theme:id,slug,name')
             ->orderBy('candidate_id')
             ->orderBy('id')
@@ -40,8 +41,8 @@ class PresidentialProposalComparisonService
     public function themes()
     {
         return GovernmentPlanTheme::query()
-            ->whereHas('proposals')
-            ->withCount('proposals')
+            ->whereHas('proposals', fn ($query) => $query->active())
+            ->withCount(['proposals' => fn ($query) => $query->active()])
             ->orderBy('position')
             ->orderBy('name')
             ->get();
@@ -51,12 +52,19 @@ class PresidentialProposalComparisonService
     {
         return GovernmentPlanTheme::query()
             ->where('slug', $slug)
-            ->with(['proposals.candidate'])
+            ->with(['proposals' => fn ($query) => $query->active()->with('candidate')])
             ->firstOrFail();
     }
 
     public function comparisonFor(GovernmentPlanTheme $theme, ?int $firstCandidateId, ?int $secondCandidateId): ?GovernmentPlanComparison
     {
+        // Comparações antigas de temas em que só um candidato tem proposta
+        // (geradas antes de existir esta regra) não são servidas: diziam que o
+        // outro "não menciona" o tema, o que a lista extraída não prova.
+        if ($theme->proposals->pluck('candidate_id')->unique()->count() < 2) {
+            return null;
+        }
+
         $query = $theme->comparisons()->with(['candidateOne', 'candidateTwo'])->latest('updated_at');
 
         if ($firstCandidateId && $secondCandidateId) {

@@ -60,6 +60,83 @@ class CandidateElectionResultTest extends TestCase
             ->assertJsonPath('data.election_result.source', 'TSE');
     }
 
+    public function test_the_list_can_be_filtered_by_election_result_across_the_whole_list(): void
+    {
+        $elected = $this->candidate('Eleita', 2001);
+        $this->history($elected, 1, 'Eleito por QP');
+
+        $out = $this->candidate('Não eleito', 2002);
+        $this->history($out, 1, 'Não eleito');
+
+        $alternate = $this->candidate('Suplente', 2003);
+        $this->history($alternate, 1, 'Suplente');
+
+        $runoff = $this->candidate('No segundo turno', 2004);
+        $this->history($runoff, 1, '2º turno');
+        $this->history($runoff, 2, null);
+
+        // 2º turno já decidido: deixa de ser "segundo turno".
+        $wonRunoff = $this->candidate('Venceu o 2º turno', 2005);
+        $this->history($wonRunoff, 1, '2º turno');
+        $this->history($wonRunoff, 2, 'Eleito');
+
+        $awaiting = $this->candidate('Aguardando', 2006);
+        $this->history($awaiting, 1, null);
+
+        $this->candidate('Sem registro', 2007);
+
+        // Resultado de OUTRA eleição não vale para a de 2026.
+        $otherYear = $this->candidate('Só 2022', 2008);
+        CandidacyHistory::create([
+            'candidate_id' => $otherYear->id, 'candidacy_external_id' => '2008', 'election_year' => 2022,
+            'round' => 1, 'state' => 'BR', 'office_name' => 'PRESIDENTE', 'result_status' => 'Eleito',
+        ]);
+
+        $ids = fn (string $status) => collect($this->getJson("/api/president-candidates?election_result={$status}")
+            ->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+
+        $this->assertSame([2001, 2005], $ids('elected'));
+        $this->assertSame([2002, 2003], $ids('not_elected'));
+        $this->assertSame([2004], $ids('runoff'));
+        $this->assertSame([2006], $ids('awaiting'));
+        $this->assertSame([2007, 2008], $ids('unverified'));
+
+        // O filtro combina com a busca e as contagens vêm no bloco "filters".
+        $this->getJson('/api/president-candidates?election_result=elected&search=Venceu')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('filters.election_results', [
+                'elected' => 2, 'not_elected' => 2, 'runoff' => 1, 'awaiting' => 1, 'unverified' => 2,
+            ]);
+
+        $this->getJson('/api/president-candidates?election_result=inventado')->assertStatus(422);
+    }
+
+    public function test_the_list_shows_confirmed_results_first(): void
+    {
+        // Nomes em ordem alfabética inversa à da situação, para provar que a
+        // situação vem antes do nome.
+        $this->candidate('A Sem registro', 3001);
+        $awaiting = $this->candidate('B Aguardando', 3002);
+        $this->history($awaiting, 1, null);
+        $out = $this->candidate('C Não eleito', 3003);
+        $this->history($out, 1, 'Não eleito');
+        $lostRunoff = $this->candidate('D Perdeu o 2º turno', 3004);
+        $this->history($lostRunoff, 1, '2º turno');
+        $this->history($lostRunoff, 2, 'Não eleito');
+        $runoff = $this->candidate('E No segundo turno', 3005);
+        $this->history($runoff, 1, '2º turno');
+        $this->history($runoff, 2, null);
+        $elected = $this->candidate('F Eleito', 3006);
+        $this->history($elected, 1, '2º turno');
+        $this->history($elected, 2, 'Eleito');
+        $this->candidate('G Sem registro', 3007);
+
+        $ids = collect($this->getJson('/api/president-candidates')->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([3006, 3005, 3003, 3004, 3002, 3001, 3007], $ids);
+    }
+
     private function candidate(string $name, int $externalId): Candidate
     {
         return Candidate::create([

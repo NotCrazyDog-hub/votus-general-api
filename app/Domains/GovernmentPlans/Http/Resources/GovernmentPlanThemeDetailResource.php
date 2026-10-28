@@ -26,7 +26,9 @@ class GovernmentPlanThemeDetailResource extends JsonResource
             'theme' => ['slug' => $this->slug, 'name' => $this->name],
             'candidates' => $this->proposals
                 ->groupBy('candidate_id')
-                ->map(function ($proposals) {
+                // use ($request): sem ele, $request fica indefinido dentro do
+                // map e o detalhe do tema respondia 500.
+                ->map(function ($proposals) use ($request) {
                     $candidate = $proposals->first()->candidate;
 
                     return [

@@ -33,11 +33,39 @@ class CandidateService
         'judgment_status',
     ];
 
+    /** Situações aceitas no filtro (mesmas de ElectionResultStatus). */
+    public const ELECTION_RESULT_FILTERS = ['elected', 'not_elected', 'runoff', 'awaiting', 'unverified'];
+
+    /**
+     * Posição de cada situação na listagem (mesmas regras de
+     * filterByElectionResult): 0 eleito, 1 segundo turno, 2 não eleito,
+     * 3 aguardando resultado, 4 não verificada. LOWER() + LIKE em vez de
+     * ilike para valer igual no Postgres e no banco dos testes.
+     */
+    private const ELECTION_RESULT_ORDER = <<<'SQL'
+        CASE
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND LOWER(h.result_status) LIKE 'eleito%') THEN 0
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND LOWER(h.result_status) LIKE '%turno%')
+                AND NOT EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND h.round > 1
+                AND h.result_status IS NOT NULL AND h.result_status <> '') THEN 1
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND (LOWER(h.result_status) LIKE 'não eleito%'
+                OR LOWER(h.result_status) LIKE 'nao eleito%' OR LOWER(h.result_status) = 'suplente')) THEN 2
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year) THEN 3
+            ELSE 4
+        END
+        SQL;
+
     public function listByOffice(
         CandidateOffice $office,
         ?string $state = null,
         ?string $party = null,
         ?string $search = null,
+        ?string $electionResult = null,
     ) {
         $search = $search !== null ? trim($search) : null;
 
@@ -51,6 +79,7 @@ class CandidateService
             ->approved()
             ->when($state, fn ($q) => $q->where('state', $state))
             ->when($party, fn ($q) => $q->where('party_acronym', $party))
+            ->when($electionResult, fn ($q) => $this->filterByElectionResult($q, $electionResult))
             ->when($search, function ($q) use ($search) {
                 $termo = '%'.addcslashes($search, '\\%_').'%';
                 $op = $this->caseInsensitiveOperator($q);
@@ -61,11 +90,9 @@ class CandidateService
                     ->orWhere('party_acronym', $op, $termo)
                     ->orWhere('ballot_number', 'like', $termo));
             })
-            ->approved()
-            ->when($state, fn ($q) => $q->where('state', $state))
-            ->when($party, fn ($q) => $q->where('party_acronym', $party))
-            ->when($search, function ($q) use ($search) { /* ...igual... */ })
-            ->tap(fn ($q) => $this->orderElectedFirst($q))
+            // Situação eleitoral confirmada primeiro (eleitos, 2º turno, não
+            // eleitos); sem resultado, por último. Empate: nome de urna.
+            ->orderByRaw(self::ELECTION_RESULT_ORDER)
             ->orderBy('ballot_name')
             ->orderBy('id') // desempate estável entre páginas
             ->paginate(50)
@@ -217,6 +244,64 @@ class CandidateService
      *
      * @param  \Illuminate\Database\Eloquent\Builder<*>|\Illuminate\Database\Query\Builder  $query
      */
+    /**
+     * Filtra pela situação eleitoral (resultado oficial do TSE do ANO da
+     * eleição do candidato) — mesma regra de ElectionResultStatus, em SQL:
+     *  - elected:     resultado "Eleito…" (inclui por QP e por média);
+     *  - not_elected: "Não eleito…" ou "Suplente";
+     *  - runoff:      "2º turno" e ainda sem resultado de 2º turno;
+     *  - awaiting:    há candidatura no ano, mas nenhum resultado;
+     *  - unverified:  nenhum registro no ano.
+     * Vale para a lista INTEIRA, não só para a página atual.
+     */
+    private function filterByElectionResult($query, string $status)
+    {
+        $op = $this->caseInsensitiveOperator($query);
+        $ofYear = fn ($h) => $h->whereColumn('candidacy_histories.election_year', 'candidates.election_year');
+        $withResult = fn ($h) => $ofYear($h)->whereNotNull('result_status')->where('result_status', '<>', '');
+
+        return match ($status) {
+            'elected' => $query->whereHas('candidacyHistory', fn ($h) => $withResult($h)
+                ->where('result_status', $op, 'eleito%')),
+            'not_elected' => $query->whereHas('candidacyHistory', fn ($h) => $withResult($h)
+                ->where(fn ($w) => $w
+                    ->where('result_status', $op, 'não eleito%')
+                    ->orWhere('result_status', $op, 'nao eleito%')
+                    ->orWhere('result_status', $op, 'suplente'))),
+            'runoff' => $query
+                ->whereHas('candidacyHistory', fn ($h) => $withResult($h)->where('result_status', $op, '%turno%'))
+                ->whereDoesntHave('candidacyHistory', fn ($h) => $withResult($h)->where('round', '>', 1)),
+            'awaiting' => $query
+                ->whereHas('candidacyHistory', $ofYear)
+                ->whereDoesntHave('candidacyHistory', $withResult),
+            'unverified' => $query->whereDoesntHave('candidacyHistory', $ofYear),
+            default => $query,
+        };
+    }
+
+    /**
+     * Quantos candidatos do cargo há em cada situação eleitoral (entre TODOS,
+     * com o mesmo cache de 1h dos outros contadores) — o front só mostra as
+     * opções do filtro que têm candidatos.
+     *
+     * @return array<string, int>
+     */
+    public function countsByElectionResult(CandidateOffice $office, ?string $state = null): array
+    {
+        $counts = [];
+
+        foreach (self::ELECTION_RESULT_FILTERS as $status) {
+            $counts[$status] = $this->countWithFilter(
+                "election-result-{$status}",
+                $office,
+                $state,
+                fn ($q) => $this->filterByElectionResult($q, $status),
+            );
+        }
+
+        return $counts;
+    }
+
     private function caseInsensitiveOperator($query): string
     {
         $driver = $query->toBase()->getConnection()->getDriverName();
@@ -380,53 +465,5 @@ class CandidateService
         };
 
         return $query->paginate(20, ['*'], 'page', $page);
-    }
-
-    /**
-     * Eleitos (Eleito, Eleito por QP, Eleito por média) e quem está no
-     * 2º turno vêm primeiro; Suplente, Não eleito e sem resultado depois.
-     * Considera só o resultado mais recente (maior round com status
-     * preenchido) do ano eleitoral do candidato.
-     */
-    private function orderElectedFirst($query): void
-    {
-        $op = $this->caseInsensitiveOperator($query);
-        $cand = (new Candidate)->getTable();
-        $hist = (new CandidacyHistory)->getTable();
-
-        $query->orderByRaw("
-            CASE
-                WHEN EXISTS (
-                    SELECT 1 FROM {$hist} ch
-                    WHERE ch.candidate_id = {$cand}.id
-                    AND ch.election_year = {$cand}.election_year
-                    AND ch.round = (
-                        SELECT MAX(ch2.round) FROM {$hist} ch2
-                        WHERE ch2.candidate_id = ch.candidate_id
-                            AND ch2.election_year = ch.election_year
-                            AND TRIM(COALESCE(ch2.result_status, '')) <> ''
-                    )
-                    AND (
-                        (ch.result_status {$op} '%eleito%'
-                        AND ch.result_status NOT {$op} '%não eleito%'
-                        AND ch.result_status NOT {$op} '%nao eleito%')
-                        OR ch.result_status {$op} '%turno%'
-                    )
-                ) THEN 0
-                WHEN EXISTS (
-                    SELECT 1 FROM {$hist} ch
-                    WHERE ch.candidate_id = {$cand}.id
-                    AND ch.election_year = {$cand}.election_year
-                    AND ch.round = (
-                        SELECT MAX(ch2.round) FROM {$hist} ch2
-                        WHERE ch2.candidate_id = ch.candidate_id
-                            AND ch2.election_year = ch.election_year
-                            AND TRIM(COALESCE(ch2.result_status, '')) <> ''
-                    )
-                    AND ch.result_status {$op} '%suplente%'
-                ) THEN 1
-                ELSE 2
-            END
-        ");
     }
 }
