@@ -23,7 +23,7 @@ class PresidentialProposalComparisonService
             ->whereNull('running_mate_of_id')
             ->where(fn ($query) => $query
                 ->whereIn('external_id', $configured)
-                ->orWhereIn('id', GovernmentPlanProposal::query()->select('candidate_id')))
+                ->orWhereIn('id', GovernmentPlanProposal::query()->active()->select('candidate_id')))
             ->orderBy('ballot_name')
             ->get();
     }
@@ -31,6 +31,7 @@ class PresidentialProposalComparisonService
     public function allProposals(): Collection
     {
         return GovernmentPlanProposal::query()
+            ->active()
             ->with('theme:id,slug,name')
             ->orderBy('candidate_id')
             ->orderBy('id')
@@ -40,8 +41,8 @@ class PresidentialProposalComparisonService
     public function themes()
     {
         return GovernmentPlanTheme::query()
-            ->whereHas('proposals')
-            ->withCount('proposals')
+            ->whereHas('proposals', fn ($query) => $query->active())
+            ->withCount(['proposals' => fn ($query) => $query->active()])
             ->orderBy('position')
             ->orderBy('name')
             ->get();
@@ -51,7 +52,7 @@ class PresidentialProposalComparisonService
     {
         return GovernmentPlanTheme::query()
             ->where('slug', $slug)
-            ->with(['proposals.candidate'])
+            ->with(['proposals' => fn ($query) => $query->active()->with('candidate')])
             ->firstOrFail();
     }
 

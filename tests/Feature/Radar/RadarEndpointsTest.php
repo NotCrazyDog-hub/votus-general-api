@@ -3,8 +3,10 @@
 namespace Tests\Feature\Radar;
 
 use App\Domains\Radar\Jobs\RefreshRadarJob;
+use App\Domains\Radar\Services\IbgeSnapshot;
 use App\Domains\Radar\Services\RadarRefresher;
 use App\Domains\Radar\Services\RadarUfs;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 
@@ -17,17 +19,66 @@ class RadarEndpointsTest extends RadarTestCase
         $this->getJson('/api/radar/states')
             ->assertOk()
             ->assertJsonPath('camara.status', 'pending')
-            ->assertJsonPath('ibge.status', 'pending')
+            // IBGE nunca fica "pendente": sem resultado publicado, vale a
+            // cópia dos valores oficiais (ver IbgeSnapshot).
+            ->assertJsonPath('ibge.status', 'ok')
+            ->assertJsonPath('ibge.from_snapshot', true)
             ->assertJsonPath('states.0.camara', null)
             ->assertJsonCount(27, 'states');
 
-        $expected = count(RadarRefresher::years()) + 1; // anos da Câmara + IBGE
+        // Só os anos da Câmara: a cópia do IBGE ainda está em dia.
+        $expected = count(RadarRefresher::years());
         Queue::assertPushedOn('radar', RefreshRadarJob::class);
         Queue::assertPushed(RefreshRadarJob::class, $expected);
 
         // Uma segunda leitura logo em seguida não despacha de novo.
         $this->getJson('/api/radar/states')->assertOk();
         Queue::assertPushed(RefreshRadarJob::class, $expected);
+    }
+
+    public function test_the_weekly_ibge_refresh_is_only_requested_when_the_snapshot_expires_and_at_most_once_a_day(): void
+    {
+        Queue::fake();
+        $snapshotDate = Carbon::parse(IbgeSnapshot::load()['generated_at']);
+
+        // Dentro da semana: nada a pedir para o IBGE.
+        $this->travelTo($snapshotDate->copy()->addDays(6));
+        $this->getJson('/api/radar/states?period=2025')->assertOk();
+        Queue::assertNotPushed(RefreshRadarJob::class, fn ($job) => $job->source === 'ibge');
+
+        // Venceu a semana: pede a atualização uma vez...
+        $this->travelTo($snapshotDate->copy()->addDays(8));
+        $this->getJson('/api/radar/states?period=2025')->assertOk();
+        Queue::assertPushed(RefreshRadarJob::class, fn ($job) => $job->source === 'ibge');
+
+        // ...e, mesmo com a consulta falhando e a página sendo aberta de novo
+        // horas depois, não insiste (no máximo uma tentativa por dia).
+        $this->travelTo($snapshotDate->copy()->addDays(8)->addHours(5));
+        $this->getJson('/api/radar/states?period=2025')->assertOk();
+        Queue::assertPushed(RefreshRadarJob::class, fn ($job) => $job->source === 'ibge', 1);
+    }
+
+    public function test_a_published_ibge_result_replaces_the_snapshot_and_a_failure_keeps_it_out_of_the_way(): void
+    {
+        Queue::fake();
+        $snapshot = IbgeSnapshot::load();
+        $fresh = $snapshot;
+        unset($fresh['snapshot']);
+        $fresh['generated_at'] = now()->toIso8601String();
+        $fresh['started_at_ms'] = (int) floor(microtime(true) * 1000);
+        $fresh['indicators']['population']['values']['CE'] = 9999999;
+
+        $this->store()->publish('ibge', 'all', $fresh);
+        $this->travel(1)->minutes();
+        $this->store()->recordFailure('ibge', 'all', 'cURL error 28');
+
+        $response = $this->getJson('/api/radar/states/CE')->assertOk()
+            ->assertJsonPath('ibge.from_snapshot', false)
+            ->assertJsonPath('ibge.values.population', 9999999);
+
+        // A falha vem depois do último sucesso: fica registrada, sem a mensagem de erro.
+        $this->assertNotNull($response->json('ibge.last_failed_at'));
+        $this->assertStringNotContainsString('cURL', $response->getContent());
     }
 
     public function test_overview_for_one_year_lists_top_topics_with_share(): void
@@ -100,8 +151,15 @@ class RadarEndpointsTest extends RadarTestCase
             ->assertJsonPath('senado.data.propositions', 2)
             ->assertJsonPath('senado.data.small_sample', true)
             ->assertJsonMissingPath('senado.data.topics.0.share')
-            ->assertJsonPath('ibge.status', 'pending')
-            ->assertJsonPath('ibge.values', null);
+            ->assertJsonPath('ibge.status', 'ok')
+            ->assertJsonPath('ibge.from_snapshot', true)
+            ->assertJsonPath('ibge.indicators.population.period', IbgeSnapshot::load()['indicators']['population']['period']);
+
+        // Valores da cópia oficial, para a UF pedida (AM = código 13).
+        $this->assertSame(
+            IbgeSnapshot::load()['indicators']['population']['values']['AM'],
+            $this->getJson('/api/radar/states/AM')->json('ibge.values.population'),
+        );
 
         // Um ano sem proposição no Senado vira zero, não erro.
         $this->getJson('/api/radar/states/AM?period=2024')->assertOk()

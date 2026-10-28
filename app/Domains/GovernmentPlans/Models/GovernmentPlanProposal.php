@@ -22,6 +22,22 @@ class GovernmentPlanProposal extends Model
 
     protected $casts = ['metadata' => 'array'];
 
+    /**
+     * Propostas em uso. Uma proposta substituída por outra versão (ex.: o
+     * resumo da IA trocado pelo texto literal do site) NÃO é apagada: recebe
+     * metadata.superseded_at e só deixa de aparecer na API.
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereNull('metadata->superseded_at');
+    }
+
+    /** 'literal' = título e texto copiados da fonte; 'ai' = resumo gerado pela IA. */
+    public function extractionMethod(): string
+    {
+        return $this->metadata['extraction'] ?? 'ai';
+    }
+
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);

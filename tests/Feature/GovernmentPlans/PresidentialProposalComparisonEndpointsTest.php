@@ -97,6 +97,45 @@ class PresidentialProposalComparisonEndpointsTest extends TestCase
         $this->assertNotNull($flavio->id);
     }
 
+    public function test_superseded_proposals_stay_in_the_database_but_leave_every_endpoint(): void
+    {
+        $lula = $this->candidate('Lula', 280002542548, 'PT');
+        $this->candidate('Flávio Bolsonaro', 280002551544, 'PL');
+        $theme = GovernmentPlanTheme::create(['slug' => 'cultura', 'name' => 'Cultura']);
+        $old = GovernmentPlanTheme::create(['slug' => 'antigo', 'name' => 'Tema antigo']);
+
+        GovernmentPlanProposal::create([
+            'candidate_id' => $lula->id, 'government_plan_theme_id' => $old->id, 'title' => 'Resumo antigo da IA',
+            'description' => 'Resumo.', 'source_url' => 'https://lula.com.br/propostas/', 'fingerprint' => str_repeat('d', 64),
+            'metadata' => ['superseded_at' => '2026-10-24T00:00:00Z'],
+        ]);
+        GovernmentPlanProposal::create([
+            'candidate_id' => $lula->id, 'government_plan_theme_id' => $theme->id, 'title' => 'Fábrica de bibliotecas',
+            'description' => 'Bibliotecas nos condomínios do Minha Casa Minha Vida.', 'source_excerpt' => 'Fábrica de bibliotecas',
+            'source_url' => 'https://lula.com.br/propostas/', 'fingerprint' => str_repeat('e', 64),
+            'metadata' => ['extraction' => 'literal'],
+        ]);
+
+        $this->getJson('/api/presidential-proposal-comparison/proposals')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.proposals')
+            ->assertJsonPath('data.proposals.0.title', 'Fábrica de bibliotecas')
+            ->assertJsonPath('data.proposals.0.extraction', 'literal')
+            ->assertJsonCount(1, 'data.themes');
+
+        $this->getJson('/api/presidential-proposal-comparison/themes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.slug', 'cultura');
+
+        $this->getJson('/api/presidential-proposal-comparison/themes/antigo')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.candidates');
+
+        // Nada foi apagado.
+        $this->assertSame(2, GovernmentPlanProposal::count());
+    }
+
     private function candidate(string $name, int $externalId, string $party): Candidate
     {
         return Candidate::create([

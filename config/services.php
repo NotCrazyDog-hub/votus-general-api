@@ -55,6 +55,8 @@ return [
         'sites' => [
             '280002542548' => [
                 'url' => env('LULA_PROPOSALS_URL', 'https://lula.com.br/propostas/'),
+                // Texto copiado do site, sem IA (import:lula-site-proposals).
+                'literal' => true,
                 'allowed_hosts' => ['lula.com.br', 'www.lula.com.br'],
                 'allowed_path_prefixes' => ['/propostas'],
                 'max_pages' => 10,

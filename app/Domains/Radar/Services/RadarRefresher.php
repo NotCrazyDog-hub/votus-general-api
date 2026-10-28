@@ -23,7 +23,10 @@ class RadarRefresher
     private const LOCK_SECONDS = RefreshRadarJob::TIMEOUT + 120;
 
     // Após despachar, não despacha de novo o mesmo escopo por este tempo.
-    private const DISPATCH_COOLDOWN_MINUTES = 60;
+    // IBGE: o servidor às vezes não consegue abrir conexão com o IBGE, então
+    // uma tentativa por dia no máximo (a atualização é semanal; ver
+    // radar.stale_after_hours.ibge) em vez de uma por hora.
+    private const DISPATCH_COOLDOWN_MINUTES = ['ibge' => 24 * 60, 'senado' => 6 * 60, 'camara' => 60];
 
     public function __construct(
         private RadarStore $store,
@@ -128,7 +131,7 @@ class RadarRefresher
                 return;
             }
 
-            if (! $this->store->claimDispatch($source, $scope, self::DISPATCH_COOLDOWN_MINUTES)) {
+            if (! $this->store->claimDispatch($source, $scope, self::DISPATCH_COOLDOWN_MINUTES[$source] ?? 60)) {
                 return;
             }
 

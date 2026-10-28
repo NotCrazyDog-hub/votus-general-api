@@ -57,6 +57,18 @@ class PresidentialProposalImportService
             }
 
             $candidate = $candidates[(string) $externalId];
+
+            // Fonte copiada literalmente do site (import:lula-site-proposals):
+            // não passa pela IA nem é tocada aqui — só entra na comparação.
+            if (!empty($source['literal'])) {
+                $analysis[$candidate->id] = [
+                    'candidate' => $candidate,
+                    'literal' => true,
+                    'proposals' => $this->storedProposals($candidate),
+                ];
+                continue;
+            }
+
             $proposals = [];
             foreach ($this->sites->fetchPages($source) as $page) {
                 foreach ($this->extractProposals($candidate->ballot_name, $page['text']) as $proposal) {
@@ -73,6 +85,58 @@ class PresidentialProposalImportService
         $comparisons = $this->generateComparisons($analysis);
 
         return $this->persist($analysis, $comparisons);
+    }
+
+    /**
+     * Só regenera os resumos comparativos (IA) a partir das propostas que já
+     * estão no banco — não busca site, não extrai propostas, não mexe nelas.
+     * Usado depois de import:lula-site-proposals.
+     */
+    public function compareStored(array $externalIds = []): array
+    {
+        $externalIds = $externalIds === [] ? array_keys(config('services.government_plans.sites', [])) : $externalIds;
+        $candidates = Candidate::query()
+            ->whereIn('external_id', array_map('strval', $externalIds))
+            ->whereNull('running_mate_of_id')
+            ->get();
+
+        if ($candidates->count() < 2) {
+            throw new RuntimeException('Informe ao menos dois candidatos para gerar uma comparação.');
+        }
+
+        $analysis = [];
+        foreach ($candidates as $candidate) {
+            $analysis[$candidate->id] = [
+                'candidate' => $candidate,
+                'literal' => true, // nada de propostas é regravado aqui
+                'proposals' => $this->storedProposals($candidate),
+            ];
+        }
+
+        return $this->persist($analysis, $this->generateComparisons($analysis));
+    }
+
+    /**
+     * Propostas em uso de um candidato, no formato da análise.
+     */
+    private function storedProposals(Candidate $candidate): array
+    {
+        return GovernmentPlanProposal::query()
+            ->active()
+            ->with('theme')
+            ->where('candidate_id', $candidate->id)
+            ->orderBy('id')
+            ->get()
+            ->map(fn (GovernmentPlanProposal $proposal) => [
+                'theme' => $proposal->theme->name,
+                'title' => $proposal->title,
+                'description' => $proposal->description,
+                'source_excerpt' => $proposal->source_excerpt,
+                'source_reference' => $proposal->source_reference,
+                'source_url' => $proposal->source_url,
+                'fingerprint' => $proposal->fingerprint,
+            ])
+            ->all();
     }
 
     public function extractProposals(string $candidateName, string $text): array
@@ -163,41 +227,59 @@ class PresidentialProposalImportService
         return $comparisons;
     }
 
+    /**
+     * Grava a análise SEM APAGAR NADA do banco:
+     *  - proposta nova ou reencontrada: criada/atualizada pela chave
+     *    (candidato, fingerprint) e volta a valer (sem "superseded_at");
+     *  - proposta que deixou de aparecer: marcada em metadata.superseded_at
+     *    (some da API, continua no banco, reversível);
+     *  - comparações: atualizadas no lugar pela chave (tema, par de candidatos).
+     * Candidatos com fonte literal (analysis[...]['literal']) não têm as
+     * propostas regravadas — só entram nas comparações.
+     */
     private function persist(array $analysis, array $comparisonRows): array
     {
         return DB::transaction(function () use ($analysis, $comparisonRows) {
-            $candidateIds = array_keys($analysis);
-            GovernmentPlanComparison::query()
-                ->whereIn('candidate_one_id', $candidateIds)
-                ->whereIn('candidate_two_id', $candidateIds)
-                ->delete();
-            GovernmentPlanProposal::whereIn('candidate_id', $candidateIds)->delete();
-
+            $now = now()->toIso8601String();
             $themes = [];
             $proposalCount = 0;
-            foreach ($analysis as $candidateId => $data) {
-                foreach ($data['proposals'] as $proposal) {
-                    $slug = Str::slug($proposal['theme']);
-                    if ($slug === '') {
-                        $slug = 'tema-' . substr($proposal['fingerprint'], 0, 12);
-                    }
-                    $theme = $themes[$slug] ??= GovernmentPlanTheme::firstOrCreate(
-                        ['slug' => $slug],
-                        ['name' => $proposal['theme'], 'position' => 0],
-                    );
 
-                    GovernmentPlanProposal::create([
-                        'candidate_id' => $candidateId,
-                        'government_plan_theme_id' => $theme->id,
-                        'title' => $proposal['title'],
-                        'description' => $proposal['description'],
-                        'source_excerpt' => $proposal['source_excerpt'],
-                        'source_reference' => $proposal['source_reference'],
-                        'source_url' => $proposal['source_url'],
-                        'fingerprint' => $proposal['fingerprint'],
-                    ]);
+            foreach ($analysis as $candidateId => $data) {
+                if (!empty($data['literal'])) {
+                    continue;
+                }
+
+                $keptIds = [];
+                foreach ($data['proposals'] as $proposal) {
+                    $theme = $this->themeFor($proposal['theme'], $proposal['fingerprint'], $themes);
+
+                    $row = GovernmentPlanProposal::updateOrCreate(
+                        ['candidate_id' => $candidateId, 'fingerprint' => $proposal['fingerprint']],
+                        [
+                            'government_plan_theme_id' => $theme->id,
+                            'title' => $proposal['title'],
+                            'description' => $proposal['description'],
+                            'source_excerpt' => $proposal['source_excerpt'],
+                            'source_reference' => $proposal['source_reference'],
+                            'source_url' => $proposal['source_url'],
+                            'metadata' => ['extraction' => 'ai'],
+                        ],
+                    );
+                    $keptIds[] = $row->id;
                     $proposalCount++;
                 }
+
+                GovernmentPlanProposal::query()
+                    ->active()
+                    ->where('candidate_id', $candidateId)
+                    ->whereNotIn('id', $keptIds)
+                    ->get()
+                    ->each(fn (GovernmentPlanProposal $old) => $old->update([
+                        'metadata' => array_merge($old->metadata ?? [], [
+                            'superseded_at' => $now,
+                            'superseded_by' => 'import:presidential-government-plans',
+                        ]),
+                    ]));
             }
 
             foreach ($comparisonRows as $comparison) {
@@ -205,24 +287,42 @@ class PresidentialProposalImportService
                 if (!$theme) {
                     continue;
                 }
-                GovernmentPlanComparison::create([
-                    'government_plan_theme_id' => $theme->id,
-                    'candidate_one_id' => $comparison['candidate_one_id'],
-                    'candidate_two_id' => $comparison['candidate_two_id'],
-                    'summary' => $comparison['summary'],
-                    'similarities' => $comparison['similarities'],
-                    'differences' => $comparison['differences'],
-                    'candidate_summaries' => $comparison['candidate_summaries'],
-                ]);
+
+                GovernmentPlanComparison::updateOrCreate(
+                    [
+                        'government_plan_theme_id' => $theme->id,
+                        'candidate_one_id' => $comparison['candidate_one_id'],
+                        'candidate_two_id' => $comparison['candidate_two_id'],
+                    ],
+                    [
+                        'summary' => $comparison['summary'],
+                        'similarities' => $comparison['similarities'],
+                        'differences' => $comparison['differences'],
+                        'candidate_summaries' => $comparison['candidate_summaries'],
+                    ],
+                );
             }
 
             return [
                 'candidates' => count($analysis),
                 'proposals' => $proposalCount,
-                'themes' => GovernmentPlanTheme::has('proposals')->count(),
+                'themes' => GovernmentPlanTheme::whereHas('proposals', fn ($query) => $query->active())->count(),
                 'comparisons' => count($comparisonRows),
             ];
         });
+    }
+
+    private function themeFor(string $name, string $fingerprint, array &$themes): GovernmentPlanTheme
+    {
+        $slug = Str::slug($name);
+        if ($slug === '') {
+            $slug = 'tema-' . substr($fingerprint, 0, 12);
+        }
+
+        return $themes[$slug] ??= GovernmentPlanTheme::firstOrCreate(
+            ['slug' => $slug],
+            ['name' => $name, 'position' => 0],
+        );
     }
 
     private function splitText(string $text): array

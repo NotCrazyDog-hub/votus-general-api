@@ -44,6 +44,8 @@ class PresidentialProposalComparisonController extends Controller
                     'source_excerpt' => $proposal->source_excerpt,
                     'source_reference' => $proposal->source_reference,
                     'source_url' => $proposal->source_url,
+                    // 'literal' (texto copiado da fonte) ou 'ai' (resumo da IA).
+                    'extraction' => $proposal->extractionMethod(),
                 ])->values(),
             ],
         ]);
@@ -92,6 +94,7 @@ class PresidentialProposalComparisonController extends Controller
                                 'source_excerpt' => $proposal->source_excerpt,
                                 'source_reference' => $proposal->source_reference,
                                 'source_url' => $proposal->source_url,
+                                'extraction' => $proposal->extractionMethod(),
                             ])->values(),
                         ];
                     })->values(),

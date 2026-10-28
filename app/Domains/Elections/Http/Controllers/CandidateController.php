@@ -3,6 +3,7 @@
 namespace App\Domains\Elections\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Domains\Elections\Services\CandidateService;
 use App\Domains\Elections\Enums\CandidateOffice;
 use App\Domains\Elections\Http\Resources\CandidateResource;
@@ -109,6 +110,8 @@ class CandidateController extends Controller
             'state' => ['nullable', 'string', 'size:2'],
             'party' => ['nullable', 'string', 'max:20'],
             'search' => ['nullable', 'string', 'max:100'],
+            // Situação eleitoral (resultado oficial do TSE).
+            'election_result' => ['nullable', 'string', Rule::in(CandidateService::ELECTION_RESULT_FILTERS)],
         ]);
 
         $state = $validated['state'] ?? null;
@@ -118,6 +121,7 @@ class CandidateController extends Controller
             $state,
             $validated['party'] ?? null,
             $validated['search'] ?? null,
+            $validated['election_result'] ?? null,
         );
 
         return CandidateResource::collection($candidates)->additional([
@@ -127,6 +131,7 @@ class CandidateController extends Controller
                 'with_higher_education' => $this->service->countWithHigherEducationByOffice($office, $state),
                 'with_full_ticket' => $this->service->countWithFullTicketByOffice($office, $state),
                 'previously_elected' => $this->service->countPreviouslyElectedByOffice($office, $state),
+                'election_results' => $this->service->countsByElectionResult($office, $state),
             ],
         ]);
     }
