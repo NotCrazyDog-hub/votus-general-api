@@ -97,6 +97,38 @@ class PresidentialProposalComparisonEndpointsTest extends TestCase
         $this->assertNotNull($flavio->id);
     }
 
+    public function test_a_theme_with_proposals_from_only_one_candidate_does_not_serve_a_comparison(): void
+    {
+        $lula = $this->candidate('Lula', 280002542548, 'PT');
+        $flavio = $this->candidate('Flávio Bolsonaro', 280002551544, 'PL');
+        $theme = GovernmentPlanTheme::create(['slug' => 'energia', 'name' => 'Energia']);
+
+        GovernmentPlanProposal::create([
+            'candidate_id' => $flavio->id, 'government_plan_theme_id' => $theme->id, 'title' => 'Energia limpa',
+            'description' => 'Descrição.', 'source_url' => 'https://example.test', 'fingerprint' => str_repeat('f', 64),
+        ]);
+        // Comparação antiga que dizia "o outro não menciona energia".
+        GovernmentPlanComparison::create([
+            'government_plan_theme_id' => $theme->id, 'candidate_one_id' => min($lula->id, $flavio->id),
+            'candidate_two_id' => max($lula->id, $flavio->id), 'summary' => 'Lula não menciona energia.',
+            'similarities' => [], 'differences' => [], 'candidate_summaries' => [],
+        ]);
+
+        $this->getJson('/api/presidential-proposal-comparison/themes/energia')
+            ->assertOk()
+            ->assertJsonPath('data.comparison', null)
+            ->assertJsonCount(1, 'data.candidates');
+
+        // Com proposta dos dois, a comparação volta a ser servida.
+        GovernmentPlanProposal::create([
+            'candidate_id' => $lula->id, 'government_plan_theme_id' => $theme->id, 'title' => 'Transição energética',
+            'description' => 'Descrição.', 'source_url' => 'https://example.test', 'fingerprint' => str_repeat('g', 64),
+        ]);
+        $this->getJson('/api/presidential-proposal-comparison/themes/energia')
+            ->assertOk()
+            ->assertJsonPath('data.comparison.summary', 'Lula não menciona energia.');
+    }
+
     public function test_superseded_proposals_stay_in_the_database_but_leave_every_endpoint(): void
     {
         $lula = $this->candidate('Lula', 280002542548, 'PT');

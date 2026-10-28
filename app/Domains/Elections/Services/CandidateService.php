@@ -36,6 +36,30 @@ class CandidateService
     /** Situações aceitas no filtro (mesmas de ElectionResultStatus). */
     public const ELECTION_RESULT_FILTERS = ['elected', 'not_elected', 'runoff', 'awaiting', 'unverified'];
 
+    /**
+     * Posição de cada situação na listagem (mesmas regras de
+     * filterByElectionResult): 0 eleito, 1 segundo turno, 2 não eleito,
+     * 3 aguardando resultado, 4 não verificada. LOWER() + LIKE em vez de
+     * ilike para valer igual no Postgres e no banco dos testes.
+     */
+    private const ELECTION_RESULT_ORDER = <<<'SQL'
+        CASE
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND LOWER(h.result_status) LIKE 'eleito%') THEN 0
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND LOWER(h.result_status) LIKE '%turno%')
+                AND NOT EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND h.round > 1
+                AND h.result_status IS NOT NULL AND h.result_status <> '') THEN 1
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year AND (LOWER(h.result_status) LIKE 'não eleito%'
+                OR LOWER(h.result_status) LIKE 'nao eleito%' OR LOWER(h.result_status) = 'suplente')) THEN 2
+            WHEN EXISTS (SELECT 1 FROM candidacy_histories h WHERE h.candidate_id = candidates.id
+                AND h.election_year = candidates.election_year) THEN 3
+            ELSE 4
+        END
+        SQL;
+
     public function listByOffice(
         CandidateOffice $office,
         ?string $state = null,
@@ -66,6 +90,9 @@ class CandidateService
                     ->orWhere('party_acronym', $op, $termo)
                     ->orWhere('ballot_number', 'like', $termo));
             })
+            // Situação eleitoral confirmada primeiro (eleitos, 2º turno, não
+            // eleitos); sem resultado, por último. Empate: nome de urna.
+            ->orderByRaw(self::ELECTION_RESULT_ORDER)
             ->orderBy('ballot_name')
             ->paginate(50)
             // Mantém party/search nos links "next"/"prev" da paginação.

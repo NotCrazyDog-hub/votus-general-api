@@ -58,6 +58,13 @@ class PresidentialProposalComparisonService
 
     public function comparisonFor(GovernmentPlanTheme $theme, ?int $firstCandidateId, ?int $secondCandidateId): ?GovernmentPlanComparison
     {
+        // Comparações antigas de temas em que só um candidato tem proposta
+        // (geradas antes de existir esta regra) não são servidas: diziam que o
+        // outro "não menciona" o tema, o que a lista extraída não prova.
+        if ($theme->proposals->pluck('candidate_id')->unique()->count() < 2) {
+            return null;
+        }
+
         $query = $theme->comparisons()->with(['candidateOne', 'candidateTwo'])->latest('updated_at');
 
         if ($firstCandidateId && $secondCandidateId) {

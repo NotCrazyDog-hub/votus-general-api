@@ -112,6 +112,31 @@ class CandidateElectionResultTest extends TestCase
         $this->getJson('/api/president-candidates?election_result=inventado')->assertStatus(422);
     }
 
+    public function test_the_list_shows_confirmed_results_first(): void
+    {
+        // Nomes em ordem alfabética inversa à da situação, para provar que a
+        // situação vem antes do nome.
+        $this->candidate('A Sem registro', 3001);
+        $awaiting = $this->candidate('B Aguardando', 3002);
+        $this->history($awaiting, 1, null);
+        $out = $this->candidate('C Não eleito', 3003);
+        $this->history($out, 1, 'Não eleito');
+        $lostRunoff = $this->candidate('D Perdeu o 2º turno', 3004);
+        $this->history($lostRunoff, 1, '2º turno');
+        $this->history($lostRunoff, 2, 'Não eleito');
+        $runoff = $this->candidate('E No segundo turno', 3005);
+        $this->history($runoff, 1, '2º turno');
+        $this->history($runoff, 2, null);
+        $elected = $this->candidate('F Eleito', 3006);
+        $this->history($elected, 1, '2º turno');
+        $this->history($elected, 2, 'Eleito');
+        $this->candidate('G Sem registro', 3007);
+
+        $ids = collect($this->getJson('/api/president-candidates')->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([3006, 3005, 3003, 3004, 3002, 3001, 3007], $ids);
+    }
+
     private function candidate(string $name, int $externalId): Candidate
     {
         return Candidate::create([

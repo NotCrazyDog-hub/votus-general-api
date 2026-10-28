@@ -202,6 +202,16 @@ class PresidentialProposalImportService
                 for ($second = $first + 1; $second < count($candidateIds); $second++) {
                     $firstCandidate = $analysis[$candidateIds[$first]]['candidate'];
                     $secondCandidate = $analysis[$candidateIds[$second]]['candidate'];
+
+                    // Só compara tema em que OS DOIS têm proposta extraída. Com
+                    // proposta de um lado só, o texto comparativo acabava
+                    // dizendo "o outro não menciona o tema" — conclusão que a
+                    // lista extraída não sustenta (o plano pode tratar do
+                    // assunto e a extração não ter pego).
+                    if (empty($data['proposals'][$candidateIds[$first]]) || empty($data['proposals'][$candidateIds[$second]])) {
+                        continue;
+                    }
+
                     $pair = [
                         $firstCandidate->ballot_name => $data['proposals'][$candidateIds[$first]] ?? [],
                         $secondCandidate->ballot_name => $data['proposals'][$candidateIds[$second]] ?? [],
