@@ -5,7 +5,6 @@ namespace App\Domains\Legislatures\Console\Commands\Alece;
 use App\Domains\Legislatures\Models\Bill;
 use App\Domains\Legislatures\Models\Legislator;
 use App\Domains\Legislatures\Services\Alece\AleceLegislativeService;
-use App\Services\VotusTopicClassificationService;
 use Illuminate\Console\Command;
 
 class SyncAleceBills extends Command
@@ -13,7 +12,7 @@ class SyncAleceBills extends Command
     protected $signature = 'sync:bills-alece';
     protected $description = 'Busca e armazena proposições (PL/PEC) de deputados estaduais do Ceará via site da Alece';
 
-    public function handle(AleceLegislativeService $service, VotusTopicClassificationService $classifier)
+    public function handle(AleceLegislativeService $service)
     {
         $legislators = Legislator::where('chamber', 'state_house')
             ->where('state', 'CE')
@@ -25,10 +24,6 @@ class SyncAleceBills extends Command
         $stats = [
             'bills_found' => 0,
             'bills_new_or_updated' => 0,
-            'classifications_done' => 0,
-            'classifications_skipped' => 0,
-            'classifications_failed' => 0,
-            'reclassifications' => 0,
         ];
 
         foreach ($legislators as $legislator) {
@@ -63,25 +58,11 @@ class SyncAleceBills extends Command
 
                     // Classificação automática de temas Votus (não interrompe o fluxo em caso de falha)
                     try {
-                        $result = $classifier->classify($bill);
+                        
 
-                        if ($result['skipped']) {
-                            if ($result['classified']) {
-                                $stats['classifications_skipped']++;
-                            } else {
-                                $stats['classifications_failed']++;
-                            }
-                        } elseif ($result['classified']) {
-                            if ($wasExisting) {
-                                $stats['reclassifications']++;
-                            } else {
-                                $stats['classifications_done']++;
-                            }
-                        } else {
-                            $stats['classifications_failed']++;
-                        }
+                        usleep(150_000); // não martela o servidor a cada detalhe
                     } catch (\Throwable $e) {
-                        $stats['classifications_failed']++;
+                        usleep(150_000); // não martela o servidor a cada detalhe
                         $this->newLine();
                         $this->error("Falha na classificação de {$bill->external_id}: " . $e->getMessage());
                     }
