@@ -180,6 +180,25 @@ class RadarRefresherTest extends RadarTestCase
         $this->assertNull($this->store()->result('senado', 'CE'));
     }
 
+    public function test_senado_retries_when_the_api_answers_too_many_requests(): void
+    {
+        // Duas recusas (429) na lista de senadores e uma nas proposições do
+        // senador 1; depois o Senado responde normalmente.
+        $this->fakeSenado(failingDetails: [], tooManyRequests: ['/senador/lista/atual' => 2, 'codigoParlamentarAutor=1' => 1]);
+
+        $this->assertSame('published', app(RadarRefresher::class)->refresh('senado', 'CE'));
+        $this->assertSame(2, $this->store()->result('senado', 'CE')['legislature']['propositions']);
+    }
+
+    public function test_senado_gives_up_when_too_many_requests_never_stops(): void
+    {
+        $this->fakeSenado(failingDetails: [], tooManyRequests: ['/senador/lista/atual' => 99]);
+
+        $this->assertSame('failed', app(RadarRefresher::class)->refresh('senado', 'CE'));
+        $this->assertNull($this->store()->result('senado', 'CE'));
+        $this->assertStringContainsString('429', $this->store()->status('senado', 'CE')['last_error']);
+    }
+
     private function fakeCamara(\Closure $collect): void
     {
         $this->mock(CamaraRadarCollector::class, fn ($mock) => $mock->shouldReceive('collect')->andReturnUsing($collect));
@@ -198,15 +217,31 @@ class RadarRefresherTest extends RadarTestCase
         return [['id' => '9324', 'variavel' => 'Variável', 'unidade' => 'Pessoas', 'resultados' => [['classificacoes' => [], 'series' => $series]]]];
     }
 
-    private function fakeSenado(array $failingDetails): void
+    /**
+     * @param  array<string, int>  $tooManyRequests  trecho da URL => quantas vezes responder 429 antes de responder normalmente
+     */
+    private function fakeSenado(array $failingDetails, array $tooManyRequests = []): void
     {
-        config(['radar.senado.sleep_ms' => 0]);
+        // Sem pausas nem esperas reais entre tentativas nos testes.
+        config([
+            'radar.senado.sleep_ms' => 0,
+            'radar.senado.backoff_429_seconds' => [0, 0, 0],
+            'radar.senado.backoff_seconds' => [0, 0, 0],
+        ]);
 
         $senator = fn ($code, $name) => ['IdentificacaoParlamentar' => ['CodigoParlamentar' => $code, 'NomeParlamentar' => $name, 'UfParlamentar' => 'CE'], 'Mandato' => ['DescricaoParticipacao' => 'Titular']];
         $bill = fn ($id, $ident, $date) => ['id' => $id, 'identificacao' => $ident, 'dataApresentacao' => $date];
 
-        Http::fake(function ($request) use ($senator, $bill, $failingDetails) {
+        Http::fake(function ($request) use ($senator, $bill, $failingDetails, &$tooManyRequests) {
             $url = $request->url();
+
+            foreach ($tooManyRequests as $fragment => $left) {
+                if ($left > 0 && str_contains($url, $fragment)) {
+                    $tooManyRequests[$fragment]--;
+
+                    return Http::response('Too Many Requests', 429);
+                }
+            }
 
             if (str_contains($url, '/senador/lista/atual')) {
                 return Http::response(['ListaParlamentarEmExercicio' => ['Parlamentares' => ['Parlamentar' => [

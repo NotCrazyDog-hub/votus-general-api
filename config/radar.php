@@ -76,8 +76,19 @@ return [
     ],
 
     'senado' => [
-        // Pausa entre chamadas de detalhe, igual a sync:bill-topics.
-        'sleep_ms' => 300,
+        // Pausa entre chamadas. Era 300 ms (igual a sync:bill-topics), mas o
+        // Senado passou a responder 429 "Too Many Requests" com várias UFs
+        // sendo atualizadas em sequência; 1 s alivia o volume.
+        'sleep_ms' => 1000,
+
+        // Esperas entre novas tentativas (uma por item; acabou a lista, a
+        // falha vale). 429 = limite de volume do Senado: esperas longas.
+        // 5xx/conexão = instabilidade passageira: esperas curtas.
+        'backoff_429_seconds' => [20, 60, 120],
+        'backoff_seconds' => [2, 5, 10],
+
+        // Teto de tempo para novas tentativas numa coleta (o job tem 30 min).
+        'retry_budget_seconds' => 1200,
     ],
 
     'ibge' => [

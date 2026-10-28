@@ -23,6 +23,9 @@ use Throwable;
  */
 class SenadoRadarCollector
 {
+    // Limite de tempo para novas tentativas nesta coleta (o job tem 30 min).
+    private float $deadline = 0;
+
     public function __construct(private SenateApiService $api)
     {
     }
@@ -32,10 +35,11 @@ class SenadoRadarCollector
         $uf = strtoupper($uf);
         $since = config('radar.legislature.start');
         $types = array_flip(config('radar.bill_types'));
-        $sleepUs = (int) config('radar.senado.sleep_ms', 300) * 1000;
+        $sleepUs = (int) config('radar.senado.sleep_ms', 1000) * 1000;
+        $this->deadline = microtime(true) + (int) config('radar.senado.retry_budget_seconds', 1200);
 
         // Falha aqui lança exceção: sem a lista não dá para saber o universo.
-        $senators = $this->api->listParliamentarians($uf);
+        $senators = $this->withRetry(fn () => $this->api->listParliamentarians($uf));
 
         if ($senators === []) {
             throw new RuntimeException("Senado não retornou senadores em exercício para {$uf}");
@@ -57,7 +61,7 @@ class SenadoRadarCollector
                 'participation' => $senator['Mandato']['DescricaoParticipacao'] ?? null,
             ];
 
-            foreach ($this->api->getBillsByLegislator($id) as $bill) {
+            foreach ($this->withRetry(fn () => $this->api->getBillsByLegislator($id)) as $bill) {
                 $date = (string) ($bill['dataApresentacao'] ?? '');
                 $type = strtok((string) ($bill['identificacao'] ?? ''), ' ');
 
@@ -78,7 +82,7 @@ class SenadoRadarCollector
         $billTopics = [];
 
         foreach ($bills as $billId => $info) {
-            $topics = $this->topicsWithRetry($billId, $sleepUs);
+            $topics = $this->topicsOrNull($billId);
 
             if ($topics === null) {
                 $failed[] = $info['identification'];
@@ -143,26 +147,51 @@ class SenadoRadarCollector
     }
 
     /**
-     * As falhas medidas (503, TLS, conexão recusada) foram transitórias: a
-     * mesma proposição respondia normalmente segundos depois. Por isso até 3
-     * tentativas, com espera crescente.
+     * Classificação de uma proposição; null se não der para ler mesmo depois
+     * das novas tentativas (a proposição fica fora da contagem e entra em
+     * details_failed, como antes).
      */
-    private function topicsWithRetry(string $billId, int $sleepUs): ?array
+    private function topicsOrNull(string $billId): ?array
     {
-        $attempts = 3;
+        try {
+            return $this->withRetry(fn () => $this->api->getTopics($billId));
+        } catch (Throwable $e) {
+            Log::info("[RADAR] Senado: classificação de {$billId} não pôde ser lida: {$e->getMessage()}");
 
-        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            return null;
+        }
+    }
+
+    /**
+     * Repete a chamada em falhas transitórias do Senado, com espera crescente.
+     * As medidas: 503, TLS e conexão recusada (somem em segundos) e 429 "Too
+     * Many Requests" (o Senado limita o volume de requisições, sem dizer por
+     * quanto tempo — por isso a espera é bem maior). Outros erros, ou o fim do
+     * tempo da coleta, devolvem a exceção na hora.
+     */
+    private function withRetry(\Closure $call): mixed
+    {
+        $attempt = 0;
+
+        while (true) {
             try {
-                return $this->api->getTopics($billId);
+                return $call();
             } catch (Throwable $e) {
-                Log::info("[RADAR] Senado: falha ao ler classificação de {$billId} ({$attempt}/{$attempts}): {$e->getMessage()}");
+                $tooMany = str_ends_with($e->getMessage(), ': 429');
+                $transient = $tooMany
+                    || preg_match('/: 5\d\d$/', $e->getMessage())
+                    || $e instanceof \Illuminate\Http\Client\ConnectionException;
+                $waits = config($tooMany ? 'radar.senado.backoff_429_seconds' : 'radar.senado.backoff_seconds', []);
+                $wait = $waits[$attempt] ?? null;
 
-                if ($attempt < $attempts) {
-                    usleep($sleepUs * 5 * $attempt);
+                if (! $transient || $wait === null || microtime(true) + $wait > $this->deadline) {
+                    throw $e;
                 }
+
+                $attempt++;
+                Log::info("[RADAR] Senado: {$e->getMessage()} — nova tentativa {$attempt} em {$wait}s");
+                usleep((int) ($wait * 1_000_000));
             }
         }
-
-        return null;
     }
 }
