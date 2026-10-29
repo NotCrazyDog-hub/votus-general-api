@@ -27,7 +27,7 @@ class BillsClassifyTopicsAlece extends Command
             $stats['total']++;
 
             // Verificar se já foi classificado (conteúdo não mudou)
-            if ($classifier->isAlreadyClassified($bill, $this->extractContent($bill))) {
+            if ($classifier->jaClassificado($bill, $this->extractContent($bill))) {
                 $stats['already_classified']++;
                 continue;
             }

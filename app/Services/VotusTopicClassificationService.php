@@ -564,4 +564,28 @@ PROMPT;
 
         return $result;
     }
+
+    public function jaClassificado(Bill $bill, string $content): bool
+    {
+        $currentHash = md5($content);
+        $rawData = $bill->raw_data ?? [];
+
+        if (!is_array($rawData)) {
+            $rawData = [];
+        }
+
+        $storedHash = $rawData[self::RAW_DATA_HASH_KEY] ?? null;
+
+        if ($storedHash !== null && $storedHash === $currentHash) {
+            $classificationStatus = $rawData['classification_status'] ?? null;
+
+            if ($classificationStatus === 'with_topics' || $classificationStatus === 'empty_topics') {
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
 }
