@@ -14,6 +14,10 @@ class SyncLowerHouseLegislators extends Command
     protected $signature = 'sync:legislators-lower-house';
     protected $description = 'Fetch legislators from Câmara dos Deputados API and save to database';
 
+    /**
+     * Consulta parlamentares da Câmara dos Deputados e sincroniza seus dados cadastrais.
+     */
+
     public function handle(LowerHouseApiService $api, OfficialPhotoOptimizer $photoOptimizer)
     {
         $ids = $api->listIds();

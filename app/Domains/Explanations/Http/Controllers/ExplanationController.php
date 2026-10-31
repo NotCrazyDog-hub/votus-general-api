@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 
 class ExplanationController extends Controller
 {
+    /** Lista explicações publicadas e as transforma no formato público do recurso. */
     public function index()
     {
         $paginador = Explanation::query()
@@ -22,6 +23,7 @@ class ExplanationController extends Controller
         return response()->json($paginador);
     }
 
+    /** Exibe uma explicação pública com fontes e quiz; conteúdos não publicados respondem 404. */
     public function show(Explanation $explanation)
     {
         // Mesma regra do NewsController::show(): só notícia/conteúdo

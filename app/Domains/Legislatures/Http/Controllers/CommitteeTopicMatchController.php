@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 
 class CommitteeTopicMatchController extends Controller
 {
+    /** Lista pares comissão/tema ainda não revisados e retorna seus nomes para a fila de revisão. */
     public function pending()
     {
         return CommitteeTopic::where('reviewed', false)
@@ -23,6 +24,10 @@ class CommitteeTopicMatchController extends Controller
             ]);
     }
 
+    /**
+     * Registra a decisão da revisão. Rejeições removem o par sugerido; aprovações
+     * ficam marcadas como concluídas apenas com confiança igual ou superior a 0,8.
+     */
     public function review(Request $request, CommitteeTopic $committeeTopic)
     {
         $validated = $request->validate([

@@ -48,6 +48,7 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Revoga somente o token Sanctum usado nesta requisição. */
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
@@ -55,6 +56,7 @@ class AuthController extends Controller
         return response()->json(['message' => 'Sessão encerrada.']);
     }
 
+    /** Retorna os campos públicos do administrador autenticado. */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();

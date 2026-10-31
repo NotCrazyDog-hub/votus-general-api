@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 
 class CategoryController extends Controller
 {
+    /** Lista as categorias usadas pelas propostas, ordenadas para exibição na interface. */
     public function index(Request $request)
     {
         $search = $request->get('q');

@@ -14,11 +14,13 @@ class CandidateController extends Controller
 {
     public function __construct(protected CandidateService $service) {}
 
+    /** Retorna a lista paginada de candidatos à Presidência com os filtros da requisição. */
     public function indexForPresidents(Request $request)
     {
         return $this->indexFor(CandidateOffice::President, $request);
     }
 
+    /** Busca os detalhes de um candidato à Presidência pelo identificador do TSE. */
     public function showPresident(int $external_id)
     {
         return new CandidateResource(
@@ -26,16 +28,19 @@ class CandidateController extends Controller
         );
     }
 
+    /** Retorna despesas paginadas do candidato à Presidência com os filtros informados. */
     public function presidentExpenses(Request $request, int $external_id)
     {
         return $this->expensesFor($request, $external_id, CandidateOffice::President);
     }
 
+    /** Retorna a lista paginada de candidatos a governador com os filtros da requisição. */
     public function indexForGovernors(Request $request)
     {
         return $this->indexFor(CandidateOffice::Governor, $request);
     }
 
+    /** Busca os detalhes de um candidato a governador pelo identificador do TSE. */
     public function showGovernor(int $external_id)
     {
         return new CandidateResource(
@@ -43,16 +48,19 @@ class CandidateController extends Controller
         );
     }
 
+    /** Retorna despesas paginadas do candidato a governador com os filtros informados. */
     public function governorExpenses(Request $request, int $external_id)
     {
         return $this->expensesFor($request, $external_id, CandidateOffice::Governor);
     }
 
+    /** Retorna a lista paginada de candidatos ao Senado com os filtros da requisição. */
     public function indexForSenateCandidates(Request $request)
     {
         return $this->indexFor(CandidateOffice::Senator, $request);
     }
 
+    /** Busca os detalhes de um candidato ao Senado pelo identificador do TSE. */
     public function showSenateCandidate(int $external_id)
     {
         return new CandidateResource(
@@ -60,16 +68,19 @@ class CandidateController extends Controller
         );
     }
 
+    /** Retorna despesas paginadas do candidato ao Senado com os filtros informados. */
     public function senateExpenses(Request $request, int $external_id)
     {
         return $this->expensesFor($request, $external_id, CandidateOffice::Senator);
     }
 
+    /** Retorna a lista paginada de candidatos a deputado federal com os filtros da requisição. */
     public function indexForFederalDeputyCandidates(Request $request)
     {
         return $this->indexFor(CandidateOffice::FederalDeputy, $request);
     }
 
+    /** Busca os detalhes de um candidato a deputado federal pelo identificador do TSE. */
     public function showFederalDeputyCandidate(int $external_id)
     {
         return new CandidateResource(
@@ -77,16 +88,19 @@ class CandidateController extends Controller
         );
     }
 
+    /** Retorna despesas paginadas do candidato a deputado federal com os filtros informados. */
     public function federalDeputyExpenses(Request $request, int $external_id)
     {
         return $this->expensesFor($request, $external_id, CandidateOffice::FederalDeputy);
     }
 
+    /** Retorna a lista paginada de candidatos a deputado estadual com os filtros da requisição. */
     public function indexForStateDeputyCandidates(Request $request)
     {
         return $this->indexFor(CandidateOffice::StateDeputy, $request);
     }
 
+    /** Busca os detalhes de um candidato a deputado estadual pelo identificador do TSE. */
     public function showStateDeputyCandidate(int $external_id)
     {
         return new CandidateResource(
@@ -94,6 +108,7 @@ class CandidateController extends Controller
         );
     }
 
+    /** Retorna despesas paginadas do candidato a deputado estadual com os filtros informados. */
     public function stateDeputyExpenses(Request $request, int $external_id)
     {
         return $this->expensesFor($request, $external_id, CandidateOffice::StateDeputy);

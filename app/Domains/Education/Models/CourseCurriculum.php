@@ -29,6 +29,9 @@ class CourseCurriculum extends Model
         'duration_semesters' => 'integer',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `CourseOffering`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(
@@ -37,6 +40,9 @@ class CourseCurriculum extends Model
         );
     }
 
+    /**
+     * Relação um-para-muitos com o modelo `CurriculumSubject`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function subjects(): HasMany
     {
         return $this->hasMany(

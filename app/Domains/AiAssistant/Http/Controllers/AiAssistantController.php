@@ -10,6 +10,10 @@ use Throwable;
 
 class AiAssistantController extends Controller
 {
+    /**
+     * Valida a pergunta, encaminha-a ao webhook do n8n e traduz falhas de
+     * configuração, resposta HTTP ou conexão em respostas JSON da API.
+     */
     public function ask(Request $request): JsonResponse
     {
         $data = $request->validate([

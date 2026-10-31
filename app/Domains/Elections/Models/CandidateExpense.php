@@ -30,6 +30,9 @@ class CandidateExpense extends Model
         'amount' => 'decimal:2',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Candidate`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);

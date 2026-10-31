@@ -36,6 +36,10 @@ class ImportMecCourses extends Command
     /** Último registro do CSV com garantia de estar salvo no banco. */
     private int $committedRecord = 0;
 
+    /**
+     * Lê o CSV do MEC, normaliza linhas, associa cursos a universidades e campi e grava lotes que podem ser retomados.
+     */
+
     public function handle(): int
     {
         $fileName = (string) $this->argument('file');
@@ -69,6 +73,8 @@ class ImportMecCourses extends Command
                 );
             }
 
+            // O CSV pode variar na grafia dos cabeçalhos; a normalização permite
+            // que mapRow procure os mesmos campos mesmo com nomes alternativos.
             $headers = array_map(
                 fn ($header) => $this->normalizeHeader((string) $header),
                 $headers
@@ -153,6 +159,8 @@ class ImportMecCourses extends Command
 
                 $now = now();
 
+                // A chave composta agrupa curso e campus e também elimina duplicatas
+                // do próprio arquivo antes do upsert em lote.
                 $batch[$campusId . '|' . $data['mec_course_code']] = [
                     'campus_id' => $campusId,
                     'mec_course_code' => $data['mec_course_code'],
@@ -177,6 +185,7 @@ class ImportMecCourses extends Command
                 if (count($batch) >= self::BATCH_SIZE) {
                     $this->saveBatch($batch);
                     $batch = [];
+                    // Só avança o ponto de retomada depois que o lote foi salvo.
                     $this->committedRecord = $record;
                 }
 
@@ -283,6 +292,11 @@ class ImportMecCourses extends Command
         );
     }
 
+    /**
+     * Retorna o ID interno da universidade pelo código do MEC. Usa o cache da
+     * execução quando possível; caso contrário, cria ou atualiza o registro e
+     * guarda o ID para reutilizar nos próximos cursos do CSV.
+     */
     private function getUniversityId(array $data): int
     {
         $code = $data['mec_university_code'];
@@ -310,6 +324,11 @@ class ImportMecCourses extends Command
         return $this->universityCache[$code] = (int) $university->id;
     }
 
+    /**
+     * Localiza o campus pela combinação universidade + código IBGE da cidade.
+     * Essa chave permite que cursos da mesma instituição e município apontem
+     * para o mesmo campus, ainda que apareçam em muitas linhas do arquivo.
+     */
     private function getCampusId(int $universityId, array $data): int
     {
         $cacheKey = $universityId . '|' . $data['ibge_city_code'];
@@ -336,6 +355,10 @@ class ImportMecCourses extends Command
         return $this->campusCache[$cacheKey] = (int) $campus->id;
     }
 
+    /**
+     * Grava cursos em lote. A combinação campus_id + mec_course_code identifica
+     * cada curso; quando ela já existe, o upsert atualiza os campos mutáveis.
+     */
     private function saveBatch(array $batch): void
     {
         $this->withRetry(
@@ -365,6 +388,8 @@ class ImportMecCourses extends Command
      */
     private function withRetry(callable $callback): mixed
     {
+        // Repetimos apenas erros de conexão temporários; erros de dados ou SQL
+        // são propagados sem novas tentativas para não mascarar a causa real.
         return retry(
             self::RETRY_BACKOFF,
             function () use ($callback) {
@@ -394,6 +419,7 @@ class ImportMecCourses extends Command
         );
     }
 
+    /** Classifica erros conhecidos de rede/banco para decidir se a operação pode ser repetida. */
     private function isTransientConnectionError(Throwable $exception): bool
     {
         $needles = [
@@ -414,8 +440,15 @@ class ImportMecCourses extends Command
         return Str::contains($exception->getMessage(), $needles, true);
     }
 
+    /**
+     * Converte uma linha do CSV em dados normalizados da universidade, campus e
+     * curso. Aceita nomes alternativos de coluna publicados pelo MEC e retorna
+     * null quando falta algum dado obrigatório para salvar o registro.
+     */
     private function mapRow(array $row): ?array
     {
+        // O MEC já publicou arquivos com mais de um nome de coluna para o mesmo
+        // campo; value tenta as alternativas em ordem e usa a primeira presente.
         $mecUniversityCode = $this->toInteger(
             $this->value($row, ['CODIGO_IES', 'CODIGO_DA_IES', 'CO_IES'])
         );
@@ -527,6 +560,7 @@ class ImportMecCourses extends Command
         ];
     }
 
+    /** Examina a primeira linha e escolhe entre ponto e vírgula e vírgula como separador. */
     private function detectDelimiter($handle): string
     {
         $sample = fgets($handle);
@@ -542,6 +576,7 @@ class ImportMecCourses extends Command
             : ',';
     }
 
+    /** Lê uma linha CSV e converte cada célula para UTF-8 antes de devolvê-la. */
     private function readCsvRow($handle, string $delimiter): array|false
     {
         $row = fgetcsv($handle, null, $delimiter, '"', '');
@@ -556,6 +591,7 @@ class ImportMecCourses extends Command
         );
     }
 
+    /** Mantém texto UTF-8 válido e tenta Windows-1252 para células exportadas nessa codificação. */
     private function toUtf8(string $value): string
     {
         $value = trim($value);
@@ -569,6 +605,7 @@ class ImportMecCourses extends Command
         );
     }
 
+    /** Padroniza cabeçalhos para maiúsculas ASCII e troca pontuação/espaços por sublinhados. */
     private function normalizeHeader(string $header): string
     {
         $header = str_replace("\xEF\xBB\xBF", '', $header);
@@ -581,11 +618,13 @@ class ImportMecCourses extends Command
             ->toString();
     }
 
+    /** Remove acentos, converte para minúsculas e compacta espaços para comparação estável. */
     private function normalizeText(string $value): string
     {
         return Str::of($value)->ascii()->lower()->squish()->toString();
     }
 
+    /** Retorna o primeiro valor não vazio encontrado entre os nomes alternativos de coluna. */
     private function value(array $row, array $possibleColumns): ?string
     {
         foreach ($possibleColumns as $column) {
@@ -605,6 +644,7 @@ class ImportMecCourses extends Command
         return null;
     }
 
+    /** Normaliza o código municipal para sete dígitos, preservando o padrão do IBGE. */
     private function normalizeCityCode(?string $value): ?string
     {
         if ($value === null) {
@@ -627,6 +667,7 @@ class ImportMecCourses extends Command
         return $numbers;
     }
 
+    /** Converte valores numéricos do CSV para inteiro e devolve null para conteúdo vazio. */
     private function toInteger(?string $value): ?int
     {
         if ($value === null) {
@@ -651,6 +692,7 @@ class ImportMecCourses extends Command
         return (int) $numbers;
     }
 
+    /** Infere setor público/privado a partir da categoria administrativa do MEC. */
     private function identifySector(?string $administrativeCategory): ?string
     {
         if ($administrativeCategory === null) {

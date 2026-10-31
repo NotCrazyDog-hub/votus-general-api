@@ -38,11 +38,17 @@ class GovernmentPlanProposal extends Model
         return $this->metadata['extraction'] ?? 'ai';
     }
 
+    /**
+     * Cada registro guarda a referência para um único `Candidate`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);
     }
 
+    /**
+     * Cada registro guarda a referência para um único `GovernmentPlanTheme`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function theme(): BelongsTo
     {
         return $this->belongsTo(GovernmentPlanTheme::class, 'government_plan_theme_id');

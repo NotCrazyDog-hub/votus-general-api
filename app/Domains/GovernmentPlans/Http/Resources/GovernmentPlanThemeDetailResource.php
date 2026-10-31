@@ -18,8 +18,15 @@ class GovernmentPlanThemeDetailResource extends JsonResource
     }
 
     /**
+
+     * Converte GovernmentPlanThemeDetail para a resposta JSON da API. Expõe os campos: theme, candidates, comparison.
+
+     *
+
      * @return array<string, mixed>
+
      */
+
     public function toArray(Request $request): array
     {
         return [

@@ -8,6 +8,7 @@ use App\Domains\Education\Models\University;
 
 class UniversityController extends Controller
 {
+    /** Carrega as relações públicas da universidade em ordem definida e retorna o recurso detalhado. */
     public function show(University $university): UniversityResource
     {
         $university->load([

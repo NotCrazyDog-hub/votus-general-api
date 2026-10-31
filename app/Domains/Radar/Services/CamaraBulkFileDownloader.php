@@ -25,7 +25,9 @@ use Throwable;
 class CamaraBulkFileDownloader
 {
     /**
-     * @return array{path: string, bytes: int, last_modified: ?string, attempts: int}
+     * Baixa o arquivo completo, retomando tentativas interrompidas por Range.
+     * Confere Content-Length antes de aceitar o resultado e retorna metadados
+     * para que a coleta registre a origem e o número de retomadas.
      */
     public function download(string $url, string $destination): array
     {
@@ -106,6 +108,7 @@ class CamaraBulkFileDownloader
         throw new RuntimeException("Download incompleto após {$maxAttempts} tentativas: {$url}");
     }
 
+    /** Aguarda entre tentativas que não trouxeram novos bytes. */
     protected function pause(int $seconds): void
     {
         sleep($seconds);

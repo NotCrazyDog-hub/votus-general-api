@@ -17,7 +17,9 @@ class AleceLegislatorService
     }
 
     /**
-     * Importa os parlamentares atuais da ALECE.
+     * Percorre os perfis encontrados pelo scraper, persiste cada parlamentar
+     * em transação individual e continua após falhas isoladas. O callback recebe
+     * posição, totais, URL e erro para atualizar o progresso do comando.
      */
     public function sync(?callable $onProgress = null): int
     {

@@ -11,6 +11,10 @@ class AleceLegislatorParser
 {
     protected DOMXPath $xpath;
 
+    /**
+     * Extrai do HTML do perfil os campos de parlamentar e devolve o mesmo
+     * formato normalizado consumido pelo serviço de sincronização da ALECE.
+     */
     public function parse(
         string $html,
         string $url,

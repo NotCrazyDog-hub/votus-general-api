@@ -16,6 +16,10 @@ class SyncCandidateExpensePaymentsTse extends Command
 
     protected $description = 'Importa despesas pagas dos candidatos a partir do CSV do TSE';
 
+    /**
+     * Importa pagamentos de despesas de campanha do TSE e os associa às despesas e candidatos correspondentes.
+     */
+
     public function handle(TseCandidateExpensePaymentsCsvService $csv): int
     {
         $filePath = $this->argument('file');

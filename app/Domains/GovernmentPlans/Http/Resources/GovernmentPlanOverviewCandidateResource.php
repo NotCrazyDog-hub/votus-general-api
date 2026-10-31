@@ -10,7 +10,8 @@ use Illuminate\Http\Request;
 class GovernmentPlanOverviewCandidateResource extends GovernmentPlanCandidateResource
 {
     /**
-     * @return array<string, mixed>
+     * Converte GovernmentPlanOverviewCandidate para a resposta JSON da API. Expõe os campos:
+     * plan_document_url. @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {

@@ -22,6 +22,9 @@ class AdmissionMethod extends Model
         'verified_at' => 'datetime',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `University`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function university(): BelongsTo
     {
         return $this->belongsTo(University::class);

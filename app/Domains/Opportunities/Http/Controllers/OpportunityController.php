@@ -10,6 +10,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OpportunityController extends Controller
 {
+    /** Lista vagas ativas e filtra por tipo, localidade e texto, preservando os filtros na paginação. */
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Opportunity::query()->where('is_active', true);

@@ -12,6 +12,7 @@ class SenateApiService
     use NormalizesProfessionNames;
     protected string $baseUrl = 'https://legis.senado.leg.br/dadosabertos';
 
+    /** Busca senadores em exercício e, quando informada, filtra a lista pela UF. */
     public function listParliamentarians(?string $state = null): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -33,6 +34,7 @@ class SenateApiService
         return $parlamentares->values()->all();
     }
 
+    /** Retorna o objeto de detalhes do senador no formato original da API do Senado. */
     public function getDetails(string $id): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -46,6 +48,7 @@ class SenateApiService
         return $response->json('DetalheParlamentar.Parlamentar');
     }
 
+    /** Busca os mandatos e seleciona o que cobre a data atual; sem dados, retorna null. */
     public function getMandate(string $id): ?array
     {
         $response = Http::withOptions(['verify' => false])
@@ -69,6 +72,7 @@ class SenateApiService
         return $this->selectCurrentMandate($mandatos);
     }
 
+    /** Escolhe o mandato cuja legislatura contém hoje; se nenhuma contiver, usa o código mais alto. */
     protected function selectCurrentMandate(array $mandatos): array
     {
         $today = Carbon::today();
@@ -91,6 +95,7 @@ class SenateApiService
         return collect($mandatos)->sortByDesc(fn ($m) => (int) ($m['CodigoMandato'] ?? 0))->first();
     }
 
+    /** Obtém a data inicial da legislatura atual dentro do mandato selecionado. */
     public function getMandateStartDate(string $id): ?string
     {
         $mandate = $this->getMandate($id);
@@ -115,6 +120,7 @@ class SenateApiService
         return $mandate['PrimeiraLegislaturaDoMandato']['DataInicio'] ?? null;
     }
 
+    /** Retorna o número da legislatura vigente no mandato, com fallback para a primeira. */
     public function currentLegislatureNumber(array $mandate): ?string
     {
         $today = Carbon::today();
@@ -141,6 +147,11 @@ class SenateApiService
     }
 
 
+    /**
+     * Converte mandato e exercício atual para o status interno do parlamentar.
+     * Considera fim do mandato, afastamento e se a pessoa está atuando como
+     * titular ou suplente; a API do Senado não fornece um único status pronto.
+     */
     public function determineStatus(array $mandate, bool $isAlternate = false): LegislatorStatus
     {
         if (empty($mandate)) {
@@ -197,6 +208,7 @@ class SenateApiService
         return $statusEmExercicio;
     }
 
+    /** Retorna apenas as comissões em que a participação do senador não tem data de encerramento. */
     public function getCommittees(string $id): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -219,6 +231,7 @@ class SenateApiService
             ->all();
     }
 
+    /** Busca proposições PL e PEC associadas ao senador no endpoint de processos. */
     public function getBillsByLegislator(string $id): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -235,6 +248,7 @@ class SenateApiService
         return $response->json() ?? [];
     }
 
+    /** Reduz o payload do processo aos campos de situação usados pelo domínio. */
     public function getBillStatus(string $billId): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -255,6 +269,7 @@ class SenateApiService
         ];
     }
 
+    /** Achata autuações e situações aninhadas para uma linha por tramitação. */
     protected function extractTramitations(array $processo): array
     {
         $autuacoes = $processo['autuacoes'] ?? [];
@@ -290,6 +305,7 @@ class SenateApiService
         return $tramitations;
     }
 
+    /** Consulta o processo uma vez e devolve situação atual e histórico normalizado. */
     public function getStatusAndHistory(string $billId): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -312,6 +328,7 @@ class SenateApiService
         ];
     }
 
+    /** Converte profissões do histórico acadêmico para o formato compartilhado do domínio. */
     public function getProfessions(string $id): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -342,6 +359,7 @@ class SenateApiService
             ->all();
     }
 
+    /** Busca o processo e extrai suas classificações temáticas. */
     public function getTopics(string $billId): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -357,6 +375,7 @@ class SenateApiService
         return $this->extractClassificacoes($processo);
     }
 
+    /** Normaliza classificações que a API pode devolver como objeto único ou lista. */
     protected function extractClassificacoes(array $processo): array
     {
         $classificacoes = $processo['classificacoes'] ?? [];

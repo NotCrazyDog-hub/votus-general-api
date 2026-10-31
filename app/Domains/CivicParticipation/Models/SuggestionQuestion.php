@@ -21,6 +21,9 @@ class SuggestionQuestion extends Model
         'order_index' => 'integer',
     ];
 
+    /**
+     * Relação um-para-muitos com o modelo `SuggestionAnswer`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function answers(): HasMany
     {
         return $this->hasMany(SuggestionAnswer::class);

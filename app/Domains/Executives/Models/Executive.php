@@ -39,6 +39,9 @@ class Executive extends Model
         'raw_data' => 'array',
     ];
 
+    /**
+     * Relação um-para-muitos com o modelo `ExecutiveAction`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function actions(): HasMany
     {
         return $this->hasMany(ExecutiveAction::class);

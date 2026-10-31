@@ -59,22 +59,34 @@ class Legislator extends Model
         'updated_at'
     ];
 
+    /**
+     * Relação muitos-para-muitos entre Legislator e Committee, mantida pela tabela intermediária do Eloquent.
+     */
     public function committees(): BelongsToMany
     {
         return $this->belongsToMany(Committee::class, 'committee_legislator')
             ->withPivot(['role', 'start_date', 'end_date']);
     }
+    /**
+     * Relação muitos-para-muitos entre Legislator e Bill, mantida pela tabela intermediária do Eloquent.
+     */
     public function bills(): BelongsToMany
     {
         return $this->belongsToMany(Bill::class, 'bill_legislator');
     }
 
+    /**
+     * Relação muitos-para-muitos entre Legislator e Profession, mantida pela tabela intermediária do Eloquent.
+     */
     public function professions(): BelongsToMany
     {
         return $this->belongsToMany(Profession::class)
             ->withPivot(['source', 'original_name', 'is_primary', 'registered_at'])
             ->withTimestamps();
     }
+    /**
+     * Cada registro guarda a referência para um único `Topic`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function thematicFocusTopTopic(): BelongsTo
     {
         return $this->belongsTo(Topic::class, 'thematic_focus_top_topic_id');

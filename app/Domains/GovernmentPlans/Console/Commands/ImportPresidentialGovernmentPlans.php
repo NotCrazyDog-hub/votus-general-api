@@ -14,6 +14,10 @@ class ImportPresidentialGovernmentPlans extends Command
 
     protected $description = 'Coleta e compara propostas dos sites oficiais dos candidatos presidenciais com a Groq';
 
+    /**
+     * Busca os planos oficiais dos candidatos, extrai propostas e comparações e grava os resultados sem remover versões antigas.
+     */
+
     public function handle(PresidentialProposalImportService $service): int
     {
         if (app()->environment('production') && !$this->option('force')) {

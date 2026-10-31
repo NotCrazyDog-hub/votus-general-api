@@ -72,6 +72,7 @@ class NewsImageValidator
         return null;
     }
 
+    /** Rejeita nomes de imagem genéricos e URLs reutilizadas além do limite permitido. */
     private function looksGeneric(string $url): bool
     {
         $lowerUrl = mb_strtolower($url);

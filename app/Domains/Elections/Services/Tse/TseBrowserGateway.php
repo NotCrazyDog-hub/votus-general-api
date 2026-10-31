@@ -30,6 +30,7 @@ class TseBrowserGateway
      * Executa uma consulta e devolve o `data` do retorno do script Node.
      *
      * @param  array<string, mixed>  $input
+     *
      * @return array<string, mixed>
      *
      * @throws TseGatewayException
@@ -61,6 +62,7 @@ class TseBrowserGateway
      * @param  array<int, string>  $command
      * @param  array<string, mixed>  $input
      * @param  array<string, mixed>  $config
+     *
      * @return array<string, mixed>
      */
     private function send(array $command, array $input, array $config): array
@@ -164,6 +166,7 @@ class TseBrowserGateway
      * X11, ou em Windows, `wrapper` fica vazio e o Chromium abre direto.
      *
      * @param  array<string, mixed>  $config
+     *
      * @return array<int, string>
      */
     private function command(array $config, ?string $script = null): array

@@ -34,6 +34,10 @@ class TseImportResults extends Command
 
     protected $description = 'Importa os resultados oficiais do TSE (EA20) para candidacy_histories sem refazer a sincronização cadastral';
 
+    /**
+     * Obtém resultados oficiais do TSE para ano, turno, UF e cargo selecionados e atualiza históricos de candidatura; --dry-run não grava.
+     */
+
     public function handle(TseElectionResultsService $results): int
     {
         $year = (int) $this->option('year');

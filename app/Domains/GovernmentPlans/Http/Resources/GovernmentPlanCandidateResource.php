@@ -8,7 +8,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class GovernmentPlanCandidateResource extends JsonResource
 {
     /**
-     * @return array<string, mixed>
+     * Converte GovernmentPlanCandidate para a resposta JSON da API. Expõe os campos: id, external_id,
+     * name, party. @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {

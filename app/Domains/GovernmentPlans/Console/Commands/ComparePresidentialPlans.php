@@ -19,6 +19,10 @@ class ComparePresidentialPlans extends Command
 
     protected $description = 'Regenera os resumos comparativos por tema a partir das propostas já gravadas';
 
+    /**
+     * Gera ou atualiza comparações entre propostas de candidatos usando os dados já importados.
+     */
+
     public function handle(PresidentialProposalImportService $service): int
     {
         if (app()->environment('production') && !$this->option('force')) {

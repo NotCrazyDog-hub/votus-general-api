@@ -41,7 +41,10 @@ class LulaSiteProposalParser
     private const MIN_TABLE_ROWS = 30;
 
     /**
-     * @return array<int, array{theme_slug: string, theme_name: string, section: string, block: string, title: string, text: string}>
+     * Extrai propostas literais das tabelas e cartões do site, mapeia cada
+     * seção para um tema conhecido e elimina cartões que repetem linhas da
+     * tabela. Se a estrutura esperada ou a quantidade mínima não for encontrada,
+     * lança exceção em vez de importar um conjunto possivelmente incompleto.
      */
     public function parse(string $html): array
     {

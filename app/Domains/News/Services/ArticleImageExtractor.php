@@ -17,6 +17,7 @@ use Throwable;
  */
 class ArticleImageExtractor
 {
+    /** Procura metadados de imagem no cabeçalho HTML e retorna null se a página não puder ser lida. */
     public function extract(string $articleUrl): ?string
     {
         try {
@@ -47,6 +48,7 @@ class ArticleImageExtractor
         return null;
     }
 
+    /** Lê uma meta tag aceitando as variações de ordem dos atributos usadas pelos sites. */
     private function meta(string $head, string $property): ?string
     {
         $escapedProperty = preg_quote($property, '/');

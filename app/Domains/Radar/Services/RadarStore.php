@@ -34,11 +34,13 @@ class RadarStore
     {
     }
 
+    /** Prefixa uma chave local com o namespace configurado para o Radar. */
     public function key(string $suffix): string
     {
         return config('radar.cache_prefix') . $suffix;
     }
 
+    /** Retorna o último resultado validado; valor ausente ou malformado é tratado como null. */
     public function result(string $source, string|int $scope): ?array
     {
         $value = $this->cache()->get($this->key("result:{$source}:{$scope}"));
@@ -51,6 +53,7 @@ class RadarStore
      * driver 'database' vira um único SELECT ... WHERE key IN (...)).
      *
      * @param  array<int, array{0: string, 1: string|int}>  $pairs
+     *
      * @return array{results: array<string, array|null>, statuses: array<string, array>}  indexados por "fonte:escopo"
      */
     public function readMany(array $pairs): array
@@ -71,6 +74,7 @@ class RadarStore
         return $out;
     }
 
+    /** Lê o status da última tentativa e devolve array vazio quando ainda não há status. */
     public function status(string $source, string|int $scope): array
     {
         $value = $this->cache()->get($this->key("status:{$source}:{$scope}"));
@@ -113,6 +117,7 @@ class RadarStore
         $this->cache()->forever($this->key("status:{$source}:{$scope}"), $status);
     }
 
+    /** Guarda mensagem e horário da falha sem substituir o último resultado publicado. */
     public function recordFailure(string $source, string|int $scope, string $message): void
     {
         $this->recordStatus($source, $scope, [
@@ -121,6 +126,7 @@ class RadarStore
         ]);
     }
 
+    /** Cria um lock separado para cada fonte e escopo de atualização. */
     public function refreshLock(string $source, string|int $scope, int $seconds)
     {
         return $this->cache()->lock($this->key("lock:{$source}:{$scope}"), $seconds);
@@ -135,6 +141,7 @@ class RadarStore
         return $this->cache()->add($this->key("dispatched:{$source}:{$scope}"), true, now()->addMinutes($minutes));
     }
 
+    /** Usa o repositório injetado ou abre o store configurado para o Radar. */
     private function cache(): Repository
     {
         return $this->cache ?? Cache::store(config('radar.cache_store', 'database'));

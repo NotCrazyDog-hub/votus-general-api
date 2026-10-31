@@ -10,6 +10,7 @@ class LowerHouseApiService
     use NormalizesProfessionNames;
     protected string $baseUrl = 'https://dadosabertos.camara.leg.br/api/v2';
 
+    /** Retorna os IDs dos deputados do Ceará usados pelo processo de sincronização. */
     public function listIds(): array
     {
         $response = Http::withOptions(['verify' => false])->get("{$this->baseUrl}/deputados", [
@@ -24,6 +25,7 @@ class LowerHouseApiService
         return collect($response->json('dados'))->pluck('id')->all();
     }
 
+    /** Consulta o cadastro completo do deputado e devolve o objeto `dados` da API. */
     public function getDetails(string $id): array
     {
         $response = Http::withOptions(['verify' => false])->get("{$this->baseUrl}/deputados/{$id}");
@@ -35,6 +37,7 @@ class LowerHouseApiService
         return $response->json('dados');
     }
 
+    /** Retorna os órgãos/comissões associados ao deputado no formato da fonte. */
     public function getCommittees(string $id): array
     {
         $response = Http::withOptions(['verify' => false])->get("{$this->baseUrl}/deputados/{$id}/orgaos");
@@ -46,6 +49,10 @@ class LowerHouseApiService
         return $response->json('dados') ?? [];
     }
 
+    /**
+     * Busca PLs e PECs do deputado em páginas de 100 itens e acumula as páginas
+     * até a resposta vir incompleta, que indica o fim da paginação.
+     */
     public function getBillsByLegislator(string $id): array
     {
         $allBills = [];
@@ -72,6 +79,7 @@ class LowerHouseApiService
         return $allBills;
     }
 
+    /** Extrai situação e órgão atual da estrutura aninhada da proposição. */
     public function getBillStatus(string $billId): array
     {
         $response = Http::withOptions(['verify' => false])
@@ -91,6 +99,10 @@ class LowerHouseApiService
         ];
     }
 
+    /**
+     * Busca todas as páginas de tramitação e converte cada evento para os
+     * campos comuns usados pelas casas legislativas no banco.
+     */
     public function getTramitations(string $billId): array
     {
         $all = [];
@@ -121,6 +133,7 @@ class LowerHouseApiService
         ])->all();
     }
 
+    /** Agrupa situação atual e tramitações para consumidores que precisam dos dois dados. */
     public function getStatusAndHistory(string $billId): array
     {
         return [
@@ -129,6 +142,7 @@ class LowerHouseApiService
         ];
     }
     
+    /** Normaliza profissões do deputado para o formato compartilhado do domínio. */
     public function getProfessions(string $id): array
     {
         $response = Http::withOptions(['verify' => false])->get("{$this->baseUrl}/deputados/{$id}/profissoes");
@@ -153,6 +167,7 @@ class LowerHouseApiService
             ->all();
     }
 
+    /** Converte os temas oficiais da proposição para identificador, nome e relevância. */
     public function getTopics(string $billId): array
     {
         $response = Http::withOptions(['verify' => false])

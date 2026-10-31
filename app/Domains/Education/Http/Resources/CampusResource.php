@@ -7,6 +7,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CampusResource extends JsonResource
 {
+    /**
+     * Converte Campus para a resposta JSON da API. Expõe os campos: name, city, ibge_city_code, state,
+     * region, address, latitude, longitude, university, course_offerings. As relações aparecem apenas
+     * quando o controlador/serviço já as carregou, evitando consultas adicionais durante a
+     * serialização. @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

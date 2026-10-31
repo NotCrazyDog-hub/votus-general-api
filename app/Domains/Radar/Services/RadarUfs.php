@@ -40,11 +40,13 @@ class RadarUfs
         'DF' => ['ibge_code' => 53, 'name' => 'Distrito Federal', 'region' => 'Centro-Oeste'],
     ];
 
+    /** Confere se a sigla está entre as 27 UFs conhecidas pelo radar. */
     public static function isValid(string $uf): bool
     {
         return isset(self::ALL[strtoupper($uf)]);
     }
 
+    /** Converte o código retornado pelo IBGE de volta para a sigla da UF. */
     public static function byIbgeCode(int|string $code): ?string
     {
         foreach (self::ALL as $uf => $info) {

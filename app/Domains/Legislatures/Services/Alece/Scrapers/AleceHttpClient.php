@@ -21,9 +21,7 @@ class AleceHttpClient
         return $this->request($url)->body();
     }
 
-    /**
-     * Faz uma requisição GET.
-     */
+    /** Faz GET com timeout, tentativas e cabeçalhos de navegador; lança exceção para HTTP não bem-sucedido. */
     public function request(string $url): Response
     {
         return Http::timeout($this->timeout)

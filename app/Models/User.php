@@ -19,12 +19,15 @@ class User extends Authenticatable
     use HasFactory, HasApiTokens, Notifiable;
 
     /**
-     * Get the attributes that should be cast.
+     * Converte data de verificação, senha e permissão administrativa ao ler ou
+     * salvar o modelo. O cast `hashed` evita armazenar senha em texto puro.
      *
      * @return array<string, string>
      */
     protected function casts(): array
     {
+        // Converte os valores na leitura/escrita: datas como Carbon, senha com
+        // hash automático e flag administrativa como booleano.
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',

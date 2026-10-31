@@ -47,6 +47,7 @@ class SuggestionQuestionController extends Controller
         return response()->json(['data' => $questions]);
     }
 
+    /** Valida e cria pergunta, guardando opções apenas para perguntas do tipo escolha. */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate(self::RULES);
@@ -62,6 +63,7 @@ class SuggestionQuestionController extends Controller
         return response()->json(['data' => $question], 201);
     }
 
+    /** Atualiza texto, tipo, opções e obrigatoriedade da pergunta selecionada. */
     public function update(Request $request, SuggestionQuestion $suggestionQuestion): JsonResponse
     {
         $data = $request->validate([
@@ -79,6 +81,7 @@ class SuggestionQuestionController extends Controller
         return response()->json(['data' => $suggestionQuestion]);
     }
 
+    /** Remove a pergunta selecionada do formulário de sugestões. */
     public function destroy(SuggestionQuestion $suggestionQuestion): JsonResponse
     {
         $suggestionQuestion->delete();

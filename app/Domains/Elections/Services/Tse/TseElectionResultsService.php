@@ -80,6 +80,8 @@ class TseElectionResultsService
 
     private function baseUrl(): string
     {
+        // Remove a barra final para que os caminhos concatenados abaixo não
+        // gerem URLs com separadores duplicados.
         return rtrim((string) ($this->config()['base_url'] ?? 'https://resultados.tse.jus.br'), '/');
     }
 
@@ -329,6 +331,7 @@ class TseElectionResultsService
      * duplicado e processado UMA vez só.
      *
      * @param  array<string, mixed>  $json
+     *
      * @return array{candidates: array<int, array<string, mixed>>, duplicates: int}
      */
     public function extractCandidates(array $json): array
@@ -430,6 +433,7 @@ class TseElectionResultsService
         return self::KNOWN_STATUSES[$key] ?? $trimmed;
     }
 
+    /** Confere status contra a lista oficial mapeada, sem substring que confunda "eleito" e "não eleito". */
     public function isKnownStatus(?string $status): bool
     {
         if ($status === null || trim($status) === '') {
@@ -542,6 +546,7 @@ class TseElectionResultsService
      *
      * @param  array{meta: array<string, mixed>, candidates: array<int, array<string, mixed>>}  $extracted
      * @param  array<string, int>  $stats
+     *
      * @return array<string, int>
      */
     public function applyResults(array $extracted, int $year, int $round, ?CandidateOffice $officeFilter, bool $dryRun, array $stats = []): array
@@ -783,6 +788,7 @@ class TseElectionResultsService
 
     /**
      * @param  array<string, mixed>  $config
+     *
      * @return array<string, mixed>
      *
      * @throws TseResultsException

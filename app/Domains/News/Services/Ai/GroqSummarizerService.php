@@ -85,6 +85,7 @@ class GroqSummarizerService
         );
     }
 
+    /** Retorna somente chaves Groq configuradas e não vazias. */
     private function availableKeys(): array
     {
         return array_values(array_filter(config('services.groq.api_keys', [])));
@@ -108,6 +109,7 @@ class GroqSummarizerService
         return Cache::increment(self::CACHE_INDICE_ROTATIVO) ?: 1;
     }
 
+    /** Envia título e conteúdo à Groq e encaminha o JSON retornado para validação/normalização. */
     private function callGroq(string $chave, string $titulo, string $conteudo): array
     {
         $resposta = Http::withToken($chave)
@@ -176,6 +178,11 @@ class GroqSummarizerService
         return $this->parseResponse($texto);
     }
 
+    /**
+     * Decodifica e limita os campos gerados. JSON inválido falha de forma
+     * fechada (notícia não relevante); relevância e quantidade de palavras-chave
+     * são limitadas aos intervalos aceitos pelo domínio.
+     */
     private function parseResponse(string $texto): array
     {
         $dados = json_decode($texto, true);

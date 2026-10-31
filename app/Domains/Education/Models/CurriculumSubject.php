@@ -22,6 +22,9 @@ class CurriculumSubject extends Model
         'position' => 'integer',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `CourseCurriculum`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function curriculum(): BelongsTo
     {
         return $this->belongsTo(

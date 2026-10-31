@@ -70,6 +70,8 @@ class RadarRefresher
         $scope = $this->normalizeScope($source, $scope);
         $lock = $this->store->refreshLock($source, $scope, self::LOCK_SECONDS);
 
+        // Um escopo já atualizado por outro worker não precisa ser processado
+        // novamente; o lock também evita duas publicações concorrentes.
         if (! $lock->get()) {
             Log::info("[RADAR] {$source}:{$scope} já está sendo atualizado; ignorando.");
 
@@ -77,6 +79,8 @@ class RadarRefresher
         }
 
         try {
+            // O resultado atual continua sendo servido enquanto ainda estiver
+            // dentro do prazo de validade, salvo quando o operador força a coleta.
             if (! $force && ! $this->isStale($source, $scope, $this->store->result($source, $scope))) {
                 return 'skipped:fresh';
             }
@@ -85,6 +89,8 @@ class RadarRefresher
 
             $result = $this->compute($source, $scope);
 
+            // publish compara a data do cálculo com a versão armazenada: um job
+            // antigo que terminou atrasado não pode substituir dados mais novos.
             if (! $this->store->publish($source, $scope, $result)) {
                 Log::info("[RADAR] {$source}:{$scope}: já existe resultado mais novo publicado; descartado.");
 
@@ -100,16 +106,20 @@ class RadarRefresher
 
             return 'failed';
         } finally {
+            // Libera o lock mesmo quando coleta, validação ou publicação falha.
             $lock->release();
         }
     }
 
+    /** Decide se um resultado deve ser atualizado conforme idade e fonte dos dados. */
     public function isStale(string $source, string|int $scope, ?array $result): bool
     {
         if ($result === null || empty($result['generated_at'])) {
             return true;
         }
 
+        // A frequência esperada varia por fonte e por ano: dados do ano atual
+        // vencem mais rápido que os de legislaturas já encerradas.
         $hours = match (true) {
             $source === 'ibge' => config('radar.stale_after_hours.ibge'),
             $source === 'senado' => config('radar.stale_after_hours.senado'),
@@ -152,6 +162,7 @@ class RadarRefresher
         return range($first, $last);
     }
 
+    /** Valida e padroniza o escopo: ano para Câmara, UF para Senado e `all` para IBGE. */
     public function normalizeScope(string $source, string|int $scope): string|int
     {
         return match ($source) {
@@ -166,6 +177,7 @@ class RadarRefresher
         };
     }
 
+    /** Encaminha o resultado ao conjunto de validações específico da fonte. */
     private function validate(string $source, string|int $scope, array $result): void
     {
         match ($source) {
@@ -175,6 +187,7 @@ class RadarRefresher
         };
     }
 
+    /** Recusa resultado vazio, UFs inválidas, excesso de autores sem UF ou queda suspeita no total. */
     private function validateCamara(int $year, array $result): void
     {
         $total = $result['totals']['bills_with_deputy_author'] ?? 0;
@@ -206,6 +219,7 @@ class RadarRefresher
         }
     }
 
+    /** Exige senadores e limita a proporção de detalhes de proposições que falharam. */
     private function validateSenado(array $result): void
     {
         $checks = $result['checks'];
@@ -221,6 +235,7 @@ class RadarRefresher
         }
     }
 
+    /** Exige valor positivo para todas as 27 UFs em cada indicador do IBGE. */
     private function validateIbge(array $result): void
     {
         foreach ($result['indicators'] as $key => $indicator) {

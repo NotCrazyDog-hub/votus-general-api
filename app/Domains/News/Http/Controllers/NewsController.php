@@ -13,6 +13,11 @@ use App\Http\Controllers\Controller;
 
 class NewsController extends Controller
 {
+    /**
+     * Valida e cria uma notícia enviada ao endpoint interno. Antes de salvar,
+     * verifica se a imagem é utilizável; a URL da notícia é a chave usada para
+     * evitar duplicatas e a resposta indica se o registro foi novo ou existente.
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -64,6 +69,11 @@ class NewsController extends Controller
 
     private const SORTABLE_COLUMNS = ['published_at', 'imported_at', 'relevance_score', 'created_at'];
 
+    /**
+     * Lista notícias públicas com filtros e paginação, serializa cada item pelo
+     * recurso público e inclui o destaque apenas na primeira página. Também
+     * aciona a verificação do ciclo automático sem atrasar a coleta na resposta.
+     */
     public function index(Request $request, AutomaticNewsCycle $cycle, FeaturedNewsSelector $featured)
     {
         // Rede de segurança do ciclo de 12h (ver AutomaticNewsCycle).
@@ -117,6 +127,7 @@ class NewsController extends Controller
         return response()->json($resposta);
     }
 
+    /** Retorna uma notícia publicada; itens pendentes ou não publicados respondem 404. */
     public function show(News $news)
     {
         // Sem isso, qualquer id (inclusive notícia pendente, em processamento

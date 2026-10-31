@@ -16,6 +16,10 @@ class ImportExecutiveActions extends Command
 
     protected $description = 'Importa ações de executivos a partir de um CSV';
 
+    /**
+     * Importa ações executivas de um arquivo, normaliza os campos e associa cada ação ao executivo correspondente.
+     */
+
     public function handle(
         ExecutiveActionImportService $importService
     ): int {

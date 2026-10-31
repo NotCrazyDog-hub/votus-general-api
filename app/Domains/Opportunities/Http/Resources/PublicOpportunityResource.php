@@ -7,6 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PublicOpportunityResource extends JsonResource
 {
+    /**
+     * Converte PublicOpportunity para a resposta JSON da API. Expõe os campos: source_key, type,
+     * title, notice_number, agency, municipality, state, positions, education_levels, vacancies,
+     * salary_min, salary_max, registration_start, registration_end, exam_date, fee_min, fee_max,
+     * registration_url, summary, status, publications. As relações aparecem apenas quando o
+     * controlador/serviço já as carregou, evitando consultas adicionais durante a serialização.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

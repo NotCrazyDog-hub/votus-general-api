@@ -17,6 +17,10 @@ class OptimizeExecutivePhotos extends Command
     protected $signature = 'optimize:executive-photos {--force : Reprocessa mesmo quem já está no bucket}';
     protected $description = 'Baixa, redimensiona e guarda no Supabase as fotos de presidente/vice/governador/vice-governadora';
 
+    /**
+     * Baixa e otimiza fotos oficiais de executivos, respeitando arquivos existentes salvo quando --force é informado.
+     */
+
     public function handle(OfficialPhotoOptimizer $photoOptimizer)
     {
         $publicUrlPrefix = rtrim((string) config('filesystems.disks.supabase.public_url'), '/');

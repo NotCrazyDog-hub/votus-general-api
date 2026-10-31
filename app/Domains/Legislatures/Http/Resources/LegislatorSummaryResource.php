@@ -6,6 +6,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class LegislatorSummaryResource extends JsonResource
 {
+    /**
+     * Converte LegislatorSummary para a resposta JSON da API. Expõe os campos: id, chamber,
+     * parliamentary_name, party, state, status, bills. As relações aparecem apenas quando o
+     * controlador/serviço já as carregou, evitando consultas adicionais durante a serialização.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray($request)
     {
         return [

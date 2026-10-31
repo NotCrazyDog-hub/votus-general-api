@@ -112,9 +112,7 @@ class PublicOpportunityController extends Controller
         return response()->json(['data' => $this->toAdminArray($publicOpportunity, comPublicacoes: true)]);
     }
 
-    /**
-     * Salva as alterações feitas manualmente na revisão.
-     */
+    /** Valida e atualiza os campos editáveis da oportunidade no painel administrativo. */
     public function update(
         Request $request,
         PublicOpportunity $publicOpportunity
@@ -173,6 +171,7 @@ class PublicOpportunityController extends Controller
         return response()->json(['data' => $this->toAdminArray($publicOpportunity)]);
     }
 
+    /** Alterna a publicação manual da oportunidade sem mudar seu estado de revisão. */
     public function togglePublished(PublicOpportunity $publicOpportunity): JsonResponse
     {
         $publicOpportunity->update([

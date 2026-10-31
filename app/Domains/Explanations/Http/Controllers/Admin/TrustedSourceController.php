@@ -9,11 +9,13 @@ use Illuminate\Http\Request;
 
 class TrustedSourceController extends Controller
 {
+    /** Lista fontes confiáveis em ordem alfabética para o painel administrativo. */
     public function index(): JsonResponse
     {
         return response()->json(TrustedSource::query()->orderBy('name')->get());
     }
 
+    /** Valida domínio e URL, rejeita domínios duplicados e cadastra a raiz do site como fonte ativa. */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -53,6 +55,7 @@ class TrustedSourceController extends Controller
         return response()->json($trustedSource, 201);
     }
 
+    /** Atualiza nome, domínio e estado ativo, impedindo que duas fontes usem o mesmo domínio. */
     public function update(Request $request, TrustedSource $trustedSource): JsonResponse
     {
         $validated = $request->validate([
@@ -79,6 +82,7 @@ class TrustedSourceController extends Controller
         return response()->json($trustedSource);
     }
 
+    /** Remove a fonte confiável selecionada do cadastro administrativo. */
     public function destroy(TrustedSource $trustedSource): JsonResponse
     {
         $trustedSource->delete();

@@ -15,6 +15,9 @@ class ExplanationSource extends Model
         'source_domain',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Explanation`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function explanation(): BelongsTo
     {
         return $this->belongsTo(Explanation::class);

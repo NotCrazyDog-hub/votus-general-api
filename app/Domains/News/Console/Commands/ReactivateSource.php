@@ -11,6 +11,9 @@ use Illuminate\Console\Command;
 #[Description('Reativa manualmente uma fonte desativada pelo circuit breaker, zerando o contador de falhas.')]
 class ReactivateSource extends Command
 {
+    /**
+     * Reativa a fonte de notícias identificada pelo slug para que volte a participar das coletas.
+     */
     public function handle(): int
     {
         $slug = $this->argument('slug');

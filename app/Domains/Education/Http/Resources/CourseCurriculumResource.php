@@ -7,6 +7,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CourseCurriculumResource extends JsonResource
 {
+    /**
+     * Converte CourseCurriculum para a resposta JSON da API. Expõe os campos: name, version_year,
+     * total_hours, duration_semesters, official_url, subjects. As relações aparecem apenas quando o
+     * controlador/serviço já as carregou, evitando consultas adicionais durante a serialização.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

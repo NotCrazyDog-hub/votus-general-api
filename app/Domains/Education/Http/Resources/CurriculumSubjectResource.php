@@ -7,6 +7,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CurriculumSubjectResource extends JsonResource
 {
+    /**
+     * Converte CurriculumSubject para a resposta JSON da API. Expõe os campos: name, semester,
+     * workload_hours, type. @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

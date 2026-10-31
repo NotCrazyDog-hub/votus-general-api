@@ -162,6 +162,7 @@ class DivulgaCandContasService
      * da antiga versão em `Http::get()`, que os testes já esperam.
      *
      * @param  array<string, mixed>  $entry
+     *
      * @return array<string, mixed>
      */
     private function unwrapDetail(array $entry, string $id, string $path): array
@@ -290,6 +291,7 @@ class DivulgaCandContasService
      * navegador (URL de partida, modo headless, timeouts).
      *
      * @param  array<string, mixed>  $extra
+     *
      * @return array<string, mixed>
      *
      * @throws TseGatewayException

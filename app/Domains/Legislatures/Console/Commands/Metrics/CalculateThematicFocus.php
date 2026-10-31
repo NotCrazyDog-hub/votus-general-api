@@ -11,6 +11,10 @@ class CalculateThematicFocus extends Command
     protected $signature = 'metrics:thematic-focus';
     protected $description = 'Calcula e persiste o índice de foco temático (especialista vs. generalista) por parlamentar';
 
+    /**
+     * Calcula e persiste o foco temático de cada parlamentar a partir dos temas de suas proposições.
+     */
+
     public function handle(ThematicFocusService $service)
     {
         $legislators = Legislator::all();

@@ -6,6 +6,7 @@ use App\Domains\Executives\Models\Executive;
 
 class ExecutiveService
 {
+    /** Lista executivos atuais por nível e, no caso estadual, pela UF solicitada. */
     public function listByLevel(string $level, ?string $state = null)
     {
         return Executive::where('level', $level)
@@ -16,6 +17,7 @@ class ExecutiveService
             ->withQueryString();
     }
 
+    /** Busca governador/vice-governador estadual atual e carrega suas ações mais recentes. */
     public function findStateExecutive(int $id): Executive
     {
         return Executive::where('id', $id)
@@ -33,6 +35,7 @@ class ExecutiveService
             ->firstOrFail();
     }
 
+    /** Busca presidente/vice-presidente federal atual e carrega suas ações mais recentes. */
     public function findFederalExecutive(int $id): Executive
     {
         return Executive::where('id', $id)

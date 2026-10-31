@@ -18,6 +18,9 @@ class ProposalVote extends Model
         'vote_type' => ProposalVoteType::class,
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Proposal`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function proposal(): BelongsTo
     {
         return $this->belongsTo(Proposal::class);

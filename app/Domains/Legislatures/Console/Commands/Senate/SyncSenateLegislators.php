@@ -14,6 +14,10 @@ class SyncSenateLegislators extends Command
     protected $signature = 'sync:legislators-senate';
     protected $description = 'Fetch senators from Senado Federal API and save to database';
 
+    /**
+     * Consulta parlamentares no Senado Federal e sincroniza seus dados cadastrais no banco local.
+     */
+
     public function handle(SenateApiService $api, OfficialPhotoOptimizer $photoOptimizer)
     {
         $parliamentarians = $api->listParliamentarians('CE');

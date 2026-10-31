@@ -14,6 +14,9 @@ class Committee extends Model
         'acronym',
     ];
 
+    /**
+     * Relação muitos-para-muitos entre Committee e Legislator, mantida pela tabela intermediária do Eloquent.
+     */
     public function legislators(): BelongsToMany
     {
         return $this->belongsToMany(Legislator::class, 'committee_legislator')

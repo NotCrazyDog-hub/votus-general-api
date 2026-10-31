@@ -7,6 +7,12 @@ use App\Domains\Legislatures\Http\Resources\TopicResource;
 
 class BillResource extends JsonResource
 {
+    /**
+     * Converte Bill para a resposta JSON da API. Expõe os campos: id, external_id, chamber, type,
+     * summary, presented_at, status, topics. As relações aparecem apenas quando o controlador/serviço
+     * já as carregou, evitando consultas adicionais durante a serialização. @return array<string,
+     * mixed>
+     */
     public function toArray($request): array
     {
         return [

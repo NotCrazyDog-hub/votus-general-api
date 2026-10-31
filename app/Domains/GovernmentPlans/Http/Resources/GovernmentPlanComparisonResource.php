@@ -8,7 +8,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class GovernmentPlanComparisonResource extends JsonResource
 {
     /**
-     * @return array<string, mixed>
+     * Expõe o resumo da comparação e os dados dos dois candidatos. Os campos
+     * de listas e resumos individuais usam arrays vazios quando o banco contém
+     * null, mantendo uma estrutura previsível para o consumidor da API.
      */
     public function toArray(Request $request): array
     {

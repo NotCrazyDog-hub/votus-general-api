@@ -13,6 +13,7 @@ class ExecutiveController extends Controller
         protected ExecutiveService $service
     ) {}
 
+    /** Lista executivos estaduais e restringe a consulta à UF informada, quando houver. */
     public function indexForGovernors(Request $request)
     {
         $executives = $this->service->listByLevel(
@@ -23,6 +24,7 @@ class ExecutiveController extends Controller
         return ExecutivesResource::collection($executives);
     }
     
+    /** Busca o perfil de um governador pelo ID interno do executivo. */
     public function showGovernor(int $id)
     {
         return new ExecutivesResource(
@@ -30,6 +32,7 @@ class ExecutiveController extends Controller
         );
     }
     
+    /** Lista executivos do nível federal, incluindo o presidente vigente conforme o serviço. */
     public function indexForPresident()
     {
         $executives = $this->service->listByLevel('federal');
@@ -37,6 +40,7 @@ class ExecutiveController extends Controller
         return ExecutivesResource::collection($executives);
     }
     
+    /** Busca o perfil de um executivo federal pelo ID interno. */
     public function showPresident(int $id)
     {
         return new ExecutivesResource(

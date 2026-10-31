@@ -15,6 +15,7 @@ namespace App\Domains\Radar\Services;
  */
 class IbgeSnapshot
 {
+    /** Lê a cópia local dos indicadores e retorna null se o arquivo/JSON não tiver a estrutura mínima. */
     public static function load(): ?array
     {
         $path = resource_path('radar/ibge-snapshot.json');

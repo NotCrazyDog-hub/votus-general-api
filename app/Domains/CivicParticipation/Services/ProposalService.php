@@ -13,6 +13,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProposalService
 {
+    /**
+     * Lista propostas publicadas, inclui categorias e contagens relacionadas
+     * e anexa o voto do visitante sem consultar voto a voto.
+     */
     public function list(?string $visitorId): LengthAwarePaginator
     {
         $proposals = $this->baseQuery()
@@ -24,6 +28,7 @@ class ProposalService
         return $proposals;
     }
 
+    /** Busca uma proposta publicada e prepara o voto do visitante para o recurso. */
     public function find(int $id, ?string $visitorId): Proposal
     {
         $proposal = $this->baseQuery()->findOrFail($id);
@@ -33,6 +38,10 @@ class ProposalService
         return $proposal;
     }
 
+    /**
+     * Cria ou atualiza um voto por combinação proposta/visitante. Se duas
+     * requisições concorrerem na inserção, atualiza a linha criada pela vencedora.
+     */
     public function vote(Proposal $proposal, string $visitorId, ProposalVoteType $voteType): ProposalVote
     {
         try {
@@ -41,9 +50,9 @@ class ProposalService
                 ['vote_type' => $voteType]
             );
         } catch (QueryException $exception) {
-            // Two near-simultaneous requests from the same visitor raced past the
-            // findOrNew check; the unique(proposal_id, visitor_id) constraint caught
-            // the duplicate insert. Fall back to updating the row that won the race.
+            // Duas requisições simultâneas do mesmo visitante podem tentar inserir o voto.
+            // A restrição única de proposta/visitante impede a duplicação; neste caso,
+            // buscamos e atualizamos a linha que a outra requisição conseguiu criar.
             return tap(
                 ProposalVote::where('proposal_id', $proposal->id)
                     ->where('visitor_id', $visitorId)
@@ -52,6 +61,7 @@ class ProposalService
         }
     }
 
+    /** Apaga o voto pertencente à combinação da proposta com este visitante. */
     public function deleteVote(Proposal $proposal, string $visitorId): void
     {
         ProposalVote::where('proposal_id', $proposal->id)
@@ -59,6 +69,7 @@ class ProposalService
             ->delete();
     }
 
+    /** Cria categorias ausentes e substitui os vínculos da proposta pelo conjunto recebido. */
     public function syncCategories(Proposal $proposal, array $names): void
     {
         $categoryIds = collect($names)
@@ -72,6 +83,8 @@ class ProposalService
 
     protected function baseQuery()
     {
+        // Centraliza a consulta para que listagem e detalhe usem os mesmos
+        // filtros e contagens, evitando divergência entre as duas respostas.
         return Proposal::where('status', ProposalStatus::Published)
             ->with('categories:id,name')
             ->withCount([
@@ -81,8 +94,11 @@ class ProposalService
             ]);
     }
 
+    /** Anexa viewer_vote a cada proposta, usando uma consulta única para a coleção inteira. */
     protected function attachViewerVotes(Collection $proposals, ?string $visitorId): void
     {
+        // Busca os votos do visitante numa única consulta para toda a coleção;
+        // sem visitante, os itens recebem null sem consultar a tabela de votos.
         $votes = $visitorId
             ? ProposalVote::where('visitor_id', $visitorId)
                 ->whereIn('proposal_id', $proposals->pluck('id'))

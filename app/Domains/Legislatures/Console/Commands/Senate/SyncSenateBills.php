@@ -12,6 +12,10 @@ class SyncSenateBills extends Command
     protected $signature = 'sync:bills-senate';
     protected $description = 'Fetch and store PL/PEC bills authored by CE senators';
 
+    /**
+     * Consulta proposições associadas aos senadores e atualiza seus dados e tramitações.
+     */
+
     public function handle(SenateApiService $api)
     {
         $legislators = Legislator::where('chamber', 'senate')->where('state', 'CE')->get();

@@ -28,9 +28,16 @@ class AutomaticNewsCycle
     // Com que frequência, no máximo, consultar o banco pra saber se venceu.
     private const CHECAGEM_MINUTOS = 10;
 
+    /**
+     * Se o intervalo de coleta venceu, dispara o comando de coleta uma única
+     * vez. A checagem usa cache e lock para que requisições públicas concorrentes
+     * não iniciem vários ciclos nem esperem pela coleta.
+     */
     public function triggerIfDue(): void
     {
         try {
+            // A checagem do banco fica em cache para que cada leitura pública
+            // não consulte a última coleta repetidamente.
             $due = Cache::store('file')->remember(
                 'noticias:ciclo-vencido',
                 now()->addMinutes(self::CHECAGEM_MINUTOS),
@@ -42,6 +49,7 @@ class AutomaticNewsCycle
             }
 
             // Uma única requisição dispara; as demais no mesmo intervalo não.
+            // O lock impede que requisições concorrentes disparem o mesmo ciclo.
             if (!Cache::lock('noticias:ciclo-automatico', 300)->get()) {
                 return;
             }
@@ -59,8 +67,11 @@ class AutomaticNewsCycle
         }
     }
 
+    /** Compara a coleta mais recente das fontes ativas com o intervalo de 12 horas. */
     private function isDue(): bool
     {
+        // Usa a coleta mais recente entre as fontes ativas; se nenhuma foi
+        // coletada ainda, o ciclo é considerado vencido.
         $lastCollectedAt = NewsSource::query()->where('ativa', true)->max('ultima_coleta_em');
 
         return $lastCollectedAt === null

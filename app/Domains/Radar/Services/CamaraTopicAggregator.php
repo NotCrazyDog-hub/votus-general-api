@@ -62,12 +62,16 @@ class CamaraTopicAggregator
         foreach ($this->rows($authorsPath, self::AUTHORS_HEADER) as $line => $row) {
             $checks['author_rows']++;
 
+            // Lê só as colunas necessárias do CSV; os campos vazios mantêm a
+            // posição original de cada coluna na linha.
             [$billId, , $deputyId, , $authorType, , , , , $uf, , $proponent] = $row;
 
             if (! ctype_digit($billId)) {
                 throw new RuntimeException("Autores: idProposicao inválido na linha {$line}");
             }
 
+            // Só entram proposições que passaram pelo filtro de tipo e têm
+            // tema oficial, já indexadas por readThemes.
             if (! isset($billThemes[$billId])) {
                 continue; // não é PL/PEC com tema deste ano
             }
@@ -88,6 +92,8 @@ class CamaraTopicAggregator
             }
 
             $checks['author_rows_used']++;
+            // Guarda autores por proposição/UF: na saída, a proposição é
+            // contada uma vez, mas ainda registramos se teve coautoria local.
             $byUf[$uf][$billId] = ($byUf[$uf][$billId] ?? 0) + 1;
             $nationalBills[$billId] = true;
 
@@ -134,6 +140,8 @@ class CamaraTopicAggregator
                 $multiAuthor++;
             }
 
+            // Uma proposição com vários temas incrementa cada tema uma vez;
+            // por isso as contagens temáticas podem superar o total de projetos.
             foreach ($themes as $code => $_) {
                 $counts[$code] = ($counts[$code] ?? 0) + 1;
             }

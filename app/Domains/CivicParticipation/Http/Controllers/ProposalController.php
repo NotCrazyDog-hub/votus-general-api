@@ -15,6 +15,7 @@ class ProposalController extends Controller
 {
     public function __construct(protected ProposalService $service) {}
 
+    /** Lista propostas publicadas e anexa o voto associado ao visitante, se houver. */
     public function index(Request $request)
     {
         $proposals = $this->service->list($this->visitorId($request));
@@ -22,6 +23,7 @@ class ProposalController extends Controller
         return ProposalResource::collection($proposals);
     }
 
+    /** Busca uma proposta publicada e inclui o estado do voto do visitante. */
     public function show(Request $request, int $id)
     {
         $proposal = $this->service->find($id, $this->visitorId($request));
@@ -29,6 +31,7 @@ class ProposalController extends Controller
         return new ProposalResource($proposal);
     }
 
+    /** Valida e publica uma proposta, sincroniza suas categorias e devolve o recurso completo. */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -53,6 +56,7 @@ class ProposalController extends Controller
         );
     }
 
+    /** Valida e registra o voto do visitante na proposta publicada. */
     public function vote(Request $request, int $id)
     {
         $visitorId = $this->visitorId($request);
@@ -74,6 +78,7 @@ class ProposalController extends Controller
         return new ProposalResource($this->service->find($id, $visitorId));
     }
 
+    /** Remove o voto do visitante e retorna a proposta com o estado atualizado. */
     public function deleteVote(Request $request, int $id)
     {
         $visitorId = $this->visitorId($request);
@@ -91,6 +96,7 @@ class ProposalController extends Controller
         return new ProposalResource($this->service->find($id, $visitorId));
     }
 
+    /** Valida o cabeçalho de visitante e descarta valores ausentes ou longos demais. */
     protected function visitorId(Request $request): ?string
     {
         $visitorId = $request->header('X-Visitor-Id');

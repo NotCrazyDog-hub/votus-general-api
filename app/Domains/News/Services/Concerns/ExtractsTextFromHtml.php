@@ -11,6 +11,7 @@ namespace App\Domains\News\Services\Concerns;
  */
 trait ExtractsTextFromHtml
 {
+    /** Remove tags, decode entities e preserva separação legível entre blocos do artigo. */
     public function cleanText(string $html): string
     {
         $html = preg_replace('/<(p|div|h[1-6]|li)[^>]*>/i', '', $html) ?? $html;

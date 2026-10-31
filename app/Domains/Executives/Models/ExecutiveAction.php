@@ -34,6 +34,9 @@ class ExecutiveAction extends Model
         'relevance_score' => 'decimal:2',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Executive`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function executive(): BelongsTo
     {
         return $this->belongsTo(Executive::class);

@@ -5,13 +5,17 @@ namespace App\Domains\Legislatures\Console\Commands\Legislators;
 use App\Domains\Legislatures\Models\Legislator;
 use App\Domains\Legislatures\Models\Profession;
 use App\Domains\Legislatures\Services\Senate\SenateApiService;
-use App\Domains\Legislatures\Services\Chamber\LowerHouseApiService;
+use App\Domains\Legislatures\Services\LowerHouse\LowerHouseApiService;
 use Illuminate\Console\Command;
 
 class SyncLegislatorProfessions extends Command
 {
     protected $signature = 'sync:legislator-professions';
     protected $description = 'Fetch declared professions for senators and deputies and save to database';
+
+    /**
+     * Sincroniza as profissões dos parlamentares a partir das fontes configuradas.
+     */
 
     public function handle(SenateApiService $senateApi, LowerHouseApiService $lowerHouseApi)
     {

@@ -6,6 +6,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CandidateExpenseResource extends JsonResource
 {
+    /**
+     * Converte CandidateExpense para a resposta JSON da API. Expõe os campos: id, expense_date,
+     * description, amount, supplier_name, supplier_type. @return array<string, mixed>
+     */
     public function toArray($request)
     {
         return [

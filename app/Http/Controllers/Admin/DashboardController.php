@@ -18,6 +18,12 @@ class DashboardController extends Controller
 {
     private const ULTIMAS_NOTICIAS_LIMITE = 3;
 
+    /**
+     * Monta os totais usados pelo painel administrativo: notícias e coletas,
+     * dados políticos, participação e moderação. A data da última coleta é
+     * convertida explicitamente de UTC porque a agregação SQL não aplica casts
+     * do Eloquent; a contagem de itens da última execução é uma aproximação.
+     */
     public function index(): JsonResponse
     {
         // NewsSource::max() é uma agregação SQL crua: ao contrário de um atributo de

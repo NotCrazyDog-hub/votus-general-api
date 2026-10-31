@@ -23,6 +23,13 @@ class PresidentialProposalImportService
     ) {
     }
 
+    /**
+     * Importa propostas e gera comparações para os candidatos selecionados.
+     * Busca páginas dos sites configurados, extrai e deduplica propostas por
+     * fingerprint, preserva fontes marcadas como literais e persiste o conjunto
+     * em uma transação para que propostas e comparações permaneçam consistentes.
+     * Sem IDs explícitos, usa todos os candidatos configurados.
+     */
     public function import(array $externalIds = []): array
     {
         $sources = config('services.government_plans.sites', []);
@@ -139,6 +146,13 @@ class PresidentialProposalImportService
             ->all();
     }
 
+    /**
+     * Divide o texto da fonte em partes, pede à IA propostas estruturadas e
+     * descarta respostas incompletas. O fingerprint remove duplicatas entre
+     * partes; o trecho citado só é mantido se realmente aparecer no texto-fonte.
+     *
+     * @return array<int, array<string, mixed>>
+     */
     public function extractProposals(string $candidateName, string $text): array
     {
         $found = [];
@@ -180,6 +194,13 @@ class PresidentialProposalImportService
         return array_values($found);
     }
 
+    /**
+     * Agrupa propostas por tema e gera uma comparação para cada par de candidatos
+     * que tenha propostas extraídas naquele tema. Não infere ausência de tema a
+     * partir de uma extração vazia, pois a IA pode não ter capturado uma proposta.
+     *
+     * @return array<int, array<string, mixed>>
+     */
     private function generateComparisons(array $analysis): array
     {
         $themes = [];
@@ -322,6 +343,10 @@ class PresidentialProposalImportService
         });
     }
 
+    /**
+     * Localiza ou cria o tema pelo slug. Se o nome não produzir slug, usa parte
+     * do fingerprint para ainda gerar uma chave estável e evitar colisões vazias.
+     */
     private function themeFor(string $name, string $fingerprint, array &$themes): GovernmentPlanTheme
     {
         $slug = Str::slug($name);
@@ -335,6 +360,12 @@ class PresidentialProposalImportService
         );
     }
 
+    /**
+     * Divide textos longos no limite aceito pela chamada de extração. Prefere
+     * quebrar em nova linha ou ponto para reduzir cortes no meio de uma frase.
+     *
+     * @return array<int, string>
+     */
     private function splitText(string $text): array
     {
         $parts = [];
@@ -357,6 +388,10 @@ class PresidentialProposalImportService
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 
+    /**
+     * Confere se o trecho retornado pela IA existe na fonte após normalizar
+     * caixa e espaços repetidos; isso impede gravar citações inventadas.
+     */
     private function containsNormalized(string $document, string $excerpt): bool
     {
         $normalize = static fn (string $value): string => mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $value)));

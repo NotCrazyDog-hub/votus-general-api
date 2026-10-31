@@ -7,10 +7,16 @@ use App\Domains\Legislatures\Models\Legislator;
 
 class ThematicConsistencyService
 {
+    /**
+     * Calcula quantas proposições do parlamentar compartilham pelo menos um
+     * tema com suas comissões e retorna contagem, taxa e limite inferior.
+     */
     public function calculate(Legislator $legislator): array
     {
         $committeeIds = $legislator->committees()->pluck('committees.id');
 
+        // Reúne os temas associados às comissões do parlamentar; eles formam
+        // o conjunto de referência para avaliar o foco de cada proposição.
         $relevantTopicIds = CommitteeTopic::whereIn('committee_id', $committeeIds)
             ->pluck('topic_id');
 
@@ -26,6 +32,8 @@ class ThematicConsistencyService
             ];
         }
 
+        // Uma proposição é considerada consistente quando pelo menos um tema
+        // dela também aparece entre os temas das comissões do parlamentar.
         $consistent = $bills->filter(function ($bill) use ($relevantTopicIds) {
             return $bill->topics->pluck('id')->intersect($relevantTopicIds)->isNotEmpty();
         })->count();
@@ -44,6 +52,8 @@ class ThematicConsistencyService
             return 0.0;
         }
 
+        // Usa o limite inferior de Wilson para expor uma taxa conservadora,
+        // menos instável que a proporção simples quando há poucos projetos.
         $p = $x / $n;
         $denominator = 1 + ($z ** 2) / $n;
         $center = $p + ($z ** 2) / (2 * $n);

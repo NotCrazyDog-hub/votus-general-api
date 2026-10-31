@@ -13,6 +13,10 @@ class SyncSenateCommittees extends Command
     protected $signature = 'sync:committees-senate';
     protected $description = 'Fetch and store current committee memberships for already-synced CE senators';
 
+    /**
+     * Atualiza os vínculos entre senadores já cadastrados e as comissões do Senado.
+     */
+
     public function handle(SenateApiService $api)
     {
         $legislators = Legislator::where('chamber', 'senate')->where('state', 'CE')->get();

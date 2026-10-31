@@ -18,6 +18,10 @@ class RefreshRadar extends Command
 
     protected $description = 'Atualiza (ou simula, com --dry-run) os dados do Radar do Brasil a partir das fontes oficiais';
 
+    /**
+     * Atualiza e valida uma fonte e escopo do radar; com --dry-run calcula os dados sem publicá-los.
+     */
+
     public function handle(RadarRefresher $refresher)
     {
         $source = $this->argument('source');
@@ -66,6 +70,7 @@ class RefreshRadar extends Command
         return $failed ? self::FAILURE : self::SUCCESS;
     }
 
+    /** Imprime contagens de validação diferentes conforme a fonte processada no dry-run. */
     private function printSummary(array $result): void
     {
         match ($result['source']) {

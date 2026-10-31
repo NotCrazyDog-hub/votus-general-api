@@ -28,6 +28,9 @@ class CandidateExpensePayment extends Model
         'raw_data' => 'array',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `CandidateExpense`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function candidateExpense(): BelongsTo
     {
         return $this->belongsTo(CandidateExpense::class);

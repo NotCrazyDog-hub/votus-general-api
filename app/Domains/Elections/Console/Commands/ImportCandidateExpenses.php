@@ -14,6 +14,10 @@ class ImportCandidateExpenses extends Command
 
     protected $description = 'Import candidate expenses and link them by SQ_CANDIDATO';
 
+    /**
+     * Lê despesas de campanha, normaliza os dados e as associa ao candidato pelo identificador externo do TSE.
+     */
+
     public function handle(TseCandidateExpensesCsvService $csv)
     {
         $filePath = $this->argument('file');

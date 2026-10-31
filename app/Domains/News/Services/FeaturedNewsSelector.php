@@ -29,10 +29,17 @@ class FeaturedNewsSelector
     private const DESTAQUES_POR_DIA = 2;
     private const FUSO = 'America/Fortaleza';
 
+    /**
+     * Escolhe uma notícia recente com imagem utilizável e alterna entre as
+     * duas mais relevantes conforme o período do dia. Se não houver notícias
+     * recentes, usa as últimas publicadas como fallback.
+     */
     public function select(): ?News
     {
         $base = fn () => News::query()->where('published', true)->publiclyDisplayable()->whereNotNull('url');
 
+        // Primeiro considera só notícias recentes e exibíveis; o filtro base
+        // também exclui registros sem URL ou bloqueados pelo validador público.
         $candidates = $base()
             ->where('published_at', '>=', now()->subHours(self::JANELA_RECENTE_HORAS))
             ->where('published_at', '<=', now()->addHour())
@@ -41,6 +48,8 @@ class FeaturedNewsSelector
             ->limit(self::DESTAQUES_POR_DIA)
             ->get();
 
+        // Se o ciclo de coleta parou e não há notícias recentes, usa as últimas
+        // publicadas para manter um destaque disponível na página.
         if ($candidates->isEmpty()) {
             $candidates = $base()
                 ->whereIn('id', $base()->orderByDesc('published_at')->limit(self::FALLBACK_MAIS_RECENTES)->pluck('id'))
@@ -54,6 +63,8 @@ class FeaturedNewsSelector
             return null;
         }
 
+        // Alterna entre as duas melhores: uma no período da manhã e outra à
+        // tarde, usando o fuso da publicação em vez do fuso do servidor.
         $timeOfDay = now(self::FUSO)->hour < 12 ? 0 : 1;
         $chosen = $candidates[$timeOfDay % $candidates->count()];
 

@@ -8,6 +8,11 @@ class ThematicFocusService
 {
     protected const MIN_BILLS_FOR_INDEX = 5;
 
+    /**
+     * Calcula a concentração temática das proposições. Soma atribuições por
+     * tema e usa a soma dos quadrados das participações (HHI); amostras menores
+     * que cinco proposições não recebem índice para evitar um valor enganoso.
+     */
     public function calculate(Legislator $legislator): array
     {
         $bills = $legislator->bills()->with('topics')->get();
@@ -27,6 +32,8 @@ class ThematicFocusService
             ];
         }
 
+        // Cada participação é a fração das atribuições daquele tema no total;
+        // elevar ao quadrado faz temas dominantes pesarem mais no índice.
         $shares = $topicCounts->map(fn ($count) => $count / $totalAssignments);
 
         $hhi = $shares->reduce(fn ($carry, $share) => $carry + ($share ** 2), 0.0);

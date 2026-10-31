@@ -13,6 +13,10 @@ class SyncBillTopics extends Command
     protected $signature = 'sync:bill-topics {--chamber= : Chamber to sync (senate or lower_house)}';
     protected $description = 'Fetch and store topics/themes for bills already registered in the database';
 
+    /**
+     * Sincroniza os temas das proposições da Câmara ou do Senado, conforme a câmara selecionada.
+     */
+
     public function handle(LowerHouseApiService $lowerHouseApi, SenateApiService $senateApi)
     {
         $chamber = $this->option('chamber');
@@ -32,6 +36,7 @@ class SyncBillTopics extends Command
     }
 
 
+    /** Busca temas de cada proposição da Câmara e continua mesmo se uma chamada individual falhar. */
     protected function syncLowerHouse(LowerHouseApiService $api): void
     {
         $bills = Bill::where('chamber', 'lower_house')->get();
@@ -53,6 +58,7 @@ class SyncBillTopics extends Command
         $this->newLine();
     }
 
+    /** Busca temas de cada proposição do Senado com pausa entre chamadas para respeitar a API. */
     protected function syncSenate(SenateApiService $api): void
     {
         $bills = Bill::where('chamber', 'senate')->get();
@@ -75,6 +81,7 @@ class SyncBillTopics extends Command
         $this->newLine();
     }
 
+    /** Cria ou reutiliza o tema da casa e associa-o sem remover temas já vinculados à proposição. */
     protected function attachTopics(Bill $bill, array $topics, string $chamber): void
     {
         foreach ($topics as $t) {

@@ -11,6 +11,11 @@ class GovernmentPlanSiteService
 {
     use ExtractsTextFromHtml;
 
+    /**
+     * Percorre páginas oficiais permitidas a partir da URL configurada. Usa uma
+     * fila e um conjunto de URLs visitadas para não repetir páginas; só segue
+     * links dos hosts e caminhos autorizados e limita a quantidade de páginas.
+     */
     public function fetchPages(array $source): array
     {
         $url = $source['url'] ?? null;
@@ -79,6 +84,7 @@ class GovernmentPlanSiteService
         return $this->cleanText($html);
     }
 
+    /** Filtra links da página pelos hosts e prefixos de caminho explicitamente permitidos. */
     private function governmentPlanLinks(Crawler $crawler, string $baseUrl, array $allowedHosts, array $allowedPathPrefixes): array
     {
         $links = [];
@@ -101,6 +107,7 @@ class GovernmentPlanSiteService
         return array_values($links);
     }
 
+    /** Converte links relativos e protocol-relative em URLs absolutas usando a página atual. */
     private function absoluteUrl(string $baseUrl, string $href): string
     {
         if (str_starts_with($href, '//')) {
@@ -122,6 +129,7 @@ class GovernmentPlanSiteService
         return $origin . rtrim(dirname($path), '/') . '/' . $href;
     }
 
+    /** Remove a barra final e padroniza esquema/host para reconhecer links já visitados. */
     private function normalizeUrl(string $url): string
     {
         $parts = parse_url($url);

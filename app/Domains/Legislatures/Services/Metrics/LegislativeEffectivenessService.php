@@ -6,8 +6,14 @@ use App\Domains\Legislatures\Models\Legislator;
 
 class LegislativeEffectivenessService
 {
+    /**
+     * Conta proposições que avançaram conforme o critério da casa legislativa
+     * e retorna total, taxa simples e limite inferior de Wilson.
+     */
     public function calculate(Legislator $legislator): array
     {
+        // Carrega as tramitações junto com as proposições para que hasAdvanced
+        // possa avaliar o conjunto sem uma consulta extra por proposição.
         $bills = $legislator->bills()->with('tramitations')->get();
 
         $total = $bills->count();
@@ -21,6 +27,8 @@ class LegislativeEffectivenessService
             ];
         }
 
+        // O critério de avanço depende da Câmara de origem, então cada projeto
+        // é avaliado pelo método hasAdvanced antes de calcular a taxa geral.
         $advanced = $bills->filter(fn ($bill) => $this->hasAdvanced($bill))->count();
 
         return [
@@ -31,6 +39,10 @@ class LegislativeEffectivenessService
         ];
     }
 
+    /**
+     * Aplica o critério de avanço adequado à casa: ações de tramitação na Câmara
+     * e Senado, ou número de lei disponível para a ALECE.
+     */
     protected function hasAdvanced($bill): bool
     {
         if ($bill->chamber === 'lower_house') {
@@ -65,6 +77,8 @@ class LegislativeEffectivenessService
             return 0.0;
         }
 
+        // Limite inferior de Wilson: uma estimativa conservadora da taxa que
+        // reduz o excesso de confiança quando há poucas proposições na amostra.
         $p = $x / $n;
         $denominator = 1 + ($z ** 2) / $n;
         $center = $p + ($z ** 2) / (2 * $n);

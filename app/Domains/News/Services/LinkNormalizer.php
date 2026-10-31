@@ -9,6 +9,11 @@ class LinkNormalizer
         'fbclid', 'gclid', 'mc_cid', 'mc_eid', 'itok',
     ];
 
+    /**
+     * Cria uma chave comparável para links da mesma matéria: remove www e
+     * parâmetros de rastreamento, ordena os demais parâmetros e padroniza o
+     * esquema. URLs inválidas recebem apenas normalização segura de caixa/barra.
+     */
     public function normalize(string $url): string
     {
         $parts = parse_url(trim($url));

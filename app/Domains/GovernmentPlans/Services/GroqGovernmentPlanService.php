@@ -42,6 +42,10 @@ class GroqGovernmentPlanService
         ]);
     }
 
+    /**
+     * Solicita uma comparação descritiva de propostas já agrupadas por candidato
+     * e tema; retorna o JSON estruturado validado pelo método request.
+     */
     public function compare(string $theme, array $proposalsByCandidate): array
     {
         return $this->request([
@@ -63,6 +67,10 @@ class GroqGovernmentPlanService
         ]);
     }
 
+    /**
+     * Envia prompts em sequência pelas chaves disponíveis, percorre novas
+     * rodadas somente para rate limit e valida que o conteúdo recebido seja JSON.
+     */
     private function request(array $messages): array
     {
         $keys = array_values(array_filter(config('services.groq.api_keys', [])));
@@ -80,6 +88,8 @@ class GroqGovernmentPlanService
         for ($round = 1; $round <= self::RATE_LIMIT_ROUNDS; $round++) {
             $waitSeconds = 0;
 
+            // Dentro de cada rodada tenta todas as chaves. Se alguma resposta
+            // indicar 429, guarda a maior espera necessária para a próxima rodada.
             foreach ($keys as $key) {
                 try {
                     $response = Http::withToken($key)
@@ -120,6 +130,8 @@ class GroqGovernmentPlanService
                 }
             }
 
+            // Outros erros não justificam esperar e repetir o lote; a pausa só
+            // acontece quando houve rate limit e ainda restam rodadas.
             if ($waitSeconds === 0 || $round === self::RATE_LIMIT_ROUNDS) {
                 break;
             }

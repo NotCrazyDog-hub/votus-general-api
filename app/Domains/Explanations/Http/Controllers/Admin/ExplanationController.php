@@ -24,6 +24,7 @@ class ExplanationController extends Controller
         'Eleições e voto',
     ];
 
+    /** Lista explicações para administração, com busca, contagens relacionadas e paginação. */
     public function index(Request $request): JsonResponse
     {
         $busca = trim((string) $request->query('search', ''));
@@ -132,6 +133,7 @@ class ExplanationController extends Controller
         return response()->json($explanation->fresh()->load('sources'), 201);
     }
 
+    /** Carrega fontes e quiz da explicação para exibir todos os dados no painel. */
     public function show(Explanation $explanation): JsonResponse
     {
         $explanation->load(['sources', 'quizQuestions.options']);
@@ -234,6 +236,10 @@ class ExplanationController extends Controller
         return response()->json($explanation);
     }
 
+    /**
+     * Publica a explicação somente se tiver fontes e um quiz completo: cinco
+     * perguntas, quatro alternativas por pergunta e exatamente uma correta.
+     */
     public function publish(Explanation $explanation): JsonResponse
     {
         $explanation->load(['sources', 'quizQuestions.options']);
@@ -261,6 +267,7 @@ class ExplanationController extends Controller
         return response()->json($explanation);
     }
 
+    /** Retira a explicação da área pública e devolve seu estado para revisão. */
     public function unpublish(Explanation $explanation): JsonResponse
     {
         $explanation->update(['status' => 'review', 'published_at' => null]);
@@ -268,6 +275,7 @@ class ExplanationController extends Controller
         return response()->json($explanation);
     }
 
+    /** Remove a explicação; as chaves estrangeiras apagam suas fontes e quiz em cascata. */
     public function destroy(Explanation $explanation): JsonResponse
     {
         // As FKs de explanation_sources/quiz_questions/quiz_options já são

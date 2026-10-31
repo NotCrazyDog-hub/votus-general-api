@@ -11,6 +11,10 @@ class CalculateLegislativeEffectiveness extends Command
     protected $signature = 'metrics:effectiveness';
     protected $description = 'Calcula e persiste a métrica de efetividade legislativa por parlamentar';
 
+    /**
+     * Calcula a efetividade legislativa dos parlamentares e persiste os indicadores resultantes.
+     */
+
     public function handle(LegislativeEffectivenessService $service)
     {
         $legislators = Legislator::all();

@@ -7,6 +7,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class OpportunityPublicationResource extends JsonResource
 {
+    /**
+     * Converte OpportunityPublication para a resposta JSON da API. Expõe os campos: publication_type,
+     * gazette_date, edition, gazette_url. @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

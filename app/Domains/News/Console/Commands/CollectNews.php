@@ -31,6 +31,10 @@ class CollectNews extends Command
      */
     private const META_POR_EXECUCAO = 15;
 
+    /**
+     * Seleciona fontes ativas e elegíveis e despacha os jobs de coleta sem executar cada coleta na requisição.
+     */
+
     public function handle(): int
     {
         // Evita despacho duplo quando cron e admin chegam no mesmo instante.
@@ -51,6 +55,11 @@ class CollectNews extends Command
         }
     }
 
+    /**
+     * Escolhe fontes ativas elegíveis, divide a meta do ciclo entre elas e
+     * despacha o Job registrado para cada fonte. Fontes sem Job são avisadas e
+     * ignoradas sem impedir as demais coletas.
+     */
     private function dispatchJobs(): int
     {
         $forced = (bool) $this->option('force');
@@ -90,6 +99,7 @@ class CollectNews extends Command
         return self::SUCCESS;
     }
 
+    /** Verifica se já passou o intervalo mínimo configurado desde a última coleta da fonte. */
     private function isEligible(NewsSource $source): bool
     {
         if (!$source->ultima_coleta_em) {

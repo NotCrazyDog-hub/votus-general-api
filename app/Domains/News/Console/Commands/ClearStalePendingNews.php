@@ -16,6 +16,10 @@ class ClearStalePendingNews extends Command
     // acima do retryUntil (20h) do SummarizeNewsJob.
     private const HORAS_LIMITE = 24;
 
+    /**
+     * Localiza notícias que ficaram pendentes além do prazo e atualiza seu estado para permitir novo processamento.
+     */
+
     public function handle(): int
     {
         // Inclui 'falhou' também: notícia que deu erro (rate limit da IA,

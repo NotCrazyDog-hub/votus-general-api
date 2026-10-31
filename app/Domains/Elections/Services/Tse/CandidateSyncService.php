@@ -440,6 +440,7 @@ class CandidateSyncService
      *
      * @param  array<int, array{id: int|string, titular: Candidate}>  $pending
      * @param  array<string, true>  $processed
+     *
      * @return array{persisted: int, histories: int, photos: int, documents: int, running_mates: int, failed: array<int, string>}
      */
     private function syncPendingVices(
@@ -662,6 +663,11 @@ class CandidateSyncService
         return ($digits === '' || $digits === null) ? null : $digits;
     }
 
+    /**
+     * Examina um lote de candidatos, identifica fotos/documentos ainda ausentes
+     * e pré-carrega seus arquivos para reduzir esperas durante a persistência.
+     * Falhas de detalhe isoladas são ignoradas para que o restante do lote continue.
+     */
     private function prefetchChunk(array $rows, int $year, string $uf, string $electionId): void
     {
         $urls = [];

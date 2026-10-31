@@ -12,6 +12,10 @@ class SyncLowerHouseBills extends Command
     protected $signature = 'sync:bills-lower-house';
     protected $description = 'Fetch and store bills authored by CE deputies';
 
+    /**
+     * Consulta proposições da Câmara dos Deputados e sincroniza seus dados e tramitações.
+     */
+
     public function handle(LowerHouseApiService $api)
     {
         $legislators = Legislator::where('chamber', 'lower_house')->where('state', 'CE')->get();

@@ -18,6 +18,9 @@ class QuizOption extends Model
         'is_correct' => 'boolean',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `QuizQuestion`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function question(): BelongsTo
     {
         return $this->belongsTo(QuizQuestion::class);

@@ -28,6 +28,9 @@ class OpportunityPublication extends Model
     }
 
 
+    /**
+     * Cada registro guarda a referência para um único `PublicOpportunity`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function publicOpportunity(): BelongsTo
     {
         return $this->belongsTo(

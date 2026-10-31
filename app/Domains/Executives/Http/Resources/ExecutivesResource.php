@@ -7,6 +7,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ExecutivesResource extends JsonResource
 {
+    /**
+     * Converte Executives para a resposta JSON da API. Expõe os campos: id, photo_url, external_id,
+     * name, display_name, office, level, state, party, birth_date, birth_place, occupation, education,
+     * biography, started_at, ended_at, is_current, source, actions. As relações aparecem apenas quando
+     * o controlador/serviço já as carregou, evitando consultas adicionais durante a serialização.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

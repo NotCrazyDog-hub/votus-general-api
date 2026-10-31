@@ -7,6 +7,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UniversityResource extends JsonResource
 {
+    /**
+     * Converte University para a resposta JSON da API. Expõe os campos: mec_code, name, acronym,
+     * administrative_category, academic_organization, sector, website, admission_methods, campuses. As
+     * relações aparecem apenas quando o controlador/serviço já as carregou, evitando consultas
+     * adicionais durante a serialização. @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

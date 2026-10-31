@@ -18,6 +18,10 @@ class SyncBillStatus extends Command
 
     protected $description = 'Syncs the current status of legislative proposals (legislative effectiveness)';
 
+    /**
+     * Atualiza a situação e o histórico de tramitação das proposições já cadastradas.
+     */
+
     public function handle(LowerHouseApiService $lowerHouseApi, SenateApiService $senateApi)
     {
         $chamber = $this->option('chamber');
@@ -33,6 +37,11 @@ class SyncBillStatus extends Command
         $this->info('Status sync completed.');
     }
 
+    /**
+     * Atualiza situação e histórico para os projetos selecionados. Em cada
+     * projeto substitui as tramitações antigas pelas recebidas da API; falhas
+     * são registradas e o loop segue para os próximos itens.
+     */
     protected function sync(string $chamber, callable $fetch): void
     {
         $bills = $this->pendingQuery($chamber)->get();
@@ -66,6 +75,7 @@ class SyncBillStatus extends Command
         $this->newLine();
     }
 
+    /** Monta a consulta por casa, limite e idade do status; --force remove apenas o filtro de idade. */
     protected function pendingQuery(string $chamber)
     {
         $query = Bill::where('chamber', $chamber);

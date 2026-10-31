@@ -60,6 +60,13 @@ class CandidateService
         END
         SQL;
 
+    /**
+     * Retorna uma página de candidatos titulares e deferidos para o cargo.
+     * Aplica filtros de UF, partido, nome/número e situação eleitoral e ordena
+     * por resultado oficial. Depois da consulta, anexa o resultado do ano da
+     * candidatura sem carregar históricos de outros anos ou todos os campos
+     * do payload original do TSE.
+     */
     public function listByOffice(
         CandidateOffice $office,
         ?string $state = null,
@@ -233,18 +240,6 @@ class CandidateService
     }
 
     /**
-     * Operador de comparação "like" sem distinção de maiúsculas/minúsculas.
-     *
-     * `ilike` existe só no Postgres — é o que produção (Supabase) usa e o
-     * comportamento continua idêntico lá. Nos testes o banco é MySQL, onde
-     * `ilike` NÃO é um operador válido e passaria direto para o SQL (o
-     * Laravel o considera legítimo por estar em `Builder::$operators`),
-     * quebrando a consulta com um erro 1064. O `LIKE` do MySQL já ignora
-     * caixa pela collation `_ci`, então o resultado prático é o mesmo.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<*>|\Illuminate\Database\Query\Builder  $query
-     */
-    /**
      * Filtra pela situação eleitoral (resultado oficial do TSE do ANO da
      * eleição do candidato) — mesma regra de ElectionResultStatus, em SQL:
      *  - elected:     resultado "Eleito…" (inclui por QP e por média);
@@ -302,6 +297,11 @@ class CandidateService
         return $counts;
     }
 
+    /**
+     * Escolhe o operador de busca sem diferenciar maiúsculas/minúsculas:
+     * PostgreSQL usa ILIKE; outros drivers usam LIKE, cuja collation do MySQL
+     * já ignora caixa. Isso mantém a mesma consulta compatível com produção e testes.
+     */
     private function caseInsensitiveOperator($query): string
     {
         $driver = $query->toBase()->getConnection()->getDriverName();
@@ -331,6 +331,12 @@ class CandidateService
         );
     }
 
+    /**
+     * Busca o candidato principal pelo identificador do TSE e pelo cargo,
+     * carrega relações usadas no perfil para evitar consultas repetidas e
+     * acrescenta ao modelo o resultado eleitoral e um resumo de despesas.
+     * As despesas detalhadas são carregadas por uma rota separada e paginada.
+     */
     public function findByOffice(int $externalId, CandidateOffice $office): Candidate
     {
         $candidate = Candidate::mainCandidates()
@@ -358,12 +364,6 @@ class CandidateService
     }
 
     /**
-     * Resumo agregado (contagem + soma) das despesas de campanha de um
-     * candidato — null se ele não tiver nenhuma declarada. O total é
-     * CALCULADO pelo Votus a partir dos registros oficiais do TSE
-     * (candidate_expenses), não é um campo que o TSE fornece pronto.
-     */
-    /**
      * O TSE publica relatórios financeiros periódicos durante a campanha —
      * cada um recebe SQ_DESPESA novos mesmo pra itens já declarados antes.
      * Somar todas as despesas desde o início da campanha duplicaria o
@@ -382,6 +382,11 @@ class CandidateService
             ->when($latest, fn ($q) => $q->where('accounting_report_date', $latest));
     }
 
+    /**
+     * Retorna contagem e soma das despesas do relatório mais recente do TSE.
+     * Devolve null quando o candidato ainda não tem despesas declaradas; o
+     * agregado é calculado pelo Votus a partir das linhas importadas.
+     */
     public function expensesSummary(int $candidateId): ?array
     {
         $summary = (clone $this->latestReportExpenses($candidateId))

@@ -31,9 +31,6 @@ class TseGatewayException extends RuntimeException
         return $this->errorCode;
     }
 
-    /**
-     * HTTP status respondido pelo TSE, quando houve um.
-     */
     public function status(): ?int
     {
         return $this->status;

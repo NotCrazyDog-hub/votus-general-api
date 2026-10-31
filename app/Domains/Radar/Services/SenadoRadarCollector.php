@@ -30,6 +30,11 @@ class SenadoRadarCollector
     {
     }
 
+    /**
+     * Coleta senadores, proposições e temas para uma UF. Deduplica projetos
+     * assinados por mais de um senador, agrupa por ano e mantém em checks os
+     * detalhes que não puderam ser consultados após as tentativas.
+     */
     public function collect(string $uf): array
     {
         $uf = strtoupper($uf);

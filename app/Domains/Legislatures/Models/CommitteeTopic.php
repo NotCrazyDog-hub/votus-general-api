@@ -24,11 +24,17 @@ class CommitteeTopic extends Model
         'reviewed_at' => 'datetime',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Committee`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function committee(): BelongsTo
     {
         return $this->belongsTo(Committee::class);
     }
 
+    /**
+     * Cada registro guarda a referência para um único `Topic`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function topic(): BelongsTo
     {
         return $this->belongsTo(Topic::class);

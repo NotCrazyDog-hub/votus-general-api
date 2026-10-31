@@ -36,6 +36,7 @@ class NewsCategoryPriority
      */
     private const TERMOS_CATCH_ALL = ['geral', 'ultimasnoticias', 'últimas', 'brasil'];
 
+    /** Verifica se a categoria contém termos editoriais prioritários para ordenar a coleta. */
     public static function isPriority(?string $category): bool
     {
         if (!$category) {
@@ -53,6 +54,7 @@ class NewsCategoryPriority
         return false;
     }
 
+    /** Identifica categorias genéricas que não indicam relevância por si só. */
     public static function isCatchAll(?string $category): bool
     {
         if (!$category) {
@@ -70,6 +72,7 @@ class NewsCategoryPriority
         return false;
     }
 
+    /** Remove diferenças de acento e caixa para comparar categorias de fontes diferentes. */
     private static function normalize(string $value): string
     {
         $withoutAccents = strtr(mb_strtolower($value), [

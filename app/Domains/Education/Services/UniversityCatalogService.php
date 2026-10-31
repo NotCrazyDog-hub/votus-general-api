@@ -104,6 +104,7 @@ class UniversityCatalogService
         ]);
     }
 
+    /** Retorna as UFs distintas presentes nos campi cadastrados. */
     public function states(): Collection
     {
         return Campus::query()
@@ -113,6 +114,7 @@ class UniversityCatalogService
             ->pluck('state');
     }
 
+    /** Retorna códigos IBGE e nomes dos municípios com campus na UF selecionada. */
     public function municipalities(string $state): Collection
     {
         return Campus::query()
@@ -123,6 +125,7 @@ class UniversityCatalogService
             ->get();
     }
 
+    /** Lista nomes de cursos distintos, restringindo ao município quando UF e código foram informados. */
     public function courses(?string $state = null, ?string $cityCode = null): Collection
     {
         $query = CourseOffering::query()
@@ -142,6 +145,7 @@ class UniversityCatalogService
         return $query->get();
     }
 
+    /** Retorna modalidades distintas não nulas para popular o filtro de busca. */
     public function modalities(): Collection
     {
         return CourseOffering::query()

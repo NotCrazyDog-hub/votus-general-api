@@ -25,24 +25,28 @@ class LegislatorController extends Controller
 {
     public function __construct(protected LegislatorCatalogService $service) {}
     
+    /** Lista deputados federais, opcionalmente filtrados pela UF, no formato de resumo. */
     public function indexForDeputies(Request $request)
     {
         $deputies = $this->service->listByChamber('lower_house', $request->state);
         return LegislatorsListResource::collection($deputies);
     }
 
+    /** Lista senadores, opcionalmente filtrados pela UF, no formato de resumo. */
     public function indexForSenators(Request $request)
     {
         $senators = $this->service->listByChamber('senate', $request->state);
         return LegislatorsListResource::collection($senators);
     }
 
+    /** Lista deputados estaduais da casa configurada, opcionalmente filtrados pela UF. */
     public function indexForStateDeputies(Request $request) 
     { 
         $deputies = $this->service->listByChamber( 'state_house', $request->state ); 
         return LegislatorsListResource::collection($deputies); 
     }
 
+    /** Busca o perfil do deputado federal pelo identificador da fonte oficial. */
     public function showDeputy(int $external_id)
     {
         return response()->json(
@@ -50,6 +54,7 @@ class LegislatorController extends Controller
         );
     }
 
+    /** Busca o perfil do senador pelo identificador da fonte oficial. */
     public function showSenator(int $external_id)
     {
         return response()->json(
@@ -57,6 +62,7 @@ class LegislatorController extends Controller
         );
     }
 
+    /** Busca o perfil do deputado estadual pelo slug estável da fonte. */
     public function showStateDeputy(string $source_slug) 
     { 
         return response()->json( 

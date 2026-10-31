@@ -82,6 +82,7 @@ class NewsPipelineController extends Controller
         ]);
     }
 
+    /** Compara o token esperado com o cabeçalho ou query string sem comparação de tempo variável. */
     private function isTokenValid(Request $request): bool
     {
         $expected = config('services.scheduler.token');

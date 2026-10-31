@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 
 class ProposalCommentController extends Controller
 {
+    /** Lista comentários de uma proposta publicada e marca os que o visitante pode excluir. */
     public function index(Request $request, int $id)
     {
         $proposal = Proposal::where('status', ProposalStatus::Published)->findOrFail($id);
@@ -25,6 +26,7 @@ class ProposalCommentController extends Controller
         return ProposalCommentResource::collection($comments);
     }
 
+    /** Valida e cria um comentário; associa-o ao visitante para permitir exclusão posterior. */
     public function store(Request $request, int $id)
     {
         $proposal = Proposal::where('status', ProposalStatus::Published)->findOrFail($id);
@@ -48,6 +50,7 @@ class ProposalCommentController extends Controller
         return new ProposalCommentResource($comment);
     }
 
+    /** Exclui o comentário apenas quando o identificador do visitante corresponde ao autor. */
     public function destroy(Request $request, int $id, int $commentId)
     {
         $visitorId = $request->header('X-Visitor-Id');

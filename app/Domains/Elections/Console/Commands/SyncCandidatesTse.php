@@ -39,6 +39,10 @@ class SyncCandidatesTse extends Command
         2026 => '20322002026',
     ];
 
+    /**
+     * Consulta candidatos na API do TSE e sincroniza dados cadastrais, relações e arquivos vinculados no banco.
+     */
+
     public function handle(CandidateSyncService $sync): int
     {
         $year = (int) $this->option('year');

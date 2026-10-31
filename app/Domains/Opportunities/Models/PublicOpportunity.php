@@ -39,8 +39,11 @@ class PublicOpportunity extends Model
     ];
 
 
+    /** Define conversões de arrays, valores decimais, datas e timestamps do modelo. */
     protected function casts(): array
     {
+        // Campos estruturados ficam como arrays; valores monetários preservam
+        // duas casas decimais e datas são expostas como objetos de data.
         return [
             'positions' => 'array',
 
@@ -69,6 +72,9 @@ class PublicOpportunity extends Model
     }
 
 
+    /**
+     * Relação um-para-muitos com o modelo `OpportunityPublication`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function publications(): HasMany
     {
         return $this->hasMany(
@@ -79,6 +85,8 @@ class PublicOpportunity extends Model
 
     protected function status(): Attribute
     {
+        // O status é derivado das datas de inscrição e não precisa ser gravado
+        // no banco; o accessor o inclui na serialização por causa de $appends.
         return Attribute::make(
             get: function (): string {
 
@@ -86,7 +94,7 @@ class PublicOpportunity extends Model
                     ->startOfDay();
 
 
-                // Ainda não começou
+                // Uma inscrição futura tem precedência sobre as demais datas.
                 if (
                     $this->registration_start &&
                     $today->lt(
@@ -97,7 +105,7 @@ class PublicOpportunity extends Model
                 }
 
 
-                // Temos data final
+                // Considera o último dia inteiro como aberto, inclusive hoje.
                 if ($this->registration_end) {
 
                     $end =
@@ -120,6 +128,7 @@ class PublicOpportunity extends Model
         );
     }
 
+    /** Usa source_key na resolução automática do model binding das rotas. */
     public function getRouteKeyName(): string
     {
         return 'source_key';

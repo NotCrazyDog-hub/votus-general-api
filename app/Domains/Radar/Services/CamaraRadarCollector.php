@@ -18,6 +18,11 @@ class CamaraRadarCollector
     ) {
     }
 
+    /**
+     * Baixa os CSVs de temas e autores, agrega as contagens do ano e retorna
+     * também metadados dos arquivos. O diretório temporário é removido no
+     * finally mesmo se download ou leitura lançar uma exceção.
+     */
     public function collect(int $year): array
     {
         $dir = storage_path('app/radar-tmp/' . Str::uuid());

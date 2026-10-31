@@ -6,6 +6,7 @@ use App\Domains\Legislatures\Models\Legislator;
 
 class LegislatorCatalogService
 {
+    /** Lista parlamentares por casa e, opcionalmente, UF, com foco temático carregado. */
     public function listByChamber(string $chamber, ?string $state = null)
     {
         // paginate() (era simplePaginate): o front precisa do total real de
@@ -22,6 +23,7 @@ class LegislatorCatalogService
             ->withQueryString();
     }
 
+    /** Busca o perfil pelo ID externo e casa legislativa, carregando relações exibidas no detalhe. */
     public function findByChamber(int $external_id, string $chamber): Legislator
     {
         return Legislator::where('external_id', $external_id)
@@ -30,6 +32,7 @@ class LegislatorCatalogService
             ->firstOrFail();
     }
 
+    /** Busca o perfil por slug da fonte para casas cujo ID externo não é globalmente estável. */
     public function findByChamberSlug(string $source_slug, string $chamber): Legislator
     {
         return Legislator::where('source_slug', $source_slug)

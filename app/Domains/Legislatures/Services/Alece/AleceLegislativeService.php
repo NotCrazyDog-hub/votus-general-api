@@ -46,6 +46,10 @@ class AleceLegislativeService
         return array_values($results);
     }
 
+    /**
+     * Busca resultados da ALECE página a página e os produz como Generator,
+     * evitando carregar todo o HTML/resultados na memória de uma só vez.
+     */
     protected function fetchAllPages(int $descricao, string $opcao, string $searchToken): \Generator
     {
         $page = 1;
@@ -127,6 +131,7 @@ class AleceLegislativeService
         return $rows;
     }
 
+    /** Converte o link relativo do site da ALECE em URL absoluta. */
     protected function resolveUrl(string $href): string
     {
         return str_starts_with($href, 'http')
@@ -177,6 +182,7 @@ class AleceLegislativeService
         ];
     }
 
+    /** Retorna o texto que aparece após um rótulo em um bloco de texto extraído. */
     protected function extractField(string $text, string $label): ?string
     {
         if (preg_match('/' . preg_quote($label, '/') . '\s*([^\n]+)/u', $text, $matches)) {
@@ -186,6 +192,7 @@ class AleceLegislativeService
         return null;
     }
 
+    /** Converte datas dd.mm.yy da ALECE para YYYY-MM-DD; formatos inesperados viram null. */
     protected function parseAleceDate(?string $date): ?string
     {
         if (!$date) {

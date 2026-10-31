@@ -11,6 +11,7 @@ class LegislativeProductivityService
 {
     public function __construct(protected SenateApiService $senateApi) {}
 
+    /** Calcula proposições por ano de mandato; retorna null quando a data é desconhecida ou a amostra é curta. */
     public function calculate(Legislator $legislator): array
     {
         $mandateStartedAt = $this->resolveMandateStart($legislator);
@@ -23,9 +24,11 @@ class LegislativeProductivityService
         }
 
         $totalBills = $legislator->bills()->count();
+        // Usa 365,25 para aproximar anos civis incluindo anos bissextos.
         $yearsInOffice = Carbon::parse($mandateStartedAt)->diffInDays(now()) / 365.25;
 
         if ($yearsInOffice < 0.25) {
+            // Períodos menores que três meses geram uma taxa anualizada instável.
             return [
                 'mandate_started_at' => $mandateStartedAt,
                 'bills_per_year' => null,
@@ -38,9 +41,12 @@ class LegislativeProductivityService
         ];
     }
 
+    /** Obtém o início do mandato pela API do Senado ou pela tabela de legislaturas das outras casas. */
     protected function resolveMandateStart(Legislator $legislator): ?string
     {
         if ($legislator->chamber === 'senate') {
+            // No Senado, a API fornece a data individual de início do mandato;
+            // nas demais casas, a data é compartilhada pela legislatura inteira.
             return $this->senateApi->getMandateStartDate($legislator->external_id);
         }
 

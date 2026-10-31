@@ -9,10 +9,20 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * Cria um administrador do painel sem expor um fluxo de cadastro público.
+ *
+ * Aceita e-mail, nome e senha como argumentos/opções ou solicita os dados
+ * interativamente. Um usuário com o mesmo e-mail é atualizado e promovido a admin.
+ */
 #[Signature('admin:create-user {email?} {--name=} {--password=}')]
 #[Description('Cria (ou promove) um usuário administrador do painel. Não há cadastro público — só por aqui.')]
 class CreateAdminUser extends Command
 {
+    /**
+     * Obtém e valida as credenciais, salva o usuário com privilégios administrativos
+     * e informa sucesso ou retorna falha quando os dados forem inválidos.
+     */
     public function handle(): int
     {
         $email = $this->argument('email') ?? $this->ask('E-mail do administrador');

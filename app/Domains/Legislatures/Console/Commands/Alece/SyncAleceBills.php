@@ -12,6 +12,10 @@ class SyncAleceBills extends Command
     protected $signature = 'sync:bills-alece';
     protected $description = 'Busca e armazena proposições (PL/PEC) de deputados estaduais do Ceará via site da Alece';
 
+    /**
+     * Consulta proposições da ALECE e sincroniza seus dados e tramitações no banco local.
+     */
+
     public function handle(AleceLegislativeService $service)
     {
         $legislators = Legislator::where('chamber', 'state_house')

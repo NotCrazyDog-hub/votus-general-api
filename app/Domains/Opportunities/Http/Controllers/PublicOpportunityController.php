@@ -10,6 +10,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PublicOpportunityController extends Controller
 {
+    /**
+     * Lista oportunidades aprovadas e aplica busca, tipo, UF e município.
+     * Ordena primeiro pelas inscrições com prazo mais próximo e deixa datas
+     * ausentes no fim; preserva os filtros na paginação.
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = PublicOpportunity::query()
@@ -58,6 +63,11 @@ class PublicOpportunityController extends Controller
         return PublicOpportunityResource::collection($opportunities);
     }
 
+    /**
+     * Exibe uma oportunidade aprovada junto com suas publicações oficiais.
+     * O status de revisão é checado mesmo com model binding para impedir acesso
+     * direto a itens pendentes ou rejeitados pela URL.
+     */
     public function show(PublicOpportunity $publicOpportunity): PublicOpportunityResource
     {
         // Impede acessar diretamente uma oportunidade

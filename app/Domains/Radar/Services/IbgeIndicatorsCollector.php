@@ -13,6 +13,11 @@ use RuntimeException;
  */
 class IbgeIndicatorsCollector
 {
+    /**
+     * Consulta cada indicador configurado para as UFs e monta valores e período
+     * de referência. Recusa respostas incompletas para evitar publicar valores
+     * ausentes ou misturar períodos diferentes entre estados.
+     */
     public function collect(): array
     {
         $base = rtrim(config('radar.ibge.base_url'), '/');

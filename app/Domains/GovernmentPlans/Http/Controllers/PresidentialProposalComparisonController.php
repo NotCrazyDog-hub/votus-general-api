@@ -29,11 +29,16 @@ class PresidentialProposalComparisonController extends Controller
         );
     }
 
+    /** Lista temas que têm ao menos uma proposta ativa para a comparação. */
     public function themes(): AnonymousResourceCollection
     {
         return GovernmentPlanThemeResource::collection($this->service->themes());
     }
 
+    /**
+     * Valida IDs opcionais de candidatos, carrega o tema e retorna suas propostas
+     * junto da comparação existente para o par selecionado, se houver.
+     */
     public function show(Request $request, string $theme): GovernmentPlanThemeDetailResource
     {
         $data = $request->validate([

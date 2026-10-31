@@ -29,6 +29,7 @@ trait PersistsValidNews
 {
     /**
      * @param  array<int, array<string, mixed>>  $items  já ordenados por prioridade
+     *
      * @return array<string, int> contadores do ciclo (também vão pro log)
      */
     protected function persistNewValid(NewsSource $source, array $items, int $limit, LinkNormalizer $normalizer): array

@@ -55,6 +55,7 @@ class CourseOfferingController extends Controller
             ->response();
     }
 
+    /** Carrega universidade, formas de ingresso, currículo e disciplinas antes de serializar a oferta. */
     public function show(CourseOffering $courseOffering): CourseOfferingResource
     {
         $courseOffering->load([

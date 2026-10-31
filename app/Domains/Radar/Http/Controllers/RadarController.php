@@ -39,9 +39,7 @@ class RadarController extends Controller
     {
     }
 
-    /**
-     * Resultados e status de todos os escopos da tela numa ida só ao cache.
-     */
+    /** Lê vários escopos do cache em lote e mantém os status para compor metadados da resposta. */
     private function read(array $pairs): array
     {
         $read = $this->store->readMany($pairs);
@@ -50,6 +48,12 @@ class RadarController extends Controller
         return $read['results'];
     }
 
+    /**
+     * Monta a visão geral do radar para um ano ou para a legislatura inteira.
+     * Lê os resultados já armazenados, solicita atualização em segundo plano
+     * para dados vencidos e combina indicadores do IBGE com os dados anuais da
+     * Câmara por UF. Cada fonte permanece em um bloco próprio da resposta.
+     */
     public function index(Request $request): JsonResponse
     {
         $period = $this->period($request);
@@ -93,6 +97,11 @@ class RadarController extends Controller
         ]);
     }
 
+    /**
+     * Retorna os dados de uma UF: indicadores do IBGE, proposições da Câmara e
+     * proposições do Senado. Valida a UF e o período antes de consultar o cache;
+     * a atualização de dados ausentes ou vencidos não bloqueia a resposta.
+     */
     public function show(Request $request, string $uf): JsonResponse
     {
         $uf = strtoupper($uf);
@@ -147,6 +156,7 @@ class RadarController extends Controller
         ]);
     }
 
+    /** Aceita a chave "legislature" ou um dos anos habilitados para o radar. */
     private function period(Request $request): ?string
     {
         $period = (string) $request->query('period', 'legislature');
@@ -158,6 +168,7 @@ class RadarController extends Controller
         return null;
     }
 
+    /** Monta o erro 422 com os períodos válidos para a consulta do radar. */
     private function invalidPeriod(): JsonResponse
     {
         return response()->json([
@@ -165,14 +176,13 @@ class RadarController extends Controller
         ], 422);
     }
 
-    /**
-     * @return int[]
-     */
+    /** Expande a legislatura para seus anos ou transforma um ano isolado em lista. */
     private function yearsFor(string $period): array
     {
         return $period === 'legislature' ? RadarRefresher::years() : [(int) $period];
     }
 
+    /** Cria rótulo e opções de período consumidos pelos filtros da interface. */
     private function periodInfo(string $period): array
     {
         $years = RadarRefresher::years();
@@ -186,6 +196,7 @@ class RadarController extends Controller
         ];
     }
 
+    /** Converte uma sigla válida para nome, região e código IBGE da UF. */
     private function stateInfo(string $uf): array
     {
         $info = RadarUfs::ALL[$uf];
@@ -252,6 +263,11 @@ class RadarController extends Controller
         return ['states' => $states];
     }
 
+    /**
+     * Acrescenta a cada tema seu percentual sobre as proposições do estado.
+     * O denominador é o total de proposições; como uma proposição pode ter
+     * vários temas, a soma dos percentuais pode passar de 100%.
+     */
     private function withShare(?array $state): array
     {
         if ($state === null || $state['propositions'] === 0) {
@@ -263,6 +279,7 @@ class RadarController extends Controller
         ], $state['topics']);
     }
 
+    /** Resume disponibilidade, anos ausentes e arquivos de origem dos resultados da Câmara. */
     private function camaraMeta(array $byYear, array $years): array
     {
         $available = array_filter($byYear);
@@ -291,6 +308,7 @@ class RadarController extends Controller
         return $results['ibge:' . RadarStore::IBGE_SCOPE] ?? IbgeSnapshot::load();
     }
 
+    /** Formata estado, data, origem e descrições dos indicadores do IBGE. */
     private function ibgeMeta(?array $ibge): array
     {
         return [
@@ -310,6 +328,11 @@ class RadarController extends Controller
         ];
     }
 
+    /**
+     * Formata os metadados e seleciona os dados do Senado para o ano ou para
+     * toda a legislatura. Quando ainda não existe resultado, retorna status
+     * pendente e data null; amostras pequenas são sinalizadas à interface.
+     */
     private function senadoBlock(?array $senado, string $uf, string $period): array
     {
         $meta = [

@@ -28,6 +28,9 @@ class CandidacyHistory extends Model
         'round' => 'integer',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Candidate`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);

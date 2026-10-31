@@ -26,11 +26,17 @@ class Campus extends Model
         'longitude' => 'float',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `University`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function university(): BelongsTo
     {
         return $this->belongsTo(University::class);
     }
 
+    /**
+     * Relação um-para-muitos com o modelo `CourseOffering`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function courseOfferings(): HasMany
     {
         return $this->hasMany(CourseOffering::class);

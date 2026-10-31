@@ -59,6 +59,11 @@ class GroqExplanationService
         return array_values(array_filter(config('services.groq.api_keys', [])));
     }
 
+    /**
+     * Envia o material de referência à Groq com o formato esperado para a
+     * explicação e o quiz. Converte erros HTTP, conteúdo vazio ou JSON inválido
+     * em exceções para que o job possa marcar a geração como falha.
+     */
     private function chamarGroq(string $chave, string $perguntaTitulo, string $categoria, string $material): array
     {
         $resposta = Http::withToken($chave)

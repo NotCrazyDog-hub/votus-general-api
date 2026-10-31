@@ -30,11 +30,17 @@ class Explanation extends Model
         'content_version' => 'integer',
     ];
 
+    /**
+     * Relação um-para-muitos com o modelo `ExplanationSource`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function sources(): HasMany
     {
         return $this->hasMany(ExplanationSource::class);
     }
 
+    /**
+     * Relação um-para-muitos com o modelo `QuizQuestion`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function quizQuestions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class)->orderBy('position');

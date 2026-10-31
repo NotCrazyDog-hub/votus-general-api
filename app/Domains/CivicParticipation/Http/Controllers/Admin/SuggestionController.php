@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 
 class SuggestionController extends Controller
 {
+    /** Lista sugestões para moderação, aplicando os filtros administrativos informados. */
     public function index(Request $request): JsonResponse
     {
         $busca = trim((string) $request->query('search', ''));

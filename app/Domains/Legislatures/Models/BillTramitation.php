@@ -22,6 +22,9 @@ class BillTramitation extends Model
         'event_date' => 'date',
     ];
 
+    /**
+     * Cada registro guarda a referência para um único `Bill`; vários registros podem compartilhar esse mesmo registro.
+     */
     public function bill(): BelongsTo
     {
         return $this->belongsTo(Bill::class);

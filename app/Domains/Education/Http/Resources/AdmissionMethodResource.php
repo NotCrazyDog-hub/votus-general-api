@@ -7,6 +7,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class AdmissionMethodResource extends JsonResource
 {
+    /**
+     * Converte AdmissionMethod para a resposta JSON da API. Expõe os campos: type, name, description,
+     * official_url, verified_at. @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

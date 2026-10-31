@@ -7,6 +7,11 @@ use RuntimeException;
 
 class ExecutiveActionImportService
 {
+    /**
+     * Lê o CSV completo, normaliza cabeçalhos e transforma cada linha em um
+     * registro de ação executiva. Linhas vazias são ignoradas e colunas a mais
+     * ou a menos são ajustadas ao número de cabeçalhos.
+     */
     public function read(string $path): array
     {
         if (!file_exists($path)) {
@@ -70,6 +75,7 @@ class ExecutiveActionImportService
         return $header;
     }
 
+    /** Mapeia colunas do arquivo para os atributos internos e converte números/JSON. */
     private function normalizeRow(array $row): array
     {
         return [

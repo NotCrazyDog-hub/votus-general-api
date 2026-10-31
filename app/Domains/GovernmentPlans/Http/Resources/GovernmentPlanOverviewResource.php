@@ -18,8 +18,15 @@ class GovernmentPlanOverviewResource extends JsonResource
     }
 
     /**
+
+     * Converte GovernmentPlanOverview para a resposta JSON da API. Expõe os campos: candidates, themes, proposals.
+
+     *
+
      * @return array<string, mixed>
+
      */
+
     public function toArray(Request $request): array
     {
         $themes = $this->resource->pluck('theme')->unique('id')->sortBy('name')->values();

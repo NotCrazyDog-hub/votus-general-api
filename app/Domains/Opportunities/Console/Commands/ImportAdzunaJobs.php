@@ -15,6 +15,10 @@ class ImportAdzunaJobs extends Command
         'Importa vagas da Adzuna para o banco de dados';
 
 
+    /**
+     * Consulta vagas na Adzuna e atualiza os registros locais, evitando duplicatas pela identificação externa da vaga.
+     */
+
     public function handle(
         AdzunaProvider $adzuna
     ): int {
@@ -171,6 +175,7 @@ class ImportAdzunaJobs extends Command
     }
 
 
+    /** Classifica a vaga por palavras-chave do título e descrição, usando o tipo padrão quando não há correspondência. */
     private function detectType(
         ?string $title,
         ?string $description

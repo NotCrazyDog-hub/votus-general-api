@@ -9,6 +9,9 @@ class Profession extends Model
 {
     protected $fillable = ['normalized_name', 'camara_code'];
 
+    /**
+     * Relação muitos-para-muitos entre Profession e Legislator, mantida pela tabela intermediária do Eloquent.
+     */
     public function legislators(): BelongsToMany
     {
         return $this->belongsToMany(Legislator::class)

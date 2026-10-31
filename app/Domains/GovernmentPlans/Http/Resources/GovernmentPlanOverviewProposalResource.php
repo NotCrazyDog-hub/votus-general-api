@@ -12,7 +12,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class GovernmentPlanOverviewProposalResource extends JsonResource
 {
     /**
-     * @return array<string, mixed>
+     * Converte GovernmentPlanOverviewProposal para a resposta JSON da API. Expõe os campos: id,
+     * candidate_id, theme_slug, title, description, source_excerpt, source_reference, source_url,
+     * extraction. @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {

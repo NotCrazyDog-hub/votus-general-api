@@ -7,6 +7,11 @@ use App\Domains\Legislatures\Http\Resources\LegislatorSummaryResource;
 
 class CandidateResource extends JsonResource
 {
+    /**
+     * Converte o candidato para o contrato público da API. Campos calculados só aparecem quando o
+     * serviço os carregou; relações aninhadas só são serializadas quando foram eager-loaded, evitando
+     * consultas inesperadas.
+     */
     public function toArray($request)
     {
         return [

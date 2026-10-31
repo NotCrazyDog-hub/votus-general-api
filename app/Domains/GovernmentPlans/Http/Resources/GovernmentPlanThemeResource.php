@@ -12,7 +12,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class GovernmentPlanThemeResource extends JsonResource
 {
     /**
-     * @return array<string, mixed>
+     * Converte GovernmentPlanTheme para a resposta JSON da API. Expõe os campos: slug, name,
+     * proposals_count. Campos condicionais só entram na resposta quando o dado ou a contagem foi
+     * disponibilizado pelo serviço. @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {

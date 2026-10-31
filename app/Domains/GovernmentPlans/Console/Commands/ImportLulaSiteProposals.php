@@ -27,6 +27,10 @@ class ImportLulaSiteProposals extends Command
 
     protected $description = 'Importa as propostas do site oficial do Lula (texto literal, sem IA) e retira de uso as anteriores sem apagá-las';
 
+    /**
+     * Importa do site oficial as propostas literais do candidato e preserva o texto da fonte para comparação.
+     */
+
     public function handle(LulaSiteProposalParser $parser): int
     {
         $dry = (bool) $this->option('dry-run');

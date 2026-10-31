@@ -11,6 +11,10 @@ class CalculateLegislativeProductivity extends Command
     protected $signature = 'metrics:productivity';
     protected $description = 'Calcula e persiste a métrica de produtividade por mandato';
 
+    /**
+     * Calcula a produtividade por mandato e persiste a taxa anual de proposições.
+     */
+
     public function handle(LegislativeProductivityService $service)
     {
         $legislators = Legislator::all();

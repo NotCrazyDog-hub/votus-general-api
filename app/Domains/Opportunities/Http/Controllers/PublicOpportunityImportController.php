@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\DB;
 
 class PublicOpportunityImportController extends Controller
 {
+    /**
+     * Recebe uma oportunidade extraída e registra a oportunidade e sua publicação
+     * na mesma transação. A chave da oportunidade evita duplicatas; uma nova
+     * publicação pode atualizar os dados da oportunidade já existente sem criar
+     * uma segunda oportunidade para o mesmo aviso.
+     */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -54,6 +60,8 @@ class PublicOpportunityImportController extends Controller
                 $data['source_key']
             )->first();
 
+            // A resposta e o status de revisão dependem de distinguir a primeira
+            // ocorrência da oportunidade de uma publicação/retificação posterior.
             $isNewOpportunity = $opportunity === null;
 
             if ($isNewOpportunity) {
@@ -83,6 +91,8 @@ class PublicOpportunityImportController extends Controller
                 ]);
             }
 
+            // publication_key identifica cada edição ou retificação; repetir a
+            // mesma publicação não deve criar outra linha associada.
             $publication = OpportunityPublication::firstOrCreate(
                 ['publication_key' => $data['publication_key']],
                 [

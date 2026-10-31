@@ -13,6 +13,10 @@ class SyncLowerHouseCommittees extends Command
     protected $signature = 'sync:committees-lower-house';
     protected $description = 'Fetch and store current committee memberships for already-synced CE deputies';
 
+    /**
+     * Atualiza os vínculos entre deputados já cadastrados e as comissões da Câmara.
+     */
+
     public function handle(LowerHouseApiService $api)
     {
         $legislators = Legislator::where('chamber', 'lower_house')->where('state', 'CE')->get();

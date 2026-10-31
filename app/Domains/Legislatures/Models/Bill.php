@@ -33,6 +33,9 @@ class Bill extends Model
         'updated_at'
     ];
 
+    /**
+     * Relação muitos-para-muitos entre Bill e Legislator, mantida pela tabela intermediária do Eloquent.
+     */
     public function legislators(): BelongsToMany
     {
         return $this->belongsToMany(Legislator::class, 'bill_legislator');
@@ -45,6 +48,9 @@ class Bill extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Relação um-para-muitos com o modelo `BillTramitation`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function tramitations(): HasMany
     {
         return $this->hasMany(BillTramitation::class);

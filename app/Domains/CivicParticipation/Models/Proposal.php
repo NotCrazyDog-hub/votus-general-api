@@ -20,16 +20,25 @@ class Proposal extends Model
         'status' => ProposalStatus::class,
     ];
 
+    /**
+     * Relação um-para-muitos com o modelo `ProposalVote`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function votes(): HasMany
     {
         return $this->hasMany(ProposalVote::class);
     }
 
+    /**
+     * Relação um-para-muitos com o modelo `ProposalComment`: o registro atual pode estar associado a vários registros desse modelo.
+     */
     public function comments(): HasMany
     {
         return $this->hasMany(ProposalComment::class);
     }
 
+    /**
+     * Relação muitos-para-muitos entre Proposal e Category, mantida pela tabela intermediária do Eloquent.
+     */
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);

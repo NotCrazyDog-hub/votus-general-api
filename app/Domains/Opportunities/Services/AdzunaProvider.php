@@ -7,6 +7,12 @@ use RuntimeException;
 
 class AdzunaProvider
 {
+    /**
+     * Pesquisa vagas por termo, local e página e traduz cada item da Adzuna
+     * para as colunas internas do domínio de oportunidades.
+     *
+     * @return array<int, array<string, mixed>>
+     */
     public function search(
         string $term,
         string $location = 'Ceará',
@@ -53,7 +59,8 @@ class AdzunaProvider
             []
         );
 
-
+        // Converte o formato da Adzuna para os nomes de campos usados pelo
+        // domínio; data_get acessa campos aninhados sem erro quando faltam.
         return collect($jobs)
             ->map(function (array $job) {
 

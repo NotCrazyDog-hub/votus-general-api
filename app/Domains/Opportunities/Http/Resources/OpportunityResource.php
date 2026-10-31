@@ -7,6 +7,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class OpportunityResource extends JsonResource
 {
+    /**
+     * Converte Opportunity para a resposta JSON da API. Expõe os campos: external_id,
+     * opportunity_type, title, company, description, location, latitude, longitude, category,
+     * contract_type, contract_time, salary_min, salary_max, external_url, published_at. @return
+     * array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [

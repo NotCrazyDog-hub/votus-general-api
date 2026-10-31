@@ -18,6 +18,10 @@ class SyncAleceLegislators extends Command
         parent::__construct();
     }
 
+    /**
+     * Consulta parlamentares da ALECE e atualiza seus dados cadastrais no banco local.
+     */
+
     public function handle(): int
     {
         $this->info('Iniciando sincronização dos parlamentares da ALECE...');
