@@ -24,6 +24,11 @@ A API cobre hoje três grandes domínios de dados políticos, cada um com fonte 
 
 Além disso, a API mantém um pipeline próprio de **notícias** (coleta + resumo por IA), **explicações educativas com quiz** ("Você Sabia?"), **propostas cidadãs** votáveis/comentáveis, **ofertas de curso de graduação** (dados do MEC), **vagas de emprego/estágio** (Adzuna) e **concursos/processos seletivos públicos** (importados via automação externa n8n), além de um painel administrativo autenticado.
 
+Dois módulos de análise completam o conjunto:
+
+- **Radar do Brasil** — temas das proposições da Câmara e do Senado por UF, com indicadores do IBGE, para os 27 estados (ver [Radar do Brasil](#radar-do-brasil)).
+- **Comparador de propostas para Presidente** — propostas dos planos de governo organizadas por tema, com resumo comparativo gerado por IA uma única vez e guardado no banco (ver [Comparador de propostas](#comparador-de-propostas-para-presidente)).
+
 ## Arquitetura
 
 ```mermaid
@@ -82,7 +87,7 @@ flowchart LR
     API -->|"disparo HTTP a cada 5-10min e a cada 12h"| CRON["cron-job.org"]
 ```
 
-Frontend e backend são desenvolvidos e implantados separadamente. O backend não tem worker de fila contínuo em produção (ver [Jobs & Filas](#-jobs--filas)); quem drena as filas é o próprio `cron-job.org`, chamando endpoints HTTP da API.
+Frontend e backend são desenvolvidos e implantados separadamente. Em produção, o `entrypoint.sh` mantém um worker de fila contínuo (`coleta`, `resumo` e `radar`); os disparos HTTP do `cron-job.org` continuam funcionando como reforço (ver [Jobs & Filas](#-jobs--filas)).
 
 ## 📖 Fontes oficiais dos dados
 
@@ -98,6 +103,11 @@ Frontend e backend são desenvolvidos e implantados separadamente. O backend nã
 | Concursos e processos seletivos públicos | Diários oficiais (agregados por automação externa) | Importado via `POST /api/public-opportunities/import`, chamado por um fluxo n8n externo ao backend — o backend só recebe e armazena, não faz a varredura dos diários |
 | Resumo de notícias e geração de explicações/quiz | [Groq](https://groq.com/) (modelo configurável, padrão `openai/gpt-oss-20b`) | API REST, chamada pelo backend |
 | Assistente de IA (`/api/ai-assistant/ask`) | [n8n](https://n8n.io/) (automação externa, fora deste repositório) | O backend só repassa a pergunta a um webhook n8n configurado — a lógica do assistente em si não está neste código |
+| Resultados oficiais das eleições 2026 | [TSE — Resultados](https://resultados.tse.jus.br/) (arquivos EA20) | `tse:import-results` grava o resultado em `candidacy_histories`; o status (eleito, 2º turno, não eleito...) é derivado só desse dado |
+| Radar — temas das proposições da Câmara | [Arquivos em lote da Câmara](https://dadosabertos.camara.leg.br/swagger/api.html) (`proposicoesTemas-{ano}.csv`, `proposicoesAutores-{ano}.csv`) | Download anual com retomada (`radar:refresh camara`) |
+| Radar — temas das proposições do Senado | [API do Senado](https://legis.senado.leg.br/dadosabertos/api-docs/swagger-ui/index.html) | Senadores em exercício da UF, suas PL/PEC e a classificação de cada uma (`radar:refresh senado`), com novas tentativas quando o Senado responde 429/5xx |
+| Radar — indicadores dos estados | [IBGE — API de agregados](https://servicodados.ibge.gov.br/api/docs/agregados) | População, área e PIB (`radar:refresh ibge`); cópia oficial guardada em `resources/radar/ibge-snapshot.json` para quando o IBGE não responde |
+| Planos de governo dos candidatos a Presidente | PDFs do TSE (DivulgaCandContas) e sites oficiais das campanhas | `import:presidential-government-plans` (extração com IA) e `import:lula-site-proposals` (texto literal, sem IA) |
 
 ## 🗂️ Domínio de dados
 
@@ -109,7 +119,7 @@ Para cada entidade central, o fluxo real é: **Fonte → Coleta/Importação →
 2. **Coleta/Importação**: comandos manuais, um por tipo de dado — `sync:candidates-tse {file} {complementary_file} --uf=XX --year=2026` (dados principais), `candidates:link-running-mates --uf=XX --year=2026` (vincula vice/suplentes da mesma chapa via número de coligação do TSE), `import:candidacy-history`, `import:candidate-expenses`, `sync:candidate-expense-payments-tse`, `import:candidate-photos {dir} --disk=supabase`, `import:candidate-proposals {dir} --disk=supabase --max-size=20480`. Não há sincronização automática — cada estado/arquivo é importado manualmente, sob demanda.
 3. **Normalização**: `TseCandidatesCsvService` e os demais `Tse*CsvService` leem o CSV (encoding ISO-8859-1 convertido para UTF-8), convertem datas/decimais do formato brasileiro, e o `App\Enums\CandidateOffice` mapeia a descrição de cargo do TSE (`DS_CARGO`) para um código interno (`president`, `governor`, `senator`, `federal_deputy`, `state_deputy`).
 4. **Banco (Supabase/Postgres)**: tabela `candidates` (titulares e suplentes/vices na mesma tabela, ligados por `running_mate_of_id`), mais `candidacy_histories`, `candidate_expenses` e `candidate_expense_payments`. Fotos e documentos de plano de governo vão para o bucket `votus-documents` do Supabase Storage; a URL pública é montada manualmente a partir de `SUPABASE_STORAGE_PUBLIC_URL` + o path salvo (`photo_path`/`proposal_document_path`), sem passar pela fachada `Storage` do Laravel.
-5. **API**: `GET /{president,governor,senate,federal-deputy,state-deputy}-candidates` (listagem paginada, filtros `state`/`party`/`search`) e o `/{external_id}` correspondente para detalhe. Resposta formatada por `CandidateResource`.
+5. **API**: `GET /{president,governor,senate,federal-deputy,state-deputy}-candidates` (listagem paginada, filtros `state`/`party`/`search`/`election_result`) e o `/{external_id}` correspondente para detalhe. Resposta formatada por `CandidateResource`, com `election_result` (situação derivada do resultado oficial do TSE, ver `ElectionResultStatus`). A listagem vem ordenada pela situação — eleitos, 2º turno, não eleitos, aguardando resultado, não verificados — e, dentro de cada grupo, pelo nome de urna.
 6. **Frontend**: `src/app/CandidatosPage/[office]/` — listagem com busca por região/estado (exceto Presidente, que é nacional) e perfil individual com histórico de candidaturas e, quando existe, mandato(s) anteriores como parlamentar (ligação feita por CPF).
 
 ### Deputados, Senadores e Deputados Estaduais (`Legislator`)
@@ -139,7 +149,24 @@ Para cada entidade central, o fluxo real é: **Fonte → Coleta/Importação →
 5. **Banco**: tabela `news` (campos públicos + campos internos do pipeline: `status_resumo`, `erro_resumo`, `fonte_id`, `link_normalizado`) e `fontes` (cadastro de fonte + contadores do circuit breaker). O Model da fonte se chama `NewsSource` (a tabela continua `fontes`).
 6. **API**: `GET /news` (paginado, filtros `search`, `relevance_min`, `sort_by`, `direction`, `per_page` até 150, mais o campo extra `destaque` só na página 1) e `GET /news/{id}` — ambos via `NewsResource`, que **nunca** expõe os campos internos do pipeline. `POST /news` existe para cadastro manual, protegido por token interno.
 
-Ver também [🔄 Pipeline de notícias](#-pipeline-de-notícias) para o mecanismo de disparo em produção (sem worker de fila contínuo).
+Ver também [🔄 Jobs & Filas](#-jobs--filas) para o mecanismo de disparo em produção.
+
+### Radar do Brasil
+
+1. **Fontes**: arquivos anuais em lote da Câmara (temas e autores das proposições), API do Senado e API de agregados do IBGE — Câmara, Senado e IBGE nunca são somados entre si.
+2. **Coleta**: `radar:refresh {camara|senado|ibge} {scope?*} [--dry-run]` (anos para a Câmara, UFs para o Senado). Na leitura pública, um resultado vencido (`config/radar.php`, `stale_after_hours`) dispara `RefreshRadarJob` na fila `radar` — a requisição nunca espera a fonte oficial.
+3. **Cálculo**: `CamaraTopicAggregator` conta só PL e PEC com tema oficial, só deputados proponentes (assinaturas de apoio ficam fora), por UF do autor, uma vez por UF e uma vez por tema. `SenadoRadarCollector` usa os senadores em exercício da UF e a classificação do próprio Senado, tentando de novo com espera crescente quando a API responde 429 (20 s, 60 s, 120 s) ou 5xx/conexão (2 s, 5 s, 10 s), dentro de um teto de 20 min por coleta.
+4. **Armazenamento**: só no cache do Laravel (store `database`, prefixo `radar:v1:`), sem tabelas próprias. `RadarStore` só troca um resultado publicado por outro mais novo e validado; falhas ficam no status (`last_error`, `last_error_at`) e o resultado anterior continua no ar.
+5. **API**: `GET /radar/states?period=` e `GET /radar/states/{uf}?period=` (`period` = `legislature` ou um ano de 2023 a 2026).
+6. **Frontend**: `src/app/RadarPage` — mapa das UFs, tema mais frequente, Câmara e Senado, evolução anual e IBGE.
+
+### Comparador de propostas para Presidente
+
+1. **Fontes**: plano de governo registrado no TSE (PDF) e sites oficiais das campanhas.
+2. **Coleta**: `import:presidential-government-plans {--candidate=*}` (a IA separa as propostas, escreve um resumo curto e indica um trecho literal, descartado se não existir na fonte) e `import:lula-site-proposals {--dry-run} {--force}` (copia título e texto do site, sem IA, e retira de uso as propostas anteriores sem apagá-las — `metadata.superseded_at`).
+3. **Comparação por tema**: `compare:presidential-plans {--candidate=*}` gera o resumo comparativo com IA **uma vez** e o grava em `government_plan_comparisons`; temas com propostas de um só candidato não recebem comparação. A leitura pública só lê o que está gravado — a IA não é chamada a cada visita.
+4. **API**: `GET /presidential-proposal-comparison/proposals` (candidatos, temas e todas as propostas, com `extraction` = `literal` ou `ai`), `GET /presidential-proposal-comparison/themes` e `GET /presidential-proposal-comparison/themes/{slug}` (propostas do tema por candidato + comparação gravada, via Resources em `GovernmentPlans/Http/Resources`).
+5. **Frontend**: `src/app/ComparadorPropostasPage`, com a conferência de cada proposta no PDF do TSE (`src/data/planCoverage.json`, gerado por `scripts/plan-coverage/audit.mjs`, e a revisão manual em `src/data/planReview.json`).
 
 ## 🧩 Outros módulos
 
@@ -205,7 +232,7 @@ Exemplo de item de `GET /deputies` (via `LegislatorsResource`):
 
 | Método | Rota | Parâmetros | Descrição |
 |---|---|---|---|
-| GET | `/president-candidates` | `?state=&party=&search=&page=` | Candidatos a presidente (nacional) |
+| GET | `/president-candidates` | `?state=&party=&search=&election_result=&page=` | Candidatos a presidente (nacional) |
 | GET | `/president-candidates/{external_id}` | — | Perfil |
 | GET | `/governor-candidates` | `?state=&party=&search=&page=` | Candidatos a governador |
 | GET | `/governor-candidates/{external_id}` | — | Perfil |
@@ -230,6 +257,25 @@ Toda listagem de candidatos devolve, além de `data`/`links`/`meta` (paginação
 }
 ```
 Perfil individual (`GET /{office}-candidates/{id}`) inclui também `running_mates` (chapa), `previous_mandates` (mandatos como parlamentar, cruzados por CPF — cada um já traz `bills` quando houver) e `candidacy_history` (candidaturas anteriores pelo TSE).
+
+`election_result` aceita `elected`, `runoff`, `not_elected`, `awaiting` e `unverified`; o bloco `filters` traz também `election_results` (quantos candidatos do cargo há em cada situação).
+
+### Radar do Brasil
+
+| Método | Rota | Parâmetros | Descrição |
+|---|---|---|---|
+| GET | `/radar/states` | `?period=legislature\|2023..2026` | Visão geral das 27 UFs: indicadores do IBGE e Câmara (total + 3 temas principais) |
+| GET | `/radar/states/{uf}` | `?period=` | Detalhe da UF: IBGE, todos os temas da Câmara (com `share`), Senado e metodologia |
+
+Cada bloco (Câmara, Senado, IBGE) traz `status` (`ok`/`pending`), `generated_at` e `last_failed_at`; o IBGE traz também `from_snapshot` quando os valores vêm da cópia guardada.
+
+### Comparador de propostas para Presidente
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/presidential-proposal-comparison/proposals` | Candidatos, temas e todas as propostas de uma vez |
+| GET | `/presidential-proposal-comparison/themes` | Temas com contagem de propostas |
+| GET | `/presidential-proposal-comparison/themes/{slug}` | Propostas do tema por candidato e o resumo comparativo gravado (`comparison`, ou `null`) |
 
 ### Notícias
 
@@ -309,15 +355,18 @@ Perfil individual (`GET /{office}-candidates/{id}`) inclui também `running_mate
 
 ## 🔄 Jobs & Filas
 
-A aplicação usa o sistema de filas nativo do Laravel (`QUEUE_CONNECTION=database`), com duas filas nomeadas:
+A aplicação usa o sistema de filas nativo do Laravel (`QUEUE_CONNECTION=database`), com estas filas nomeadas:
 
 | Fila | Job(s) | Propósito |
 |---|---|---|
 | `coleta` | `CollectAgenciaBrasilNewsJob`, `CollectPoder360NewsJob` | Buscar e persistir notícias novas de cada fonte |
 | `resumo` | `SummarizeNewsJob` | Gerar resumo/relevância por IA para cada notícia coletada |
+| `radar` | `RefreshRadarJob` | Atualizar um escopo do Radar (ano da Câmara, UF do Senado ou IBGE) em segundo plano |
 | `explanations` | `GerarConteudoExplicacaoJob` | Gerar o conteúdo + quiz de uma explicação via IA |
 
-**Não há worker de fila contínuo em produção** — o plano gratuito da hospedagem (Render) não mantém um processo em segundo plano. Em vez disso, dois agendamentos no **cron-job.org** (externo) chamam endpoints HTTP que executam `php artisan queue:work --stop-when-empty` dentro da própria requisição:
+**Worker contínuo em produção**: o `entrypoint.sh` sobe, junto com a API, um `php artisan queue:work --queue=coleta,resumo,radar` em loop (recicla a cada hora; `QUEUE_WORKER=0` desliga). A ordem das filas é a prioridade: um Job do Radar só roda quando não há nada pendente de notícias, e os Jobs rodam um de cada vez.
+
+Os dois agendamentos no **cron-job.org** (externo) continuam ativos como reforço — chamam endpoints HTTP que executam `php artisan queue:work --stop-when-empty` dentro da própria requisição:
 
 | Frequência | Endpoint | Função |
 |---|---|---|
@@ -338,6 +387,7 @@ PostgreSQL hospedado no **Supabase**. Principais tabelas (nome real da tabela, n
 | `candidates` | `Candidate` | Candidatos 2026 (titulares e chapa) |
 | `candidacy_histories`, `candidate_expenses`, `candidate_expense_payments` | — | Histórico de candidaturas e despesas de campanha do TSE |
 | `executives`, `executive_actions` | `Executive`, `ExecutiveAction` | Presidente/governador em exercício e suas ações |
+| `government_plan_themes`, `government_plan_proposals`, `government_plan_comparisons` | `GovernmentPlanTheme`, `GovernmentPlanProposal`, `GovernmentPlanComparison` | Comparador de propostas para Presidente (temas, propostas e resumos comparativos gravados) |
 | `bills`, `bill_tramitations`, `bill_legislator`, `bill_topic` | `Bill`, `BillTramitation` | Proposições legislativas |
 | `committees`, `committee_legislator`, `committee_topic` | `Committee`, `CommitteeTopic` | Comissões parlamentares |
 | `topics` | `Topic` | Temas/eixos de proposições |
@@ -452,18 +502,21 @@ composer test
 ## ⚠️ Limitações conhecidas
 
 - **Sem sincronização automática**: todos os comandos `sync:*`/`import:*` de parlamentares, proposições e candidatos são disparados manualmente; os seis `Schedule::command()` que existiam para isso estão comentados em `routes/console.php`.
-- **Sem worker de fila contínuo em produção**: o pipeline de notícias depende de disparo HTTP externo (cron-job.org) dentro do tempo de uma requisição (`--max-time=20`), não de um processo `queue:work` permanente.
+- **Um único worker de fila**: em produção há um só `queue:work` (no `entrypoint.sh`), então os Jobs rodam em sequência — várias UFs do Senado no Radar podem levar alguns minutos cada para se atualizar, uma depois da outra.
+- **Radar do Senado depende do limite da API do Senado**: quando o Senado responde 429 por muito tempo, as novas tentativas se esgotam, a UF fica como "em preparação" e só tenta de novo depois do intervalo de `DISPATCH_COOLDOWN_MINUTES` (6 h), na próxima vez que alguém abrir a UF.
 - **Inconsistência de formato entre listagem e detalhe de parlamentar**: `GET /deputies`/`/senators`/`/state-deputies` usa `LegislatorsResource` (campos selecionados), mas `GET /deputies/{id}` etc. retorna o **Model inteiro serializado**, incluindo `raw_data` e todas as colunas internas — não há padronização de shape entre os dois.
 - **`BillResource` não é usado por nenhuma rota**: proposições são sempre serializadas por relacionamento direto do Model (no perfil de parlamentar/candidato), não por esse Resource.
 - **`EnsureN8nToken` é código órfão**: existe a classe, mas não está registrada como alias de middleware em nenhuma rota; a leitura de config que ela faz (`services.n8n.import_token`) também não existe em `config/services.php`.
 - **Campos "fantasma" em `$fillable`**: `Candidate::$fillable` inclui `source`/`source_slug`/`source_url`, que não existem como colunas na tabela `candidates`; `Bill::$fillable` inclui `legislator_id`, removido por migration posterior. Não causam erro (Eloquent ignora o que não existe na tabela ao salvar), mas não refletem o schema real.
-- **Sem testes para os módulos mais recentes**: a suíte de testes cobre bem o pipeline de notícias e o de explicações; não há testes para candidatos, parlamentares, proposições, propostas cidadãs, universidades ou oportunidades.
+- **Cobertura de testes desigual**: a suíte cobre o pipeline de notícias, o de explicações, o Radar (`tests/Feature/Radar`, `tests/Unit/Radar`), o comparador de propostas (`tests/Feature/GovernmentPlans`) e o resultado eleitoral dos candidatos (`tests/Feature/Elections`); não há testes para parlamentares, proposições, propostas cidadãs, universidades ou oportunidades. Alguns testes antigos ainda apontam para classes de antes da reorganização em `app/Domains` e falham por isso.
 - **Dados de candidatos restritos ao TSE**: sem painel de acompanhamento de patrimônio/prestação de contas em tempo real — é uma foto do que o TSE publicou no momento da importação.
 
 ## 🏗️ Decisões arquiteturais
 
 - A implementação atual utiliza **duas tabelas de pessoas físicas separadas** (`candidates` e `legislators`) em vez de uma tabela unificada de "pessoa política", porque as fontes, o ciclo de vida e os campos de cada uma são genuinamente diferentes (candidatura por eleição vs. mandato em exercício); a ligação entre as duas é feita em tempo de consulta, por CPF.
-- A implementação atual utiliza **polling HTTP externo (cron-job.org) em vez de um worker de fila sempre ativo**, porque o plano de hospedagem atual (Render free) não oferece processo de background contínuo.
+- A implementação atual roda o **worker de fila no mesmo contêiner da API** (`entrypoint.sh`), em vez de um serviço de worker separado, porque o plano de hospedagem atual (Render free) não oferece um processo de background dedicado; o disparo HTTP pelo cron-job.org ficou como reforço.
+- A implementação atual guarda os resultados do **Radar só no cache** (store `database`), sem tabelas próprias, porque são agregados recalculáveis a partir das fontes oficiais; um resultado só é substituído por outro mais novo e validado.
+- A implementação atual gera o **resumo comparativo das propostas uma única vez** (comando `compare:presidential-plans`) e o guarda no banco, em vez de chamar a IA a cada visita: todos veem o mesmo texto e não há custo de IA por usuário.
 - A implementação atual utiliza **duas filas nomeadas (`coleta`/`resumo`) com frequências de drenagem diferentes**, porque o resumo por IA tem rate limit (10/min) e coletar e resumir no mesmo ciclo de 12h faria o backlog de resumo nunca esvaziar antes da próxima coleta.
 - A implementação atual utiliza **validação de imagem antes da persistência da notícia** (não depois), porque o requisito do produto é nunca exibir notícia sem imagem visualmente aceitável — rejeitar antes de salvar evita ter que filtrar de novo em toda leitura.
 - A implementação atual utiliza **cache em arquivo (não no banco) para os agregados de candidatos** (`partiesByOffice`, contadores), porque esses números só mudam quando um `sync:candidates-tse` roda manualmente, e cachear no próprio Postgres custaria a mesma viagem ao Supabase que o cache existe para evitar.
